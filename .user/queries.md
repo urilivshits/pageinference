@@ -88,3 +88,9 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 ## 2025-03-10 20:25:45
 "1. now on a new page/tab it starts with "past conversations" tab
 2. back button is still there on settings page"
+
+## 2025-03-10 21:08:41
+"great, it helped. Now lets also handle the following:
+1. remove the dark mode icon from settings (the toggle in settings is enough)
+2. after page load and after inference the view changes to "past conversations", instead on both page load and on inference it needs to stay in the "new conversation"
+3. check the @rules.mdc and make sure you follow them"

@@ -275,3 +275,10 @@ Example task format for future use:
 - [x] Ensure proper highlighting of active view
 - [x] Fix view transition issues
 - [x] Update wasInConversationsView flag correctly
+
+## 2025-03-10 21:08:41 - UI and User Experience Improvements
+
+### UI Improvement Tasks
+- [x] Remove dark mode icon from settings (keep only the toggle in settings)
+- [x] Fix view navigation after page load and inference (stay in "new conversation" view)
+- [x] Ensure code follows project rules as defined in rules.mdc

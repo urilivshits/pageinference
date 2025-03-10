@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toggleApiKeyBtn = document.getElementById('toggleApiKeyBtn');
   modelSelect = document.getElementById('modelSelect');
   const themeOptions = document.querySelectorAll('input[name="theme"]');
-  const themeToggleBtn = document.getElementById('themeToggleBtn');
   const newConversationBtn = document.getElementById('newConversationBtn');
   const pastSessionsBtn = document.getElementById('pastSessionsBtn');
   const settingsBtn = document.getElementById('settingsBtn');
@@ -155,8 +154,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     option.addEventListener('change', async () => {
       if (option.checked) {
         const theme = option.value;
-        await chrome.storage.sync.set({ theme });
         applyTheme(theme);
+        // Save theme preference
+        await chrome.storage.sync.set({ themePreference: theme });
       }
     });
   });
@@ -215,20 +215,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Load past sessions
-  await loadAndShowPastSessions();
+  // Load past sessions in background without showing them
+  await loadChatSessions();
+  
+  // Ensure we're in main view
+  showMainView();
 
-  // Theme toggle button
-  themeToggleBtn.addEventListener('click', async () => {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    
-    // Update radio buttons
-    document.querySelector(`input[name="theme"][value="${newTheme}"]`).checked = true;
-    
-    // Save theme preference
-    await chrome.storage.sync.set({ theme: newTheme });
+  // Theme settings handling 
+  themeOptions.forEach(option => {
+    option.addEventListener('change', async () => {
+      if (option.checked) {
+        const theme = option.value;
+        applyTheme(theme);
+        // Save theme preference
+        await chrome.storage.sync.set({ themePreference: theme });
+      }
+    });
   });
 
   // Toggle API key visibility
@@ -306,8 +308,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Add AI response to chat
       await addMessageToChat('assistant', response.answer);
       
-      // Update sessions list
-      await loadAndShowPastSessions();
+      // Stay in main view
+      showMainView();
     } catch (error) {
       loadingIndicator.classList.add('hidden');
       showError(error.message || 'An error occurred');
@@ -550,24 +552,7 @@ function applyTheme(theme) {
   } else {
     root.setAttribute('data-theme', theme);
   }
-  
-  // Update theme toggle button icon
-  const isDark = root.getAttribute('data-theme') === 'dark';
-  themeToggleBtn.textContent = isDark ? '☀️' : '🌓';
 }
-
-// Theme toggle button click handler
-themeToggleBtn.addEventListener('click', () => {
-  const root = document.documentElement;
-  const isDark = root.getAttribute('data-theme') === 'dark';
-  const newTheme = isDark ? 'light' : 'dark';
-  
-  currentTheme = newTheme;
-  applyTheme(newTheme);
-  
-  // Save theme preference
-  chrome.storage.sync.set({ themePreference: newTheme });
-});
 
 // Theme radio button change handler
 themeOptions.forEach(radio => {
