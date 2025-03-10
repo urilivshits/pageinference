@@ -94,3 +94,6 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 1. remove the dark mode icon from settings (the toggle in settings is enough)
 2. after page load and after inference the view changes to "past conversations", instead on both page load and on inference it needs to stay in the "new conversation"
 3. check the @rules.mdc and make sure you follow them"
+
+## 2025-03-10 21:15:59
+"cool, lets hide the close button in settings too: states will be changing by clicking on the 3 header tabs in the top"

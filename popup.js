@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const newConversationBtn = document.getElementById('newConversationBtn');
   const pastSessionsBtn = document.getElementById('pastSessionsBtn');
   const settingsBtn = document.getElementById('settingsBtn');
-  const closeSettingsBtn = document.getElementById('closeSettingsBtn');
   chatHistory = document.getElementById('chatHistory');
   mainContent = document.getElementById('mainContent');
   pastConversationsView = document.getElementById('pastConversationsView');
@@ -183,14 +182,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   newConversationBtn.addEventListener('click', startNewConversation);
   pastSessionsBtn.addEventListener('click', showPastConversationsView);
   settingsBtn.addEventListener('click', showSettingsView);
-  closeSettingsBtn.addEventListener('click', () => {
-    // Go back to previous view
-    if (wasInConversationsView) {
-      showPastConversationsView();
-    } else {
-      showMainView();
-    }
-  });
 
   // Handle ENTER key for message submission
   questionInput.addEventListener('keydown', (e) => {

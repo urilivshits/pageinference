@@ -282,3 +282,10 @@ Example task format for future use:
 - [x] Remove dark mode icon from settings (keep only the toggle in settings)
 - [x] Fix view navigation after page load and inference (stay in "new conversation" view)
 - [x] Ensure code follows project rules as defined in rules.mdc
+
+## 2025-03-10 21:15:59 - Improve Navigation Consistency
+
+### Settings Navigation
+- [x] Remove close button from settings panel
+- [x] Ensure consistent navigation using only header tabs
+- [x] Update any related code handling navigation between views
