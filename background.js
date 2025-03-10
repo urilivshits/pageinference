@@ -8,7 +8,7 @@
  * 4. Managing chat history
  */
 
-// Store chat history per tab/URL
+// Store chat history per tab/URL/pageLoadId
 const chatHistories = {};
 
 // Default model name
@@ -205,10 +205,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         // Get tab URL for website type detection
         let url = request.url || '';
+        let pageTitle = '';
+        
         if (!url && request.tabId) {
           const tab = await chrome.tabs.get(request.tabId).catch(() => null);
           if (tab) {
             url = tab.url;
+            pageTitle = tab.title || '';
           }
         }
         
@@ -221,8 +224,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         );
         
         // Store in chat history
-        if (request.tabId && request.url) {
-          const historyKey = `${request.tabId}_${request.url}`;
+        if (request.tabId && request.url && request.pageLoadId) {
+          const historyKey = `${request.tabId}_${request.url}_${request.pageLoadId}`;
           if (!chatHistories[historyKey]) {
             chatHistories[historyKey] = [];
           }
@@ -230,7 +233,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           chatHistories[historyKey].push({
             role: 'user',
             content: request.question,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            pageTitle: pageTitle || new URL(url).hostname
           });
           
           chatHistories[historyKey].push({
@@ -258,26 +262,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // Handle chat history retrieval
   if (request.action === 'getChatHistory') {
-    const historyKey = `${request.tabId}_${request.url}`;
+    const historyKey = `${request.tabId}_${request.url}_${request.pageLoadId}`;
     sendResponse({ history: chatHistories[historyKey] || [] });
     return true;
   }
   
   // Handle chat history clearing
   if (request.action === 'clearChatHistory') {
-    const historyKey = `${request.tabId}_${request.url}`;
+    const historyKey = `${request.tabId}_${request.url}_${request.pageLoadId}`;
     if (chatHistories[historyKey]) {
       delete chatHistories[historyKey];
     }
     // Also clear from chrome.storage.local
-    chrome.storage.local.remove(`chat_history_${request.tabId}_${request.url}`);
+    chrome.storage.local.remove(`chat_history_${request.tabId}_${request.url}_${request.pageLoadId}`);
     sendResponse({ success: true });
     return true;
   }
 
   // Handle chat history update
   if (request.action === 'updateChatHistory') {
-    const historyKey = `${request.tabId}_${request.url}`;
+    const historyKey = `${request.tabId}_${request.url}_${request.pageLoadId}`;
     chatHistories[historyKey] = request.history;
     sendResponse({ success: true });
     return true;

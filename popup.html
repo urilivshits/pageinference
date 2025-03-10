@@ -3,24 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talk to the webpage</title>
+  <title>Talk to any webpage</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Talk to the webpage</h1>
+      <h1>Talk to any webpage</h1>
       <div class="header-buttons">
-        <button id="themeToggleBtn" class="icon-button" title="Toggle Theme">🌓</button>
+        <button id="newConversationBtn" class="icon-button" title="New Conversation">📝</button>
+        <button id="pastSessionsBtn" class="icon-button" title="Past Conversations">📚</button>
         <button id="settingsBtn" class="icon-button" title="Settings">⚙️</button>
       </div>
     </header>
 
+    <div id="currentConversationInfo" class="conversation-info">
+      <span id="currentConversationTitle">Current Conversation</span>
+      <span id="currentConversationTimestamp"></span>
+    </div>
+
     <div id="mainContent" class="content-area">
-      <div class="info-message">
-        <p>Ask a question about the current page.</p>
-      </div>
-      
       <!-- Chat history will appear here -->
       <div id="chatHistory" class="chat-history"></div>
       
@@ -40,9 +42,12 @@
         <h2>Answer</h2>
         <div id="answerContent" class="answer-content"></div>
       </div>
-      
-      <div class="action-buttons">
-        <button id="clearChatBtn" class="secondary-button small hidden">Clear Chat</button>
+    </div>
+    
+    <!-- Past conversations view - Initially hidden -->
+    <div id="pastConversationsView" class="content-area hidden">
+      <div id="sessionsContainer" class="chat-sessions-container">
+        <!-- Session items will be added here dynamically -->
       </div>
     </div>
     
@@ -84,6 +89,10 @@
             <input type="radio" name="theme" value="dark">
             Dark
           </label>
+        </div>
+        <div class="theme-toggle-container">
+          <button id="themeToggleBtn" class="icon-button" title="Toggle Theme">🌓</button>
+          <span>Quick toggle between light and dark</span>
         </div>
       </div>
       

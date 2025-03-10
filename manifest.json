@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Talk to the webpage",
+  "name": "Talk to any webpage",
   "description": "Scrape web page content and answer questions using OpenAI inference",
   "version": "1.0",
   "action": {

@@ -27,6 +27,20 @@
   --copy-button-bg: rgba(255, 255, 255, 0.7);
   --copy-button-color: #4b5563;
   --copy-button-hover: rgba(255, 255, 255, 0.9);
+  --copy-icon: '📋';
+  --sessions-bg: #f9fafb;
+  --sessions-border: #e5e7eb;
+  --sessions-hover: #f3f4f6;
+  --sessions-active: #e9f2ff;
+  --notification-bg: rgba(79, 70, 229, 0.1);
+  --notification-border: rgba(79, 70, 229, 0.2);
+  --new-conversation-button-bg: #f3f4f6;
+  --new-conversation-button-hover: #e5e7eb;
+  --conversation-info-bg: rgba(37, 99, 235, 0.1);
+  --conversation-info-border: rgba(37, 99, 235, 0.2);
+  --delete-button-color: #ef4444;
+  --delete-button-hover: #dc2626;
+  --active-icon-bg: rgba(37, 99, 235, 0.2);
 }
 
 /* Dark theme variables */
@@ -57,6 +71,20 @@
   --copy-button-bg: rgba(55, 65, 81, 0.7);
   --copy-button-color: #d1d5db;
   --copy-button-hover: rgba(55, 65, 81, 0.9);
+  --copy-icon: '🔗';
+  --sessions-bg: #2d3748;
+  --sessions-border: #4b5563;
+  --sessions-hover: #374151;
+  --sessions-active: #1e40af;
+  --notification-bg: rgba(79, 70, 229, 0.2);
+  --notification-border: rgba(79, 70, 229, 0.3);
+  --new-conversation-button-bg: #374151;
+  --new-conversation-button-hover: #4b5563;
+  --conversation-info-bg: rgba(59, 130, 246, 0.2);
+  --conversation-info-border: rgba(59, 130, 246, 0.3);
+  --delete-button-color: #f87171;
+  --delete-button-hover: #ef4444;
+  --active-icon-bg: rgba(59, 130, 246, 0.3);
 }
 
 * {
@@ -73,7 +101,7 @@ body {
 }
 
 .container {
-  width: 400px;
+  width: 480px;
   padding: 1rem;
 }
 
@@ -82,7 +110,7 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-color);
 }
@@ -304,14 +332,14 @@ select {
 }
 
 .system-message {
-  background-color: var(--system-message-bg);
-  align-self: center;
-  border-radius: 0.375rem;
-  color: var(--error-color);
-  font-size: 0.875rem;
+  background-color: var(--notification-bg);
+  border: 1px solid var(--notification-border);
   margin: 0.5rem 0;
-  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
   text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-color);
 }
 
 .message-header {
@@ -323,8 +351,9 @@ select {
 
 .action-buttons {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin-top: 1rem;
+  gap: 0.5rem;
 }
 
 /* Utility classes */
@@ -407,6 +436,11 @@ select {
   transition: opacity 0.2s, background-color 0.2s;
 }
 
+.copy-button::before {
+  content: var(--copy-icon);
+  font-size: 14px;
+}
+
 .message:hover .copy-button {
   opacity: 1;
 }
@@ -418,4 +452,175 @@ select {
 .message-content {
   padding-right: 2rem; /* Make space for copy button */
   word-break: break-word;
+}
+
+/* Chat sessions styles */
+.chat-sessions-container {
+  width: 100%;
+  max-height: none;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+  background-color: var(--sessions-bg);
+}
+
+#pastConversationsView .chat-sessions-container {
+  max-height: 400px;
+  margin-top: 1rem;
+}
+
+.chat-session-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-session-item:last-child {
+  border-bottom: none;
+}
+
+.chat-session-item:hover {
+  background-color: var(--sessions-hover);
+}
+
+.chat-session-item.active {
+  background-color: var(--sessions-active);
+}
+
+.session-content {
+  cursor: pointer;
+}
+
+.chat-session-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.chat-session-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--info-text);
+}
+
+/* Delete button styles */
+.delete-button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background-color: transparent;
+  color: var(--delete-button-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.2s, background-color 0.2s;
+  position: relative;
+}
+
+.delete-button:hover {
+  opacity: 1;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.delete-button::before {
+  content: '🗑️';
+  font-size: 14px;
+}
+
+.sessions-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Action buttons */
+.action-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  gap: 0.5rem;
+}
+
+/* System message styling */
+.system-message {
+  background-color: var(--notification-bg);
+  border: 1px solid var(--notification-border);
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+/* New conversation button styles */
+.new-conversation-button {
+  background-color: var(--new-conversation-button-bg);
+  color: var(--text-color);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.new-conversation-button:hover {
+  background-color: var(--new-conversation-button-hover);
+}
+
+.new-conversation-button.small {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* Conversation info styles */
+.conversation-info {
+  background-color: var(--conversation-info-bg);
+  border: 1px solid var(--conversation-info-border);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+#currentConversationTitle {
+  font-weight: 600;
+}
+
+#currentConversationTimestamp {
+  color: var(--info-text);
+  font-size: 0.75rem;
+}
+
+/* Theme toggle in settings */
+.theme-toggle-container {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+  gap: 0.5rem;
+}
+
+.theme-toggle-container span {
+  font-size: 0.875rem;
+  color: var(--info-text);
+}
+
+/* Active icon button */
+.icon-button.active {
+  background-color: var(--active-icon-bg);
+  transform: scale(1.1);
 } 

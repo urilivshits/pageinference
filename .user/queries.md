@@ -51,3 +51,32 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 "lets update the inferense params:
 1. if model can use search tool - it should be able to use it
 2. based on scraped content the type of webpage should be estimated so that model could better fit to the user needs, e.g.: if im using it on linkedin im probably interested in job search topics - im either looking for job or for candidates. Feel free to expand on this logic."
+
+## 2025-03-10 17:24:00
+"1. make it so if user started adding text to input the input should not be cleared until page is reloaded (follow simillar approach to chat history)
+2. chose a better icon for "copy" for dark mode
+3. save past chats in session/user storage and allow going back to them"
+
+## 2025-03-10 17:37:21
+"1. add new conversation button
+2. make sure after page reload new conversation is used by default"
+
+## 2025-03-10 17:47:19
+"1. remove "new conversation" button, only keep new conversartion icon
+2. make sure when choosing a past conversation its mesage history is shown
+3. indicate clearly in what conversation user is at any point of time
+4. move dark mode choice to settings
+5. rename project to "Talk to any webpage"
+6. give more width to the extension popup"
+
+## 2025-03-10 18:00:23
+"1. remove clear chat button and functionality
+2. allow instead to delete a conversation with its content from the conversation list
+3. make sure after inference is made the use input is cleared."
+
+## 2025-03-10 19:37:08
+"simplify the current/past conversation ui/ux:
+1. if past conversation is chosen show only past conversation list, dont show both the past conversation list and the chat input functionality at the same time.
+2. remove the "Started a new conversation" and "Switched to previous conversation" messages and related elements - it will save us more space
+3. remove this "Ask a question about the current page." as well
+4. indicate whether user is in new conversation or in past conversation by highlighting the header icons only"

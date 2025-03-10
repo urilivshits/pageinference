@@ -156,3 +156,94 @@ Example task format for future use:
 - [x] Enhance prompt to include contextual awareness
 - [x] Update the inference parameters based on website context
 - [x] Test with various website types
+
+## 2025-03-10 17:24:00 - Improve User Data Persistence and Navigation
+
+### Input Persistence
+- [x] Save input text when user starts typing
+- [x] Store input text per URL in local storage
+- [x] Restore input text when popup reopens
+- [x] Only clear input when page is reloaded
+
+### Dark Mode Icon Improvements
+- [x] Update copy button icon for better visibility in dark mode
+- [x] Implement theme-aware icons using CSS variables
+- [x] Test icon visibility in both light and dark themes
+
+### Chat History Navigation
+- [x] Design data structure for storing multiple chat sessions
+- [x] Create UI for viewing past chat sessions
+- [x] Implement session switching functionality
+- [x] Add indicators for different chat sessions
+- [x] Save session metadata (URL, title, date)
+- [x] Create navigation controls for browsing past sessions
+
+## 2025-03-10 17:37:21 - Enhance Conversation Management
+
+### New Conversation Button
+- [x] Add a "New Conversation" button to the UI
+- [x] Implement functionality to start a fresh conversation
+- [x] Preserve old conversation in history
+- [x] Clear input field when starting a new conversation
+- [x] Update UI to indicate a new conversation has started
+
+### Page Reload Conversation Management
+- [x] Modify page detection logic to recognize page reloads
+- [x] Implement mechanism to detect page reloads vs. tab switches
+- [x] Create separate conversation IDs for each page reload
+- [x] Update storage mechanisms to handle multiple conversations for same URL
+- [x] Ensure chat history from previous page loads is preserved but not continued
+
+## 2025-03-10 17:47:19 - Refine UI and Improve Conversation Context
+
+### UI Cleanup
+- [x] Remove inline "New Conversation" button, keep only icon in header
+- [x] Rename extension to "Talk to any webpage"
+- [x] Move dark mode toggle from header to settings
+- [x] Increase extension popup width for better readability
+
+### Conversation Context Awareness
+- [x] Add clear indicator showing current conversation context
+- [x] Improve conversation switching functionality
+- [x] Ensure message history is properly displayed when switching conversations
+- [x] Add conversation title or timestamp indicators
+
+## 2025-03-10 18:00:23 - Improve Conversation Management
+
+### Conversation Cleanup
+- [x] Remove clear chat button and functionality
+- [x] Update UI to remove clear chat references
+- [x] Remove related event listeners and code
+
+### Conversation Deletion
+- [x] Add delete button to conversation items in session list
+- [x] Implement conversation deletion functionality
+- [x] Handle active conversation deletion gracefully
+- [x] Update storage when conversation is deleted
+- [x] Add visual feedback for deletion action
+
+### Input Management
+- [x] Modify input handling to clear after inference
+- [x] Update input persistence to account for clearing
+- [x] Ensure input is saved before clearing
+- [x] Test input clearing with various scenarios
+
+## 2025-03-10 19:37:08 - Simplify Conversation UI/UX
+
+### View Separation
+- [x] Separate past conversation list view from chat view
+- [x] Show only one view at a time
+- [x] Implement toggle between views
+- [x] Ensure smooth transitions between views
+
+### UI Cleanup
+- [x] Remove "Started a new conversation" messages
+- [x] Remove "Switched to previous conversation" messages
+- [x] Remove "Ask a question about the current page" instruction
+- [x] Update related functions to exclude these elements
+
+### Visual Indicators
+- [x] Add highlighting for active header icons
+- [x] Indicate new conversation vs. past conversation mode
+- [x] Update styling for visual feedback
+- [x] Ensure consistent state indicators
