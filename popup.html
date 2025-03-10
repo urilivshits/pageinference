@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Inference</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Page Inference</h1>
+      <button id="settingsBtn" class="icon-button" title="Settings">⚙️</button>
+    </header>
+
+    <div id="mainContent" class="content-area">
+      <div class="info-message">
+        <p>Ask a question about the current page.</p>
+      </div>
+      
+      <div class="question-container">
+        <textarea id="questionInput" placeholder="What would you like to know about this page?"></textarea>
+        <button id="submitBtn" class="primary-button">Ask</button>
+      </div>
+      
+      <div id="loadingIndicator" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Processing...</p>
+      </div>
+      
+      <div id="errorMessage" class="error-message hidden"></div>
+      
+      <div id="answerContainer" class="answer-container hidden">
+        <h2>Answer</h2>
+        <div id="answerContent" class="answer-content"></div>
+      </div>
+    </div>
+    
+    <div id="settingsContent" class="content-area hidden">
+      <h2>Settings</h2>
+      
+      <div class="settings-group">
+        <label for="apiKeyInput">OpenAI API Key</label>
+        <div class="api-key-container">
+          <input type="password" id="apiKeyInput" placeholder="Enter your OpenAI API key">
+          <button id="toggleApiKeyBtn" class="icon-button small" title="Show/Hide API Key">👁️</button>
+        </div>
+        <small>Your API key is stored locally and only used to make API calls to OpenAI.</small>
+      </div>
+      
+      <div class="settings-group">
+        <label for="modelSelect">OpenAI Model</label>
+        <select id="modelSelect">
+          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+          <option value="gpt-4">GPT-4 (if available)</option>
+        </select>
+      </div>
+      
+      <div class="settings-actions">
+        <button id="saveSettingsBtn" class="primary-button">Save Settings</button>
+        <button id="backBtn" class="secondary-button">Back</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html> 
