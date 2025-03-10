@@ -11,44 +11,53 @@
 // Default model name
 const DEFAULT_MODEL = 'gpt-4o-mini';
 
-// DOM Elements
-const mainContent = document.getElementById('mainContent');
-const settingsContent = document.getElementById('settingsContent');
-const pastConversationsView = document.getElementById('pastConversationsView');
-const sessionsContainer = document.getElementById('sessionsContainer');
-const settingsBtn = document.getElementById('settingsBtn');
-const backBtn = document.getElementById('backBtn');
-const questionInput = document.getElementById('questionInput');
-const submitBtn = document.getElementById('submitBtn');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const errorMessage = document.getElementById('errorMessage');
-const answerContainer = document.getElementById('answerContainer');
-const answerContent = document.getElementById('answerContent');
-const apiKeyInput = document.getElementById('apiKeyInput');
-const toggleApiKeyBtn = document.getElementById('toggleApiKeyBtn');
-const modelSelect = document.getElementById('modelSelect');
-const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-const chatHistory = document.getElementById('chatHistory');
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-const themeRadios = document.querySelectorAll('input[name="theme"]');
-const pastSessionsBtn = document.getElementById('pastSessionsBtn');
-const newConversationBtn = document.getElementById('newConversationBtn');
-const currentConversationInfo = document.getElementById('currentConversationInfo');
-const currentConversationTitle = document.getElementById('currentConversationTitle');
-const currentConversationTimestamp = document.getElementById('currentConversationTimestamp');
+// Common variables
+let chatHistory;
+let mainContent;
+let pastConversationsView;
+let settingsContent;
+let currentConversationTitle;
+let currentConversationTimestamp;
+let errorMessage;
+let modelSelect;
+let currentTabId;
+let currentUrl;
+let currentPageTitle;
+let currentPageLoadId;
+let isInNewConversation = true;
+let wasInConversationsView = false; // Track last view before going to settings
+let isProcessing = false; // Add this flag near the other global variables at the top
 
-// Current tab and URL info
-let currentTabId = null;
-let currentUrl = null;
-let currentPageLoadId = null; // Unique ID for the current page load
-let currentPageTitle = ''; // Title of the current page
-let isInNewConversation = true; // Track if we're in a new conversation or viewing history
+// DOM elements - will be populated in DOMContentLoaded
 
-// Theme management
-let currentTheme = 'system';
-
-// Initialize popup
+// Event listeners for all document elements
 document.addEventListener('DOMContentLoaded', async () => {
+  // Get DOM elements
+  const submitBtn = document.getElementById('submitBtn');
+  const questionInput = document.getElementById('questionInput');
+  const loadingIndicator = document.getElementById('loadingIndicator');
+  errorMessage = document.getElementById('errorMessage');
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const toggleApiKeyBtn = document.getElementById('toggleApiKeyBtn');
+  modelSelect = document.getElementById('modelSelect');
+  const themeOptions = document.querySelectorAll('input[name="theme"]');
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const newConversationBtn = document.getElementById('newConversationBtn');
+  const pastSessionsBtn = document.getElementById('pastSessionsBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+  chatHistory = document.getElementById('chatHistory');
+  mainContent = document.getElementById('mainContent');
+  pastConversationsView = document.getElementById('pastConversationsView');
+  settingsContent = document.getElementById('settingsContent');
+  const sessionsContainer = document.getElementById('sessionsContainer');
+  currentConversationTitle = document.getElementById('currentConversationTitle');
+  currentConversationTimestamp = document.getElementById('currentConversationTimestamp');
+
+  // Ensure we start with the main view
+  showMainView();
+  updateUIState();
+
   // Get current tab information
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     if (tabs[0]) {
@@ -106,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (data.themePreference) {
       currentTheme = data.themePreference;
       // Update radio buttons
-      themeRadios.forEach(radio => {
+      themeOptions.forEach(radio => {
         if (radio.value === currentTheme) {
           radio.checked = true;
         }
@@ -129,25 +138,225 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Add input event listener to save input text as user types
   questionInput.addEventListener('input', saveInputText);
+
+  // Initialize event listeners for settings inputs - auto-save on change
+  apiKeyInput.addEventListener('change', async () => {
+    const apiKey = apiKeyInput.value.trim();
+    if (apiKey) {
+      await chrome.storage.sync.set({ apiKey });
+    }
+  });
+  
+  modelSelect.addEventListener('change', async () => {
+    await chrome.storage.sync.set({ model: modelSelect.value });
+  });
+  
+  themeOptions.forEach(option => {
+    option.addEventListener('change', async () => {
+      if (option.checked) {
+        const theme = option.value;
+        await chrome.storage.sync.set({ theme });
+        applyTheme(theme);
+      }
+    });
+  });
+
+  // Initialize UI state
+  chrome.storage.sync.get(['apiKey', 'model', 'theme'], (data) => {
+    if (data.apiKey) {
+      apiKeyInput.value = data.apiKey;
+    }
+    
+    if (data.model) {
+      modelSelect.value = data.model;
+    }
+    
+    // Apply theme
+    const savedTheme = data.theme || 'system';
+    applyTheme(savedTheme);
+    
+    // Check the corresponding radio button
+    document.querySelector(`input[name="theme"][value="${savedTheme}"]`).checked = true;
+  });
+
+  // View navigation
+  newConversationBtn.addEventListener('click', startNewConversation);
+  pastSessionsBtn.addEventListener('click', showPastConversationsView);
+  settingsBtn.addEventListener('click', showSettingsView);
+  closeSettingsBtn.addEventListener('click', () => {
+    // Go back to previous view
+    if (wasInConversationsView) {
+      showPastConversationsView();
+    } else {
+      showMainView();
+    }
+  });
+
+  // Handle ENTER key for message submission
+  questionInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitBtn.click();
+    }
+  });
+
+  // Load chat history
+  await loadChatHistory();
+  await loadSavedInputText();
+
+  // Initialize page load ID
+  await checkOrCreatePageLoadId();
+  updateUIState();
+
+  // Load model from storage
+  chrome.storage.sync.get(['model'], (data) => {
+    if (data.model) {
+      modelSelect.value = data.model;
+    }
+  });
+
+  // Load past sessions
+  await loadAndShowPastSessions();
+
+  // Theme toggle button
+  themeToggleBtn.addEventListener('click', async () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    
+    // Update radio buttons
+    document.querySelector(`input[name="theme"][value="${newTheme}"]`).checked = true;
+    
+    // Save theme preference
+    await chrome.storage.sync.set({ theme: newTheme });
+  });
+
+  // Toggle API key visibility
+  toggleApiKeyBtn.addEventListener('click', () => {
+    if (apiKeyInput.type === 'password') {
+      apiKeyInput.type = 'text';
+      toggleApiKeyBtn.textContent = '🔒';
+    } else {
+      apiKeyInput.type = 'password';
+      toggleApiKeyBtn.textContent = '👁️';
+    }
+  });
+
+  // Handle submit button click
+  submitBtn.addEventListener('click', async () => {
+    const question = questionInput.value.trim();
+    if (!question || isProcessing) return; // Don't process if already processing
+
+    // Set processing flag to prevent duplicate submissions
+    isProcessing = true;
+    hideError();
+    
+    // Save input before clearing
+    await saveInputText();
+    
+    // Add user message to chat
+    await addMessageToChat('user', question);
+    
+    // Clear input after saving
+    questionInput.value = '';
+    
+    // Show loading indicator
+    loadingIndicator.classList.remove('hidden');
+    
+    try {
+      // Get current tab ID and URL
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const { url, title } = tab;
+      
+      // Get current page load ID
+      const { pageLoadId } = await chrome.storage.local.get('pageLoadId');
+      
+      // First, get the page content by scraping the current page
+      const scraperResponse = await chrome.runtime.sendMessage({
+        action: 'scrapeCurrentPage'
+      });
+      
+      if (scraperResponse.error) {
+        showError(scraperResponse.error);
+        loadingIndicator.classList.add('hidden');
+        isProcessing = false; // Reset processing flag
+        return;
+      }
+      
+      // Now send for inference with the scraped content
+      const response = await chrome.runtime.sendMessage({
+        action: 'getInference',
+        question,
+        content: scraperResponse.content,
+        url,
+        tabId: tab.id,
+        pageLoadId,
+        pageTitle: title
+      });
+      
+      // Hide loading indicator
+      loadingIndicator.classList.add('hidden');
+      
+      if (response.error) {
+        showError(response.error);
+        isProcessing = false; // Reset processing flag
+        return;
+      }
+      
+      // Add AI response to chat
+      await addMessageToChat('assistant', response.answer);
+      
+      // Update sessions list
+      await loadAndShowPastSessions();
+    } catch (error) {
+      loadingIndicator.classList.add('hidden');
+      showError(error.message || 'An error occurred');
+      console.error('Error:', error);
+    } finally {
+      isProcessing = false; // Always reset processing flag
+    }
+  });
 });
 
 /**
- * Shows main chat view and hides other views
+ * Switch to main chat view
  */
 function showMainView() {
+  // Hide all content areas first
   mainContent.classList.remove('hidden');
-  settingsContent.classList.add('hidden');
   pastConversationsView.classList.add('hidden');
+  settingsContent.classList.add('hidden');
+  
+  // Mark that we're not in conversations view
+  wasInConversationsView = false;
+  
+  // Update header buttons
+  newConversationBtn.classList.add('active');
+  pastSessionsBtn.classList.remove('active');
+  settingsBtn.classList.remove('active');
+  
+  // Update UI state
   updateUIState();
 }
 
 /**
- * Shows past conversations view and hides other views
+ * Switch to past conversations view
  */
 function showPastConversationsView() {
+  // Hide all content areas first
   mainContent.classList.add('hidden');
-  settingsContent.classList.add('hidden');
   pastConversationsView.classList.remove('hidden');
+  settingsContent.classList.add('hidden');
+  
+  // Mark that we're in conversations view
+  wasInConversationsView = true;
+  
+  // Update header buttons
+  newConversationBtn.classList.remove('active');
+  pastSessionsBtn.classList.add('active');
+  settingsBtn.classList.remove('active');
+  
+  // Update UI state
   updateUIState();
 }
 
@@ -155,10 +364,18 @@ function showPastConversationsView() {
  * Shows settings view and hides other views
  */
 function showSettingsView() {
+  // Remember the previous view state (main or past conversations)
+  wasInConversationsView = pastConversationsView.classList.contains('active');
+  
+  // Hide all content areas
   mainContent.classList.add('hidden');
-  settingsContent.classList.remove('hidden');
   pastConversationsView.classList.add('hidden');
-  updateUIState();
+  settingsContent.classList.remove('hidden');
+  
+  // Update header buttons
+  newConversationBtn.classList.remove('active');
+  pastSessionsBtn.classList.remove('active');
+  settingsBtn.classList.add('active');
 }
 
 /**
@@ -289,10 +506,6 @@ settingsBtn.addEventListener('click', () => {
   showSettingsView();
 });
 
-backBtn.addEventListener('click', () => {
-  showMainView();
-});
-
 toggleApiKeyBtn.addEventListener('click', () => {
   const type = apiKeyInput.type === 'password' ? 'text' : 'password';
   apiKeyInput.type = type;
@@ -315,373 +528,6 @@ questionInput.addEventListener('keydown', (e) => {
     submitBtn.click();
   }
 });
-
-saveSettingsBtn.addEventListener('click', async () => {
-  const apiKey = apiKeyInput.value.trim();
-  const model = modelSelect.value;
-  
-  if (!apiKey) {
-    showError('Please enter your OpenAI API key.');
-    return;
-  }
-  
-  try {
-    await chrome.runtime.sendMessage({ action: 'setApiKey', apiKey });
-    await chrome.storage.sync.set({ modelPreference: model });
-    
-    showMainView();
-  } catch (error) {
-    showError('Failed to save settings. Please try again.');
-  }
-});
-
-submitBtn.addEventListener('click', async () => {
-  const question = questionInput.value.trim();
-  
-  if (!question) {
-    showError('Please enter a question.');
-    return;
-  }
-  
-  // Hide previous errors
-  hideError();
-  loadingIndicator.classList.remove('hidden');
-  
-  try {
-    // Get the page content
-    const { content, websiteType, error } = await chrome.runtime.sendMessage({ 
-      action: 'scrapeCurrentPage' 
-    });
-    
-    if (error) {
-      throw new Error(error);
-    }
-    
-    // Display website type if detected (non-general)
-    if (websiteType && websiteType !== 'general') {
-      console.log(`Detected website type: ${websiteType}`);
-    }
-    
-    // Get the model preference
-    const { modelPreference } = await chrome.storage.sync.get('modelPreference');
-    
-    // Add user message to the chat history UI
-    addMessageToChat('user', question);
-    
-    // Get the answer from OpenAI
-    const response = await chrome.runtime.sendMessage({
-      action: 'getInference',
-      content,
-      question,
-      model: modelPreference || DEFAULT_MODEL,
-      tabId: currentTabId,
-      url: currentUrl,
-      pageLoadId: currentPageLoadId
-    });
-    
-    if (response.error) {
-      // If there's a model-specific error, show settings pane
-      if (response.modelError) {
-        // Add error message to chat
-        addMessageToChat('system', `Error: ${response.error}`);
-        
-        // Display settings pane for model selection
-        setTimeout(() => {
-          showSettingsView();
-        }, 1500);
-      }
-      throw new Error(response.error);
-    }
-    
-    // Add AI response to the chat history UI
-    addMessageToChat('assistant', response.answer);
-    
-    // Clear input field after successful inference
-    questionInput.value = '';
-    await saveInputText();
-    
-  } catch (error) {
-    showError(error.message);
-  } finally {
-    loadingIndicator.classList.add('hidden');
-  }
-});
-
-/**
- * Delete a conversation from storage and sessions list
- * @param {string} pageLoadId - The page load ID of the conversation to delete
- */
-async function deleteConversation(pageLoadId) {
-  try {
-    // Remove chat history from storage
-    const chatHistoryKey = `chat_history_${currentTabId}_${currentUrl}_${pageLoadId}`;
-    await chrome.storage.local.remove(chatHistoryKey);
-    
-    // Remove input text from storage
-    const inputTextKey = `input_text_${currentTabId}_${currentUrl}_${pageLoadId}`;
-    await chrome.storage.local.remove(inputTextKey);
-    
-    // Update sessions list
-    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
-    const updatedSessions = chatSessions.filter(session => session.pageLoadId !== pageLoadId);
-    await chrome.storage.local.set({ chatSessions: updatedSessions });
-    
-    // If we deleted the current conversation, start a new one
-    if (pageLoadId === currentPageLoadId) {
-      await startNewConversation();
-    }
-    
-    // Refresh the sessions list if it's open
-    if (!pastConversationsView.classList.contains('hidden')) {
-      await loadAndShowPastSessions();
-    }
-    
-    console.log(`Deleted conversation: ${pageLoadId}`);
-  } catch (error) {
-    console.error('Error deleting conversation:', error);
-  }
-}
-
-/**
- * Load and display past sessions in the sessions view
- */
-async function loadAndShowPastSessions() {
-  // Clear existing items
-  sessionsContainer.innerHTML = '';
-  
-  // Add header
-  const header = document.createElement('div');
-  header.classList.add('chat-session-item');
-  header.style.fontWeight = 'bold';
-  header.style.borderBottom = '2px solid var(--border-color)';
-  header.textContent = 'Recent Conversations';
-  sessionsContainer.appendChild(header);
-  
-  // Load sessions
-  const sessions = await loadChatSessions();
-  
-  if (sessions.length === 0) {
-    const emptyItem = document.createElement('div');
-    emptyItem.classList.add('chat-session-item');
-    emptyItem.textContent = 'No saved conversations yet';
-    sessionsContainer.appendChild(emptyItem);
-  } else {
-    // Add each session
-    for (const session of sessions) {
-      const item = document.createElement('div');
-      item.classList.add('chat-session-item');
-      if (session.pageLoadId === currentPageLoadId) {
-        item.classList.add('active');
-      }
-      
-      // Create a wrapper for the session content
-      const contentWrapper = document.createElement('div');
-      contentWrapper.classList.add('session-content');
-      contentWrapper.style.flex = '1';
-      
-      const title = document.createElement('div');
-      title.classList.add('chat-session-title');
-      title.textContent = truncateText(session.title || 'Unnamed conversation', 30);
-      title.title = session.title; // Full title on hover
-      
-      const meta = document.createElement('div');
-      meta.classList.add('chat-session-meta');
-      
-      const date = document.createElement('span');
-      date.textContent = new Date(session.lastUpdated).toLocaleString();
-      
-      const count = document.createElement('span');
-      count.textContent = `${session.messageCount} messages`;
-      
-      meta.appendChild(date);
-      meta.appendChild(count);
-      
-      contentWrapper.appendChild(title);
-      contentWrapper.appendChild(meta);
-      
-      // Create delete button
-      const deleteBtn = document.createElement('button');
-      deleteBtn.classList.add('delete-button');
-      deleteBtn.title = 'Delete conversation';
-      deleteBtn.setAttribute('aria-label', 'Delete conversation');
-      
-      // Add event listener for delete button
-      deleteBtn.addEventListener('click', async (e) => {
-        e.stopPropagation(); // Prevent triggering the session click
-        
-        // Add confirmation
-        if (confirm('Delete this conversation? This action cannot be undone.')) {
-          await deleteConversation(session.pageLoadId);
-        }
-      });
-      
-      item.appendChild(contentWrapper);
-      item.appendChild(deleteBtn);
-      
-      // Add click handler to load session
-      contentWrapper.addEventListener('click', async () => {
-        await loadAndDisplayChatSession(session.pageLoadId, session);
-        showMainView();
-      });
-      
-      sessionsContainer.appendChild(item);
-    }
-  }
-  
-  // Show the past conversations view
-  showPastConversationsView();
-}
-
-/**
- * Load chat sessions from storage
- * @returns {Promise<Array>} - The chat sessions
- */
-async function loadChatSessions() {
-  const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
-  return chatSessions;
-}
-
-/**
- * Load a specific chat session
- * @param {string} pageLoadId - The page load ID of the session to load
- * @returns {Promise<Array>} - The chat history for that session
- */
-async function loadChatSession(pageLoadId) {
-  // Find the chat history for this pageLoadId
-  const chatHistoryKey = `chat_history_${currentTabId}_${currentUrl}_${pageLoadId}`;
-  const { [chatHistoryKey]: history = [] } = await chrome.storage.local.get(chatHistoryKey);
-  return history;
-}
-
-/**
- * Load and display a chat session
- * @param {string} pageLoadId - The page load ID of the session to load
- * @param {Object} sessionInfo - Session metadata
- */
-async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
-  // Clear current chat
-  chatHistory.innerHTML = '';
-  
-  // Update current page load ID
-  currentPageLoadId = pageLoadId;
-  
-  // Store it for future reference
-  const storageKey = `page_load_${currentTabId}_${currentUrl}`;
-  await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
-  
-  // Mark as not a new conversation
-  isInNewConversation = false;
-  
-  // Load session
-  const history = await loadChatSession(pageLoadId);
-  
-  // Display messages
-  for (const message of history) {
-    // Use a simpler version that doesn't save again
-    displayMessage(message.role, message.content);
-  }
-  
-  // Update conversation info
-  if (sessionInfo) {
-    updateConversationInfo(sessionInfo);
-  } else {
-    // Try to find session info from the sessions list
-    const sessions = await loadChatSessions();
-    const session = sessions.find(s => s.pageLoadId === pageLoadId);
-    if (session) {
-      updateConversationInfo(session);
-    } else {
-      updateConversationInfo({
-        title: currentPageTitle || 'Previous Conversation',
-        created: new Date().toISOString()
-      });
-    }
-  }
-  
-  // Scroll to bottom
-  chatHistory.scrollTop = chatHistory.scrollHeight;
-}
-
-/**
- * Display a message without saving it
- * @param {string} role - 'user', 'assistant', or 'system'
- * @param {string} content - The message content
- */
-function displayMessage(role, content) {
-  const messageElement = document.createElement('div');
-  messageElement.classList.add('message');
-  
-  // Apply appropriate styling based on role
-  if (role === 'user') {
-    messageElement.classList.add('user-message');
-  } else if (role === 'assistant') {
-    messageElement.classList.add('ai-message');
-  } else if (role === 'system') {
-    messageElement.classList.add('system-message');
-  }
-  
-  const header = document.createElement('div');
-  header.classList.add('message-header');
-  
-  // Set header text based on role
-  if (role === 'user') {
-    header.textContent = 'You';
-  } else if (role === 'assistant') {
-    header.textContent = 'Assistant';
-  } else if (role === 'system') {
-    header.textContent = 'System';
-  }
-  
-  const messageContent = document.createElement('div');
-  messageContent.classList.add('message-content');
-  messageContent.textContent = content;
-  
-  // Add copy button
-  const copyButton = document.createElement('button');
-  copyButton.classList.add('copy-button');
-  copyButton.title = 'Copy to clipboard';
-  copyButton.addEventListener('click', () => copyToClipboard(content, copyButton));
-  
-  messageElement.appendChild(header);
-  messageElement.appendChild(messageContent);
-  messageElement.appendChild(copyButton);
-  chatHistory.appendChild(messageElement);
-  
-  // Scroll to bottom
-  chatHistory.scrollTop = chatHistory.scrollHeight;
-}
-
-/**
- * Copy content to clipboard and provide visual feedback
- * @param {string} text - The text to copy
- * @param {HTMLElement} button - The button element that was clicked
- */
-function copyToClipboard(text, button) {
-  navigator.clipboard.writeText(text)
-    .then(() => {
-      // Change button icon temporarily for feedback
-      const originalIcon = button.innerHTML;
-      button.innerHTML = '✓';
-      button.style.backgroundColor = 'var(--success-color)';
-      button.style.color = 'white';
-      
-      // Reset button after 2 seconds
-      setTimeout(() => {
-        button.innerHTML = originalIcon;
-        button.style.backgroundColor = '';
-        button.style.color = '';
-      }, 2000);
-    })
-    .catch(err => {
-      console.error('Failed to copy text: ', err);
-      
-      // Show error feedback
-      button.innerHTML = '❌';
-      setTimeout(() => {
-        button.innerHTML = '📋';
-      }, 2000);
-    });
-}
 
 // Helper functions
 function showError(message) {
@@ -724,7 +570,7 @@ themeToggleBtn.addEventListener('click', () => {
 });
 
 // Theme radio button change handler
-themeRadios.forEach(radio => {
+themeOptions.forEach(radio => {
   radio.addEventListener('change', (e) => {
     currentTheme = e.target.value;
     applyTheme(currentTheme);
@@ -933,4 +779,296 @@ async function loadChatHistory() {
   } catch (error) {
     console.error('Error loading chat history:', error);
   }
+}
+
+/**
+ * Delete a conversation from storage and sessions list
+ * @param {string} pageLoadId - The page load ID of the conversation to delete
+ */
+async function deleteConversation(pageLoadId) {
+  try {
+    // Remove chat history from storage
+    const chatHistoryKey = `chat_history_${currentTabId}_${currentUrl}_${pageLoadId}`;
+    await chrome.storage.local.remove(chatHistoryKey);
+    
+    // Remove input text from storage
+    const inputTextKey = `input_text_${currentTabId}_${currentUrl}_${pageLoadId}`;
+    await chrome.storage.local.remove(inputTextKey);
+    
+    // Update sessions list
+    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+    const updatedSessions = chatSessions.filter(session => session.pageLoadId !== pageLoadId);
+    await chrome.storage.local.set({ chatSessions: updatedSessions });
+    
+    // If we deleted the current conversation, start a new one
+    if (pageLoadId === currentPageLoadId) {
+      await startNewConversation();
+    }
+    
+    // Refresh the sessions list if it's open
+    if (!pastConversationsView.classList.contains('hidden')) {
+      await loadAndShowPastSessions();
+    }
+    
+    console.log(`Deleted conversation: ${pageLoadId}`);
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+  }
+}
+
+/**
+ * Load and display past sessions in the sessions view
+ */
+async function loadAndShowPastSessions() {
+  // Clear existing items
+  sessionsContainer.innerHTML = '';
+  
+  // Add header
+  const header = document.createElement('div');
+  header.classList.add('chat-session-item');
+  header.style.fontWeight = 'bold';
+  header.style.borderBottom = '2px solid var(--border-color)';
+  header.textContent = 'Recent Conversations';
+  sessionsContainer.appendChild(header);
+  
+  // Load sessions
+  const sessions = await loadChatSessions();
+  
+  if (sessions.length === 0) {
+    const emptyItem = document.createElement('div');
+    emptyItem.classList.add('chat-session-item');
+    emptyItem.textContent = 'No saved conversations yet';
+    sessionsContainer.appendChild(emptyItem);
+  } else {
+    // Add each session
+    for (const session of sessions) {
+      const item = document.createElement('div');
+      item.classList.add('chat-session-item');
+      if (session.pageLoadId === currentPageLoadId) {
+        item.classList.add('active');
+      }
+      
+      // Create a wrapper for the session content
+      const contentWrapper = document.createElement('div');
+      contentWrapper.classList.add('session-content');
+      contentWrapper.style.flex = '1';
+      
+      const title = document.createElement('div');
+      title.classList.add('chat-session-title');
+      title.textContent = truncateText(session.title || 'Unnamed conversation', 30);
+      title.title = session.title; // Full title on hover
+      
+      const meta = document.createElement('div');
+      meta.classList.add('chat-session-meta');
+      
+      const date = document.createElement('span');
+      date.textContent = new Date(session.lastUpdated).toLocaleString();
+      
+      const count = document.createElement('span');
+      count.textContent = `${session.messageCount} messages`;
+      
+      meta.appendChild(date);
+      meta.appendChild(count);
+      
+      contentWrapper.appendChild(title);
+      contentWrapper.appendChild(meta);
+      
+      // Create delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.classList.add('delete-button');
+      deleteBtn.title = 'Delete conversation';
+      deleteBtn.setAttribute('aria-label', 'Delete conversation');
+      
+      // Add event listener for delete button
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation(); // Prevent triggering the session click
+        
+        // Add confirmation
+        if (confirm('Delete this conversation? This action cannot be undone.')) {
+          await deleteConversation(session.pageLoadId);
+        }
+      });
+      
+      item.appendChild(contentWrapper);
+      item.appendChild(deleteBtn);
+      
+      // Add click handler to load session
+      contentWrapper.addEventListener('click', async () => {
+        await loadAndDisplayChatSession(session.pageLoadId, session);
+        showMainView();
+      });
+      
+      sessionsContainer.appendChild(item);
+    }
+  }
+  
+  // Show the past conversations view
+  showPastConversationsView();
+}
+
+/**
+ * Load chat sessions from storage
+ * @returns {Promise<Array>} - The chat sessions
+ */
+async function loadChatSessions() {
+  const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+  return chatSessions;
+}
+
+/**
+ * Load a specific chat session
+ * @param {string} pageLoadId - The page load ID of the session to load
+ * @returns {Promise<Array>} - The chat history for that session
+ */
+async function loadChatSession(pageLoadId) {
+  // Find the chat history for this pageLoadId
+  const chatHistoryKey = `chat_history_${currentTabId}_${currentUrl}_${pageLoadId}`;
+  const { [chatHistoryKey]: history = [] } = await chrome.storage.local.get(chatHistoryKey);
+  return history;
+}
+
+/**
+ * Load and display a chat session
+ * @param {string} pageLoadId - The page load ID of the session to load
+ * @param {Object} sessionInfo - Session metadata
+ */
+async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
+  try {
+    const result = await chrome.storage.local.get(['chatSessions']);
+    const chatSessions = result.chatSessions || {};
+    
+    // Check if the session exists
+    if (!chatSessions[pageLoadId]) {
+      console.error('Chat session not found:', pageLoadId);
+      return;
+    }
+    
+    // Get session data
+    const sessionData = chatSessions[pageLoadId];
+    const { url, history, timestamp, pageTitle } = sessionData;
+    
+    // Update current conversation info
+    isInNewConversation = false;
+    currentPageLoadId = pageLoadId;
+    
+    // Update UI with session info
+    if (!sessionInfo) {
+      sessionInfo = {
+        pageTitle: pageTitle || 'Unknown Page',
+        url,
+        timestamp,
+        messageCount: history.length
+      };
+    }
+    
+    updateConversationInfo(sessionInfo);
+    
+    // Clear current chat display
+    chatHistory.innerHTML = '';
+    
+    // Display messages
+    if (history && history.length > 0) {
+      history.forEach(message => {
+        displayMessage(message.role, message.content);
+      });
+      
+      // Update background script with this history
+      await chrome.runtime.sendMessage({
+        action: 'updateChatHistory',
+        pageLoadId,
+        history
+      });
+    }
+    
+    // Show the main view with chat history
+    showMainView();
+    
+    // Scroll to bottom of chat history
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+    
+    console.log('Loaded chat session:', pageLoadId, 'with', history.length, 'messages');
+  } catch (error) {
+    console.error('Error loading chat session:', error);
+  }
+}
+
+/**
+ * Display a message without saving it
+ * @param {string} role - 'user', 'assistant', or 'system'
+ * @param {string} content - The message content
+ */
+function displayMessage(role, content) {
+  const messageElement = document.createElement('div');
+  messageElement.classList.add('message');
+  
+  // Apply appropriate styling based on role
+  if (role === 'user') {
+    messageElement.classList.add('user-message');
+  } else if (role === 'assistant') {
+    messageElement.classList.add('ai-message');
+  } else if (role === 'system') {
+    messageElement.classList.add('system-message');
+  }
+  
+  const header = document.createElement('div');
+  header.classList.add('message-header');
+  
+  // Set header text based on role
+  if (role === 'user') {
+    header.textContent = 'You';
+  } else if (role === 'assistant') {
+    header.textContent = 'Assistant';
+  } else if (role === 'system') {
+    header.textContent = 'System';
+  }
+  
+  const messageContent = document.createElement('div');
+  messageContent.classList.add('message-content');
+  messageContent.textContent = content;
+  
+  // Add copy button
+  const copyButton = document.createElement('button');
+  copyButton.classList.add('copy-button');
+  copyButton.title = 'Copy to clipboard';
+  copyButton.addEventListener('click', () => copyToClipboard(content, copyButton));
+  
+  messageElement.appendChild(header);
+  messageElement.appendChild(messageContent);
+  messageElement.appendChild(copyButton);
+  chatHistory.appendChild(messageElement);
+  
+  // Scroll to bottom
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+/**
+ * Copy content to clipboard and provide visual feedback
+ * @param {string} text - The text to copy
+ * @param {HTMLElement} button - The button element that was clicked
+ */
+function copyToClipboard(text, button) {
+  navigator.clipboard.writeText(text)
+    .then(() => {
+      // Change button icon temporarily for feedback
+      const originalIcon = button.innerHTML;
+      button.innerHTML = '✓';
+      button.style.backgroundColor = 'var(--success-color)';
+      button.style.color = 'white';
+      
+      // Reset button after 2 seconds
+      setTimeout(() => {
+        button.innerHTML = originalIcon;
+        button.style.backgroundColor = '';
+        button.style.color = '';
+      }, 2000);
+    })
+    .catch(err => {
+      console.error('Failed to copy text: ', err);
+      
+      // Show error feedback
+      button.innerHTML = '❌';
+      setTimeout(() => {
+        button.innerHTML = '📋';
+      }, 2000);
+    });
 } 

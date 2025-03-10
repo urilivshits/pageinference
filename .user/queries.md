@@ -80,3 +80,11 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 2. remove the "Started a new conversation" and "Switched to previous conversation" messages and related elements - it will save us more space
 3. remove this "Ask a question about the current page." as well
 4. indicate whether user is in new conversation or in past conversation by highlighting the header icons only"
+
+## 2025-03-10 20:15:32
+"1. remove "save settings" and "back" buttons, save on change instead
+2. fix issue with history: whenever i close the page and reopen again and go to history i see the title of conversation in history and number of messageses but the messages list does not load"
+
+## 2025-03-10 20:25:45
+"1. now on a new page/tab it starts with "past conversations" tab
+2. back button is still there on settings page"

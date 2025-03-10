@@ -247,3 +247,31 @@ Example task format for future use:
 - [x] Indicate new conversation vs. past conversation mode
 - [x] Update styling for visual feedback
 - [x] Ensure consistent state indicators
+
+## 2025-03-10 20:15:32 - Improve Settings UX and Fix History Loading
+
+### Settings Auto-Save
+- [x] Remove "Save Settings" and "Back" buttons
+- [x] Implement auto-save on settings change
+- [x] Add a single "Close" button for returning from settings
+- [x] Ensure settings are applied immediately when changed
+
+### History Loading Fix
+- [x] Fix issues with chat history not loading when reopening popup
+- [x] Ensure full message history is displayed when selecting a past conversation
+- [x] Modify the conversation loading logic to properly fetch all messages
+- [x] Update the UI state when switching between conversations
+
+## 2025-03-10 20:25:45 - Fix UI Navigation Issues
+
+### View Initialization
+- [x] Ensure new popups always start with the main chat view
+- [x] Remove leftover references to old backBtn
+- [x] Fix settings view navigation
+- [x] Implement consistent state tracking between views
+
+### Button Highlighting
+- [x] Add active state management to all view buttons
+- [x] Ensure proper highlighting of active view
+- [x] Fix view transition issues
+- [x] Update wasInConversationsView flag correctly
