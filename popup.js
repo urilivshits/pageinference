@@ -465,6 +465,8 @@ function truncateText(text, maxLength) {
  * Create a new conversation for the current page
  */
 async function startNewConversation() {
+  console.log('Starting new conversation');
+  
   // Generate a new page load ID
   currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   
@@ -676,25 +678,29 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
       pageTitle = new URL(url).hostname;
     }
     
+    console.log(`Saving chat session for ${pageLoadId} with ${history.length} messages`);
+    
     // Get existing sessions
-    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+    const result = await chrome.storage.local.get('chatSessions');
+    const chatSessions = result.chatSessions || [];
     
     // Check if we already have a session for this pageLoadId
-    const existingSessionIndex = chatSessions.findIndex(s => s.pageLoadId === pageLoadId);
+    const existingIndex = chatSessions.findIndex(s => s.pageLoadId === pageLoadId);
     
-    if (existingSessionIndex >= 0) {
+    if (existingIndex >= 0) {
       // Update existing session
-      chatSessions[existingSessionIndex] = {
-        ...chatSessions[existingSessionIndex],
+      console.log(`Updating existing session at index ${existingIndex}`);
+      chatSessions[existingIndex] = {
+        ...chatSessions[existingIndex],
         lastUpdated: new Date().toISOString(),
         messageCount: history.length
       };
     } else {
       // Add new session
+      console.log('Adding new session to chat sessions');
       chatSessions.push({
-        id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        url,
         pageLoadId,
+        url,
         title: pageTitle,
         created: new Date().toISOString(),
         lastUpdated: new Date().toISOString(),
@@ -707,8 +713,9 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
       new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
     );
     
-    // Store updated sessions (limit to 50 most recent sessions to avoid storage limits)
-    await chrome.storage.local.set({ chatSessions: chatSessions.slice(0, 50) });
+    // Store updated sessions
+    await chrome.storage.local.set({ chatSessions: chatSessions });
+    console.log(`Saved ${chatSessions.length} chat sessions to storage`);
   } catch (error) {
     console.error('Error saving chat session:', error);
   }
@@ -727,21 +734,27 @@ function getChatHistoryKey() {
  */
 async function loadChatHistory() {
   if (!currentTabId || !currentUrl || !currentPageLoadId) {
+    console.warn('Cannot load chat history: missing tab ID, URL, or page load ID');
     return;
   }
   
   try {
     // Get history based on the pageLoadId
     const chatHistoryKey = getChatHistoryKey();
+    console.log(`Loading chat history with key: ${chatHistoryKey}`);
     
     // First try to get from chrome.storage.local for persistence
     const { [chatHistoryKey]: history } = await chrome.storage.local.get(chatHistoryKey);
+    
+    console.log(`Found ${history ? history.length : 0} messages in chat history`);
     
     if (history && history.length > 0) {
       // Display chat history from storage
       history.forEach(message => {
         displayMessage(message.role, message.content);
       });
+      
+      console.log(`Displayed ${history.length} messages from history`);
       
       // Update background script's in-memory history
       await chrome.runtime.sendMessage({
@@ -751,6 +764,8 @@ async function loadChatHistory() {
         pageLoadId: currentPageLoadId,
         history: history
       });
+    } else {
+      console.log('No chat history found for current page or new conversation');
     }
   } catch (error) {
     console.error('Error loading chat history:', error);
@@ -870,8 +885,24 @@ async function loadAndShowPastSessions() {
       
       // Add click handler to load session
       contentWrapper.addEventListener('click', async () => {
-        await loadAndDisplayChatSession(session.pageLoadId, session);
-        showMainView();
+        try {
+          console.log(`Loading conversation with ID: ${session.pageLoadId}`);
+          
+          // Set current page load ID before loading
+          currentPageLoadId = session.pageLoadId;
+          
+          // Load and display the selected chat session
+          await loadAndDisplayChatSession(session.pageLoadId, session);
+          
+          // Make sure we're not marked as a new conversation
+          isInNewConversation = false;
+          
+          // Show the main view after loading
+          showMainView();
+        } catch (error) {
+          console.error('Error switching to conversation:', error);
+          showError('Failed to load conversation. Please try again.');
+        }
       });
       
       sessionsContainer.appendChild(item);
@@ -887,20 +918,19 @@ async function loadAndShowPastSessions() {
  * @returns {Promise<Array>} - The chat sessions
  */
 async function loadChatSessions() {
-  const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
-  return chatSessions;
-}
-
-/**
- * Load a specific chat session
- * @param {string} pageLoadId - The page load ID of the session to load
- * @returns {Promise<Array>} - The chat history for that session
- */
-async function loadChatSession(pageLoadId) {
-  // Find the chat history for this pageLoadId
-  const chatHistoryKey = `chat_history_${currentTabId}_${currentUrl}_${pageLoadId}`;
-  const { [chatHistoryKey]: history = [] } = await chrome.storage.local.get(chatHistoryKey);
-  return history;
+  const result = await chrome.storage.local.get('chatSessions');
+  const sessions = result.chatSessions || [];
+  console.log(`Loaded ${sessions.length} chat sessions from storage`);
+  
+  if (sessions.length > 0) {
+    console.log('First session:', { 
+      id: sessions[0].pageLoadId,
+      title: sessions[0].title,
+      messageCount: sessions[0].messageCount
+    });
+  }
+  
+  return sessions;
 }
 
 /**
@@ -910,18 +940,16 @@ async function loadChatSession(pageLoadId) {
  */
 async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
   try {
-    const result = await chrome.storage.local.get(['chatSessions']);
-    const chatSessions = result.chatSessions || {};
+    // Get existing sessions
+    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
     
-    // Check if the session exists
-    if (!chatSessions[pageLoadId]) {
+    // Find the session in the sessions list
+    const session = chatSessions.find(s => s.pageLoadId === pageLoadId);
+    
+    if (!session) {
       console.error('Chat session not found:', pageLoadId);
       return;
     }
-    
-    // Get session data
-    const sessionData = chatSessions[pageLoadId];
-    const { url, history, timestamp, pageTitle } = sessionData;
     
     // Update current conversation info
     isInNewConversation = false;
@@ -930,10 +958,11 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
     // Update UI with session info
     if (!sessionInfo) {
       sessionInfo = {
-        pageTitle: pageTitle || 'Unknown Page',
-        url,
-        timestamp,
-        messageCount: history.length
+        title: session.title || 'Unknown Page',
+        url: session.url,
+        created: session.created,
+        lastUpdated: session.lastUpdated,
+        messageCount: session.messageCount
       };
     }
     
@@ -942,27 +971,26 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
     // Clear current chat display
     chatHistory.innerHTML = '';
     
+    // Get the actual chat history from storage
+    const chatHistoryKey = `chat_history_${currentTabId}_${currentUrl}_${pageLoadId}`;
+    const { [chatHistoryKey]: history = [] } = await chrome.storage.local.get(chatHistoryKey);
+    
+    console.log(`Loading chat history for ${pageLoadId}, found ${history.length} messages`);
+    
     // Display messages
     if (history && history.length > 0) {
       history.forEach(message => {
         displayMessage(message.role, message.content);
       });
       
-      // Update background script with this history
-      await chrome.runtime.sendMessage({
-        action: 'updateChatHistory',
-        pageLoadId,
-        history
-      });
+      // Scroll to bottom
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    } else {
+      console.warn('No messages found for this chat session');
     }
     
-    // Show the main view with chat history
+    // Show the main view
     showMainView();
-    
-    // Scroll to bottom of chat history
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-    
-    console.log('Loaded chat session:', pageLoadId, 'with', history.length, 'messages');
   } catch (error) {
     console.error('Error loading chat session:', error);
   }

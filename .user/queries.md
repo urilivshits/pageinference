@@ -97,3 +97,6 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 
 ## 2025-03-10 21:15:59
 "cool, lets hide the close button in settings too: states will be changing by clicking on the 3 header tabs in the top"
+
+## 2025-03-10 23:14:55
+"there seems to be an issue with how past conversations are stored. Or on what happens when "new conversation" is clicked. basically at some point i cannot access the past conversations' messages anymore - at some point whenever i click on a past conversation thread to continue a previous chat it just sends me to "new conversation" which is empty"

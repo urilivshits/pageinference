@@ -289,3 +289,12 @@ Example task format for future use:
 - [x] Remove close button from settings panel
 - [x] Ensure consistent navigation using only header tabs
 - [x] Update any related code handling navigation between views
+
+## 2025-03-10 23:14:55 - Fix Past Conversations Loading
+
+### Conversation History Bug
+- [x] Investigate issue with accessing past conversations
+- [x] Fix bug where clicking on past conversation leads to an empty new conversation
+- [x] Ensure past conversation messages are properly loaded when selected
+- [x] Verify correct behavior when switching between conversations
+- [x] Test conversation persistence across popup reopens
