@@ -7,6 +7,32 @@
  * 3. Storing and retrieving API key from Chrome storage
  */
 
+// Handle installation and updates
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install') {
+    console.log('Extension installed');
+    checkIconsExist();
+  } else if (details.reason === 'update') {
+    console.log(`Extension updated from ${details.previousVersion} to ${chrome.runtime.getManifest().version}`);
+  }
+});
+
+// Check if icon files exist and log a warning if they don't
+function checkIconsExist() {
+  const iconSizes = [16, 48, 128];
+  const missingIcons = [];
+  
+  // This is mostly for documentation purposes since we can't actually check
+  // if files exist in the extension directory at runtime
+  console.log('Reminder: Make sure to add icon files in the icons directory:');
+  iconSizes.forEach(size => {
+    console.log(`- icons/default_icon${size}.png`);
+  });
+  
+  // Log missing icons warning to help users
+  console.log('If extension icon is not displayed correctly, please refer to icons/README.md');
+}
+
 // Listen for messages from the content script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Handle scraping request (forward to active tab)
@@ -60,7 +86,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const result = await getOpenAiInference(
           data.openAiApiKey,
           request.content,
-          request.question
+          request.question,
+          request.model || 'gpt-3.5-turbo'
         );
         sendResponse({ answer: result });
       } catch (error) {
@@ -76,9 +103,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * @param {string} apiKey - The OpenAI API key
  * @param {string} pageContent - The scraped page content
  * @param {string} question - The user's question
+ * @param {string} model - The model to use (default: gpt-3.5-turbo)
  * @returns {Promise<string>} - The inference result
  */
-async function getOpenAiInference(apiKey, pageContent, question) {
+async function getOpenAiInference(apiKey, pageContent, question, model = 'gpt-3.5-turbo') {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -87,7 +115,7 @@ async function getOpenAiInference(apiKey, pageContent, question) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: model,
         messages: [
           {
             role: 'system',
