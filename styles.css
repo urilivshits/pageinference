@@ -1,5 +1,6 @@
 /* Base styles */
 :root {
+  /* Light theme variables */
   --primary-color: #2563eb;
   --primary-hover: #1d4ed8;
   --background-color: #ffffff;
@@ -9,6 +10,53 @@
   --success-color: #059669;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --user-message-bg: #e9f2ff;
+  --ai-message-bg: #f9fafb;
+  --system-message-bg: #fee2e2;
+  --input-bg: #ffffff;
+  --input-border: #e5e7eb;
+  --input-focus-shadow: rgba(37, 99, 235, 0.1);
+  --secondary-button-bg: #ffffff;
+  --secondary-button-hover: #f9fafb;
+  --icon-button-hover: #f3f4f6;
+  --info-text: #6b7280;
+  --input-text: #1f2937;
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #c1c1c1;
+  --scrollbar-thumb-hover: #a1a1a1;
+  --copy-button-bg: rgba(255, 255, 255, 0.7);
+  --copy-button-color: #4b5563;
+  --copy-button-hover: rgba(255, 255, 255, 0.9);
+}
+
+/* Dark theme variables */
+[data-theme="dark"] {
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --background-color: #1f2937;
+  --text-color: #f9fafb;
+  --border-color: #374151;
+  --error-color: #ef4444;
+  --success-color: #10b981;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --user-message-bg: #1e40af;
+  --ai-message-bg: #374151;
+  --system-message-bg: #7f1d1d;
+  --input-bg: #374151;
+  --input-border: #4b5563;
+  --input-focus-shadow: rgba(59, 130, 246, 0.2);
+  --secondary-button-bg: #374151;
+  --secondary-button-hover: #4b5563;
+  --icon-button-hover: #374151;
+  --info-text: #9ca3af;
+  --input-text: #e5e7eb;
+  --scrollbar-track: #2d3748;
+  --scrollbar-thumb: #4a5568;
+  --scrollbar-thumb-hover: #718096;
+  --copy-button-bg: rgba(55, 65, 81, 0.7);
+  --copy-button-color: #d1d5db;
+  --copy-button-hover: rgba(55, 65, 81, 0.9);
 }
 
 * {
@@ -68,7 +116,7 @@ h2 {
 }
 
 .secondary-button {
-  background-color: white;
+  background-color: var(--secondary-button-bg);
   color: var(--text-color);
   border: 1px solid var(--border-color);
   padding: 0.5rem 1rem;
@@ -79,7 +127,12 @@ h2 {
 }
 
 .secondary-button:hover {
-  background-color: #f9fafb;
+  background-color: var(--secondary-button-hover);
+}
+
+.secondary-button.small {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
 }
 
 .icon-button {
@@ -92,7 +145,7 @@ h2 {
 }
 
 .icon-button:hover {
-  background-color: #f3f4f6;
+  background-color: var(--icon-button-hover);
 }
 
 .icon-button.small {
@@ -105,7 +158,7 @@ h2 {
 }
 
 .info-message {
-  color: #6b7280;
+  color: var(--info-text);
   margin-bottom: 1rem;
 }
 
@@ -119,16 +172,18 @@ textarea {
   flex: 1;
   min-height: 80px;
   padding: 0.5rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--input-border);
   border-radius: 0.375rem;
   resize: vertical;
   font-family: inherit;
+  background-color: var(--input-bg);
+  color: var(--input-text);
 }
 
 textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }
 
 /* Loading indicator */
@@ -189,22 +244,24 @@ textarea:focus {
 .api-key-container input {
   flex: 1;
   padding: 0.5rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--input-border);
   border-radius: 0.375rem;
+  background-color: var(--input-bg);
 }
 
 .api-key-container input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }
 
 select {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--input-border);
   border-radius: 0.375rem;
-  background-color: white;
+  background-color: var(--input-bg);
+  color: var(--text-color);
 }
 
 .settings-actions {
@@ -212,6 +269,62 @@ select {
   gap: 0.5rem;
   justify-content: flex-end;
   margin-top: 2rem;
+}
+
+/* Chat history styles */
+.chat-history {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.message {
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  max-width: 100%;
+  word-wrap: break-word;
+  position: relative;
+}
+
+.user-message {
+  background-color: var(--user-message-bg);
+  align-self: flex-end;
+  border-top-right-radius: 0;
+  margin-left: 1rem;
+}
+
+.ai-message {
+  background-color: var(--ai-message-bg);
+  align-self: flex-start;
+  border-top-left-radius: 0;
+  margin-right: 1rem;
+}
+
+.system-message {
+  background-color: var(--system-message-bg);
+  align-self: center;
+  border-radius: 0.375rem;
+  color: var(--error-color);
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+  width: 100%;
+  text-align: center;
+}
+
+.message-header {
+  font-weight: 600;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: #6b7280;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
 }
 
 /* Utility classes */
@@ -230,4 +343,79 @@ select {
 .answer-content {
   white-space: pre-wrap;
   font-size: 0.875rem;
+}
+
+/* Header buttons */
+.header-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Theme options */
+.theme-options {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.theme-option input[type="radio"] {
+  margin: 0;
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Message copy button styles */
+.copy-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: var(--copy-button-bg);
+  color: var(--copy-button-color);
+  border: none;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.message:hover .copy-button {
+  opacity: 1;
+}
+
+.copy-button:hover {
+  background-color: var(--copy-button-hover);
+}
+
+.message-content {
+  padding-right: 2rem; /* Make space for copy button */
+  word-break: break-word;
 } 

@@ -3,20 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Page Inference</title>
+  <title>Talk to the webpage</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Page Inference</h1>
-      <button id="settingsBtn" class="icon-button" title="Settings">⚙️</button>
+      <h1>Talk to the webpage</h1>
+      <div class="header-buttons">
+        <button id="themeToggleBtn" class="icon-button" title="Toggle Theme">🌓</button>
+        <button id="settingsBtn" class="icon-button" title="Settings">⚙️</button>
+      </div>
     </header>
 
     <div id="mainContent" class="content-area">
       <div class="info-message">
         <p>Ask a question about the current page.</p>
       </div>
+      
+      <!-- Chat history will appear here -->
+      <div id="chatHistory" class="chat-history"></div>
       
       <div class="question-container">
         <textarea id="questionInput" placeholder="What would you like to know about this page?"></textarea>
@@ -33,6 +39,10 @@
       <div id="answerContainer" class="answer-container hidden">
         <h2>Answer</h2>
         <div id="answerContent" class="answer-content"></div>
+      </div>
+      
+      <div class="action-buttons">
+        <button id="clearChatBtn" class="secondary-button small hidden">Clear Chat</button>
       </div>
     </div>
     
@@ -51,9 +61,30 @@
       <div class="settings-group">
         <label for="modelSelect">OpenAI Model</label>
         <select id="modelSelect">
+          <option value="gpt-4o-mini">GPT-4o mini (Default)</option>
           <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-          <option value="gpt-4">GPT-4 (if available)</option>
+          <option value="gpt-4">GPT-4</option>
+          <option value="gpt-4o">GPT-4o</option>
         </select>
+        <small>Note: Some models may require additional API access permissions.</small>
+      </div>
+
+      <div class="settings-group">
+        <label>Theme</label>
+        <div class="theme-options">
+          <label class="theme-option">
+            <input type="radio" name="theme" value="system" checked>
+            System
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="light">
+            Light
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="dark">
+            Dark
+          </label>
+        </div>
       </div>
       
       <div class="settings-actions">
