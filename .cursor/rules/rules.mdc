@@ -1,0 +1,139 @@
+---
+description: Guidelines for every query.
+globs: 
+alwaysApply: false
+---
+# Cursor AI Guidelines
+<!-- Guidelines for every query. -->
+This document serves as a guide for AI coding assistance.
+
+## Table of Contents
+- Naming Conventions
+- Code Organization
+- Implementation Strategy
+- Task Management
+- File Maintenance
+- Context Awareness
+- Tool Usage
+- Commit Guidelines
+- Testing
+
+## Naming Conventions
+- Variables: camelCase
+- Functions: camelCase
+- Classes: PascalCase
+- Constants: UPPER_SNAKE_CASE
+- Files: kebab-case
+- Components: PascalCase
+
+## Code Organization
+- Imports: grouped by source (standard library, third-party, local)
+- Component structure: props, state, effects, handlers, render
+- Max file length: 300 lines (prefer composition over large files)
+- Simplicity: Always prefer simple solutions over complex ones
+- Avoid duplication: Check for existing similar code before implementing new functionality
+- File scripts: Avoid writing one-off scripts in files when possible
+- Cleanliness: Keep the codebase very clean and organized
+
+## Implementation Strategy
+- Environment awareness: Code should account for different environments: dev, test, and prod
+- Fix approach: Exhaust existing implementation options before introducing new patterns or technology
+- Mocking policy: Use mocking data only for tests, never for dev or prod environments
+- Env file: Never overwrite .env files without explicit permission
+- Change scope: Only make changes that are requested or well understood and related to the task
+- Impact assessment: Always consider what other methods and areas of code might be affected by changes
+
+## Task Management
+
+### Process
+1. Convert high-level tasks and user queries to detailed step-by-step instructions
+2. Create detailed markdown numbered list of tasks in `../../.user/tasks.md`
+3. Include checkboxes for each substep (default unchecked)
+4. Parse every user query to automatically generate tasks and subtasks
+5. Record all updates, changes, and tasks in `../../.user/tasks.md` with timestamps
+6. Review tasks at the end of every response and mark completed items
+7. Reopen resolved tasks if bugs are reported later
+8. Check for unmarked tasks at the beginning of every response
+
+### Focus and Scope
+- Focus only on areas of code relevant to the task
+- Do not touch code that is unrelated to the task
+- Avoid making major changes to patterns and architecture unless explicitly instructed
+
+## File Maintenance
+
+### CRITICAL: Required Updates for EVERY Response
+- **MANDATORY:** Review and update `../../.user/tasks.md` and `../../.user/queries.md` at the beginning of EVERY user query
+- **MANDATORY:** Update `../../.user/queries.md` IMMEDIATELY when receiving ANY user query, without exception
+- **MANDATORY:** Update `../../.user/tasks.md` TWICE during each interaction:
+  1. At the BEGINNING: Add new tasks derived from user's query with timestamp
+  2. At the END: Mark completed tasks and review progress
+- Consider EVERY user query, no matter how small, as a task that requires tracking
+- Even questions without code changes must be logged in both files
+- Never skip these updates for ANY reason - they are highest priority
+- Apply all other rules to code changes and new files
+
+### Timestamp Requirements
+- **ALWAYS** use current, real-time timestamps - NEVER use historical timestamps
+- Get current timestamp using `run_terminal_cmd` at the start of EVERY response:
+  - Windows: `Get-Date -Format "yyyy-MM-dd HH:mm:ss"`
+  - Unix/Linux/Mac: `date "+%Y-%m-%d %H:%M:%S"`
+- Use this exact timestamp for all file updates in the current response
+- Format must be consistent: YYYY-MM-DD HH:MM:SS
+- Apply the same timestamp to all updates made in a single response
+
+### Update Content Requirements
+- `../../.user/tasks.md`: 
+  - **MANDATORY:** All new tasks must include detailed substeps with checkboxes
+  - **MANDATORY:** All completed steps must be marked with [x] at the end of the response
+  - **MANDATORY:** All updates must include real-time timestamps
+  - Categorize tasks logically with clear headings
+  - Maintain chronological order of tasks
+  
+- `../../.user/queries.md`:
+  - **MANDATORY:** Record the exact user query text in quotes
+  - **MANDATORY:** Include precise real-time timestamp for each query
+  - Maintain chronological order of queries
+  - Ensure timestamp matches the one used in user-tasks.md for the same interaction
+
+## Context Awareness
+- **MANDATORY:** Review `../../.user/context.md` at the beginning of EVERY user query
+- Always ensure responses align with the project context defined in this file
+- Consider all aspects of the service context when proposing solutions:
+  - Project goals and purpose
+  - Technical stack and architecture
+  - Key features and user personas
+  - Integration points and external systems
+  - Constraints and requirements
+  - Current development status
+- Reference specific aspects of the context when explaining decisions
+- If context information is missing for a decision, note this in the response
+- **MANDATORY:** Review and update `../../.user/context.md` at the end of EVERY response if new context information emerged during the interaction (e.g., new APIs, technologies, requirements)
+- Clearly indicate any updates made to the context file at the end of the response
+- Prioritize context-driven approaches over generic solutions
+
+## Tool Usage
+- Code modifications: `edit_file`
+- Code exploration: `codebase_search`, `read_file`, `list_dir`, `grep_search`, `file_search`
+- Run commands: `run_terminal_cmd`
+- Web information: `web_search`
+- Change history: `diff_history`
+
+## Commit Guidelines
+- Format: `type(scope): description`
+- Types:
+  - feat
+  - fix
+  - docs
+  - style
+  - refactor
+  - test
+  - chore
+- Length: Keep commits semantic and concise
+- Command: `git add . && git commit -m "..."` (do not push)
+- Only commit if user explicitly asks for
+
+## Testing
+- Unit tests: Required for new functionality
+- Integration tests: For critical paths
+- Thoroughness: Write comprehensive tests for all major functionality
