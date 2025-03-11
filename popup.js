@@ -567,7 +567,7 @@ async function startNewConversation() {
   isInNewConversation = true;
   
   const conversationInfo = {
-    title: currentPageTitle || 'Active Topic',
+    title: currentPageTitle || 'Chat',
     created: new Date().toISOString()
   };
   
@@ -958,6 +958,11 @@ async function loadChatHistory() {
       
       console.log(`Displayed ${history.length} messages from history`);
       
+      // Scroll to bottom with a small delay to ensure DOM is updated
+      setTimeout(() => {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }, 100);
+      
       // Update background script's in-memory history
       await chrome.runtime.sendMessage({
         action: 'updateChatHistory',
@@ -1283,21 +1288,21 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
         
         console.log(`Found ${history.length} messages`);
         
-        if (!history || history.length === 0) {
-            throw new Error('No messages found for this conversation');
+        // Display messages if there are any
+        if (history && history.length > 0) {
+            history.forEach((message, index) => {
+                try {
+                    displayMessage(message.role, message.content, message.timestamp);
+                } catch (e) {
+                    console.error(`Error displaying message ${index}:`, e);
+                }
+            });
+            
+            // Scroll to bottom with a small delay to ensure DOM is updated
+            setTimeout(() => {
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }, 100);
         }
-        
-        // Display messages
-        history.forEach((message, index) => {
-            try {
-                displayMessage(message.role, message.content, message.timestamp);
-            } catch (e) {
-                console.error(`Error displaying message ${index}:`, e);
-            }
-        });
-        
-        // Scroll to bottom
-        chatHistory.scrollTop = chatHistory.scrollHeight;
         
         // Show the main view
         showMainView();

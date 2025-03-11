@@ -384,6 +384,7 @@ select {
   overflow-y: auto;
   padding-right: 0.25rem;
   margin-bottom: 1rem;
+  scroll-behavior: smooth;
 }
 
 .message {
@@ -683,7 +684,7 @@ select {
   transform: scale(1.1);
 }
 
-/* Added class to hide the active topic name in history view */
+/* Added class to hide the chat name in history view */
 .hidden-topic-name {
   display: none;
 }
