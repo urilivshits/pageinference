@@ -380,3 +380,25 @@ Example task format for future use:
 - [x] Apply consistent padding and spacing based on Chrome design
 - [x] Update color scheme to align with Chrome if needed
 - [x] Ensure consistent styling between light and dark themes
+
+## 2025-03-11 13:27:01 - Empty Conversation Management
+
+### Conversation History Cleanup
+- [x] Create a function to remove empty conversations
+- [x] Update `saveChatSession` to remove empty conversations
+- [x] Update `loadChatHistory` to remove empty conversations
+- [x] Update `startNewConversation` to use the new empty conversation removal function
+- [x] Update `loadAndDisplayChatSession` to handle empty conversations
+- [x] Ensure conversations are properly removed when empty (0 messages)
+- [x] Maintain proper sorting of conversations (newest first)
+
+## 2025-03-11 14:00:30 - Fix Empty Conversation Management
+
+### Empty Conversation Handling
+- [x] Update `removeEmptyConversations` to accept an exclusion parameter
+- [x] Modify `saveChatSession` to exclude current conversation from removal
+- [x] Update `loadChatHistory` to preserve current empty conversation
+- [x] Update `loadAndDisplayChatSession` to preserve loaded conversation
+- [x] Update `startNewConversation` to generate ID before cleanup
+- [x] Ensure new empty conversations appear in history list
+- [x] Test empty conversation management across different scenarios

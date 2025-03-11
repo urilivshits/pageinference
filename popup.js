@@ -537,43 +537,20 @@ function truncateText(text, maxLength) {
 async function startNewConversation() {
   console.log('Starting new conversation');
   
+  // Generate a new page load ID first
+  currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  
   // Check for empty conversations before creating a new one
   try {
-    // Get all existing chat sessions
-    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
-    
-    if (chatSessions.length > 0) {
-      console.log('Checking for empty conversations...');
-      
-      // Find all empty conversations (0 messages) - from any domain
-      const emptyConversations = chatSessions.filter(session => {
-        return session.messageCount === 0;
-      });
-      
-      if (emptyConversations.length > 0) {
-        console.log(`Found ${emptyConversations.length} empty conversations.`);
-        
-        // Get existing empty conversations' pageLoadIds
-        const emptyPageLoadIds = emptyConversations.map(c => c.pageLoadId);
-        
-        // Skip the current one if it's in the list (it will be replaced by the new one)
-        const idsToRemove = emptyPageLoadIds.filter(id => id !== currentPageLoadId);
-        
-        console.log(`Will remove ${idsToRemove.length} empty conversations.`);
-        
-        // Remove these conversations
-        for (const idToRemove of idsToRemove) {
-          await deleteConversation(idToRemove);
-        }
-      }
+    // Remove empty conversations except for the new one we're about to create
+    const removedCount = await removeEmptyConversations(currentPageLoadId);
+    if (removedCount > 0) {
+      console.log(`Removed ${removedCount} empty conversations before starting new conversation`);
     }
   } catch (error) {
-    console.error('Error checking for empty conversations:', error);
+    console.error('Error removing empty conversations:', error);
     // Continue with new conversation creation even if this check fails
   }
-  
-  // Generate a new page load ID
-  currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   
   // Update storage with new ID
   const storageKey = `page_load_${currentTabId}_${currentUrl}`;
@@ -800,6 +777,58 @@ async function addMessageToChat(role, content) {
 }
 
 /**
+ * Remove empty conversations from the chat sessions list, except for a specific conversation
+ * @param {string} excludePageLoadId - The pageLoadId to exclude from removal
+ * @returns {Promise<number>} The number of empty conversations removed
+ */
+async function removeEmptyConversations(excludePageLoadId = null) {
+  try {
+    // Get existing sessions
+    const result = await chrome.storage.local.get('chatSessions');
+    let chatSessions = result.chatSessions || [];
+    
+    // Find empty conversations, excluding the specified one
+    const emptyConversations = chatSessions.filter(session => {
+      return session.messageCount === 0 && session.pageLoadId !== excludePageLoadId;
+    });
+    
+    if (emptyConversations.length === 0) {
+      console.log('No empty conversations found to remove.');
+      return 0;
+    }
+    
+    console.log(`Found ${emptyConversations.length} empty conversations to remove.`);
+    
+    // Get the IDs to remove
+    const idsToRemove = emptyConversations.map(session => session.pageLoadId);
+    
+    // Remove these conversations from the array
+    const updatedSessions = chatSessions.filter(session => !idsToRemove.includes(session.pageLoadId));
+    
+    // Also delete their storage keys
+    for (const idToRemove of idsToRemove) {
+      // Find the session
+      const sessionToRemove = emptyConversations.find(s => s.pageLoadId === idToRemove);
+      if (sessionToRemove) {
+        // Remove chat history from storage
+        const sessionHistoryKey = getChatHistoryKey(sessionToRemove.url, idToRemove);
+        await chrome.storage.local.remove(sessionHistoryKey);
+        console.log(`Removed empty session chat history with key: ${sessionHistoryKey}`);
+      }
+    }
+    
+    // Store updated sessions
+    await chrome.storage.local.set({ chatSessions: updatedSessions });
+    console.log(`Removed ${emptyConversations.length} empty conversations, ${updatedSessions.length} conversations remaining`);
+    
+    return emptyConversations.length;
+  } catch (error) {
+    console.error('Error removing empty conversations:', error);
+    return 0;
+  }
+}
+
+/**
  * Save a chat session to the sessions index
  * @param {number} tabId - The tab ID
  * @param {string} url - The URL
@@ -828,41 +857,12 @@ async function saveChatSession(tabId, url, pageLoadId, history, lastUserRequest)
     await chrome.storage.local.set({ [chatHistoryKey]: history });
     console.log(`Saved chat history with key: ${chatHistoryKey}`);
     
-    // Get existing sessions
+    // Remove empty conversations except for the current one
+    await removeEmptyConversations(pageLoadId);
+    
+    // Get existing sessions (after empty conversations were removed)
     const result = await chrome.storage.local.get('chatSessions');
     let chatSessions = result.chatSessions || [];
-    
-    // If this is an empty conversation, check for other empty conversations
-    if (history.length === 0) {
-      console.log('This is an empty conversation, checking for others...');
-      
-      // Find other empty conversations (not this one)
-      const otherEmptyConversations = chatSessions.filter(session => {
-        return session.messageCount === 0 && session.pageLoadId !== pageLoadId;
-      });
-      
-      if (otherEmptyConversations.length > 0) {
-        console.log(`Found ${otherEmptyConversations.length} other empty conversations. Removing them.`);
-        
-        // Get the IDs to remove
-        const idsToRemove = otherEmptyConversations.map(session => session.pageLoadId);
-        
-        // Remove these conversations from the array
-        chatSessions = chatSessions.filter(session => !idsToRemove.includes(session.pageLoadId));
-        
-        // Also delete their storage keys
-        for (const idToRemove of idsToRemove) {
-          // Find the session
-          const sessionToRemove = otherEmptyConversations.find(s => s.pageLoadId === idToRemove);
-          if (sessionToRemove) {
-            // Remove chat history from storage
-            const sessionHistoryKey = getChatHistoryKey(sessionToRemove.url, idToRemove);
-            await chrome.storage.local.remove(sessionHistoryKey);
-            console.log(`Removed empty session chat history with key: ${sessionHistoryKey}`);
-          }
-        }
-      }
-    }
     
     // Check if we already have a session for this pageLoadId
     const existingIndex = chatSessions.findIndex(s => s.pageLoadId === pageLoadId);
@@ -938,6 +938,9 @@ async function loadChatHistory() {
   }
   
   try {
+    // Remove any empty conversations except the current one
+    await removeEmptyConversations(currentPageLoadId);
+    
     // Get history based on the domain and pageLoadId
     const chatHistoryKey = getChatHistoryKey(currentUrl, currentPageLoadId);
     console.log(`Loading chat history with key: ${chatHistoryKey}`);
@@ -1064,6 +1067,9 @@ async function loadAndShowPastSessions() {
   sessionsContainer.innerHTML = '';
   
   try {
+    // Remove empty conversations except the current one
+    await removeEmptyConversations(currentPageLoadId);
+    
     const sessions = await loadChatSessions();
     
     if (!sessions || sessions.length === 0) {
@@ -1214,6 +1220,9 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
         if (!pageLoadId) {
             throw new Error('No pageLoadId provided');
         }
+        
+        // Remove any empty conversations except the one being loaded
+        await removeEmptyConversations(pageLoadId);
         
         // Get existing sessions
         const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');

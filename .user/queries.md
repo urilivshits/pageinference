@@ -133,3 +133,9 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 1. make sure the project follows consistent design philosophy
 2. as far as i can tell some elements have border radius and some dont (such as popups external border)
 3. lets follow design philosophy of google chrome as close as possible"
+
+## 2025-03-11 13:27:01
+"lets make sure that if a conversation from history is continued then it moves to the beginning of the history list (which it does) but also that if in history list there are empty conversations then they get removed"
+
+## 2025-03-11 14:00:30
+"after the latest update empty conversation is not getting added to the history list as it did before'"
