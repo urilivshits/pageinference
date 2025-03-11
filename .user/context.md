@@ -62,6 +62,10 @@ assumption: Project appears to be in active development with:
 - Basic error handling in place
 - Security measures implemented
 - UI/UX refined
+  - History UI improved with 50/50 split layout for webpage titles and last user requests
+  - Streamlined delete functionality with smaller, more generic icon
+  - Enhanced user experience with better positioning of UI elements
+  - Fixed display of last user requests in history items for better context
 - Testing framework established
 
 ## Reference Materials

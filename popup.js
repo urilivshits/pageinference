@@ -355,13 +355,22 @@ function showMainView() {
   pastConversationsView.classList.add('hidden');
   settingsContent.classList.add('hidden');
   
-  // Mark that we're not in conversations view
-  wasInConversationsView = false;
-  
   // Update header buttons
-  newConversationBtn.classList.add('active');
-  pastSessionsBtn.classList.remove('active');
+  if (isInNewConversation) {
+    newConversationBtn.classList.add('active');
+    pastSessionsBtn.classList.remove('active');
+  } else {
+    newConversationBtn.classList.remove('active');
+    pastSessionsBtn.classList.add('active');
+  }
+  
   settingsBtn.classList.remove('active');
+  
+  // Show the active topic name when in main view
+  const conversationInfo = document.getElementById('currentConversationInfo');
+  if (conversationInfo) {
+    conversationInfo.classList.remove('hidden-topic-name');
+  }
   
   // Update UI state
   updateUIState();
@@ -383,6 +392,12 @@ function showPastConversationsView() {
   newConversationBtn.classList.remove('active');
   pastSessionsBtn.classList.add('active');
   settingsBtn.classList.remove('active');
+  
+  // Hide the active topic name when in history view
+  const conversationInfo = document.getElementById('currentConversationInfo');
+  if (conversationInfo) {
+    conversationInfo.classList.add('hidden-topic-name');
+  }
   
   // Update UI state
   updateUIState();
@@ -526,21 +541,20 @@ async function startNewConversation() {
       });
       
       if (emptyConversations.length > 0) {
-        console.log(`Found ${emptyConversations.length} empty conversations from the same website. Removing them.`);
+        console.log(`Found ${emptyConversations.length} empty conversations from the same domain.`);
         
-        // Filter out the empty conversations from the same website
-        const updatedSessions = chatSessions.filter(session => {
-          const sessionDomain = getBaseDomain(session.url);
-          const isSameDomain = sessionDomain === currentDomain;
-          const isEmpty = session.messageCount === 0;
-          
-          // Keep all conversations that are either not from the same domain or not empty
-          return !(isSameDomain && isEmpty);
-        });
+        // Get existing empty conversations' pageLoadIds
+        const emptyPageLoadIds = emptyConversations.map(c => c.pageLoadId);
         
-        // Update storage with the filtered sessions
-        await chrome.storage.local.set({ chatSessions: updatedSessions });
-        console.log('Empty conversations removed.');
+        // Skip the current one if it's in the list (it will be replaced by the new one)
+        const idsToRemove = emptyPageLoadIds.filter(id => id !== currentPageLoadId);
+        
+        console.log(`Will remove ${idsToRemove.length} empty conversations.`);
+        
+        // Remove these conversations
+        for (const idToRemove of idsToRemove) {
+          await deleteConversation(idToRemove);
+        }
       }
     }
   } catch (error) {
@@ -573,8 +587,8 @@ async function startNewConversation() {
   // Update conversation info
   updateConversationInfo(conversationInfo);
   
-  // Save this as a new chat session immediately
-  await saveChatSession(currentTabId, currentUrl, currentPageLoadId, []);
+  // Save this as a new chat session immediately with initial empty last user request
+  await saveChatSession(currentTabId, currentUrl, currentPageLoadId, [], 'New conversation');
   
   // Show main view and update UI state
   showMainView();
@@ -670,8 +684,8 @@ async function loadSavedInputText() {
 }
 
 /**
- * Adds a message to the chat history UI and persists it
- * @param {string} role - 'user', 'assistant', or 'system'
+ * Add a message to the chat history and save it
+ * @param {string} role - The role of the message sender ('user', 'assistant', or 'system')
  * @param {string} content - The message content
  */
 async function addMessageToChat(role, content) {
@@ -730,6 +744,12 @@ async function addMessageToChat(role, content) {
     
     await chrome.storage.local.set({ [chatHistoryKey]: currentHistory });
     
+    // Track the last user request if this is a user message
+    let lastUserRequest = '';
+    if (role === 'user') {
+      lastUserRequest = content;
+    }
+    
     // Update background script's in-memory history
     await chrome.runtime.sendMessage({
       action: 'updateChatHistory',
@@ -740,7 +760,13 @@ async function addMessageToChat(role, content) {
     });
     
     // Save this chat session in the sessions index
-    await saveChatSession(currentTabId, currentUrl, currentPageLoadId, currentHistory);
+    await saveChatSession(
+      currentTabId, 
+      currentUrl, 
+      currentPageLoadId, 
+      currentHistory,
+      role === 'user' ? content : undefined  // Pass the user request if this is a user message
+    );
   }
 }
 
@@ -750,8 +776,9 @@ async function addMessageToChat(role, content) {
  * @param {string} url - The URL
  * @param {string} pageLoadId - The page load ID
  * @param {Array} history - The chat history
+ * @param {string} lastUserRequest - The last user request (optional)
  */
-async function saveChatSession(tabId, url, pageLoadId, history) {
+async function saveChatSession(tabId, url, pageLoadId, history, lastUserRequest) {
   // Allow empty history for new conversations
   if (!history) history = [];
   
@@ -779,6 +806,17 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
     // Check if we already have a session for this pageLoadId
     const existingIndex = chatSessions.findIndex(s => s.pageLoadId === pageLoadId);
     
+    // Find last user request if not provided
+    if (!lastUserRequest && history.length > 0) {
+      // Look for the most recent user message in history
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].role === 'user') {
+          lastUserRequest = history[i].content;
+          break;
+        }
+      }
+    }
+    
     if (existingIndex >= 0) {
       // Update existing session
       console.log(`Updating existing session at index ${existingIndex}`);
@@ -786,7 +824,8 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
         ...chatSessions[existingIndex],
         lastUpdated: new Date().toISOString(),
         messageCount: history.length,
-        tabId: tabId // Store the tab ID for backward compatibility
+        tabId: tabId, // Store the tab ID for backward compatibility
+        lastUserRequest: lastUserRequest || chatSessions[existingIndex].lastUserRequest // Keep existing lastUserRequest if new one not provided
       };
     } else {
       // Add new session
@@ -798,7 +837,8 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
         created: new Date().toISOString(),
         lastUpdated: new Date().toISOString(),
         messageCount: history.length,
-        tabId: tabId // Store the tab ID for backward compatibility
+        tabId: tabId, // Store the tab ID for backward compatibility
+        lastUserRequest: lastUserRequest || ''
       });
     }
     
@@ -1006,12 +1046,31 @@ async function loadAndShowPastSessions() {
       // Create a wrapper for the session content
       const contentWrapper = document.createElement('div');
       contentWrapper.classList.add('session-content');
-      contentWrapper.style.flex = '1';
       
-      const title = document.createElement('div');
-      title.classList.add('chat-session-title');
-      title.textContent = truncateText(session.title || 'Unnamed conversation', 30);
-      title.title = session.title; // Full title on hover
+      const titleContainer = document.createElement('div');
+      titleContainer.classList.add('chat-session-title');
+      
+      // Create webpage title element (50% width)
+      const webpageTitle = document.createElement('div');
+      webpageTitle.classList.add('webpage-title');
+      webpageTitle.textContent = truncateText(session.title || 'Unnamed conversation', 30);
+      webpageTitle.title = session.title; // Full title on hover
+      
+      // Create last user request element (50% width)
+      const lastRequest = document.createElement('div');
+      lastRequest.classList.add('last-user-request');
+      
+      // Get the last user request if available
+      let lastUserRequest = 'No request';
+      if (session.lastUserRequest) {
+        lastUserRequest = session.lastUserRequest;
+      }
+      lastRequest.textContent = truncateText(lastUserRequest, 30);
+      lastRequest.title = lastUserRequest; // Full request on hover
+      
+      // Add both elements to the title container
+      titleContainer.appendChild(webpageTitle);
+      titleContainer.appendChild(lastRequest);
       
       const meta = document.createElement('div');
       meta.classList.add('chat-session-meta');
@@ -1022,13 +1081,7 @@ async function loadAndShowPastSessions() {
       const count = document.createElement('span');
       count.textContent = `${session.messageCount} messages`;
       
-      meta.appendChild(date);
-      meta.appendChild(count);
-      
-      contentWrapper.appendChild(title);
-      contentWrapper.appendChild(meta);
-      
-      // Create delete button
+      // Create delete button - now placed in the meta section
       const deleteBtn = document.createElement('button');
       deleteBtn.classList.add('delete-button');
       deleteBtn.title = 'Delete from history';
@@ -1044,8 +1097,14 @@ async function loadAndShowPastSessions() {
         }
       });
       
+      meta.appendChild(date);
+      meta.appendChild(count);
+      meta.appendChild(deleteBtn);
+      
+      contentWrapper.appendChild(titleContainer);
+      contentWrapper.appendChild(meta);
+      
       item.appendChild(contentWrapper);
-      item.appendChild(deleteBtn);
       
       // Add click handler to load session
       contentWrapper.addEventListener('click', async () => {

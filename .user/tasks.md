@@ -328,3 +328,25 @@ Example task format for future use:
 - [x] Ensure proper domain comparison using `getBaseDomain()` function
 - [x] Maintain non-empty conversations and conversations from different domains
 - [x] Add error handling to ensure new conversation creation proceeds even if cleanup fails
+
+## 2024-03-11 12:30:00 - Documentation Maintenance
+- [x] Update all required documentation files as specified in rules.mdc:
+  - [x] Updated queries.md with latest user query
+  - [x] Updated tasks.md with completed tasks
+  - [x] Reviewed context.md for any necessary updates
+- [x] Verify UI/UX changes were implemented successfully:
+  - [x] History item layout with 50/50 split for title and request
+  - [x] Updated delete icon (smaller, generic, on second line)
+  - [x] History list positioned at top of container
+  - [x] Hidden active topic name in history tab
+
+## 2025-03-11 12:30:00
+### Fix Last User Request Display in History Items
+- [x] Update history items to display the last user request:
+  - [x] Modify `addMessageToChat` function to track last user request
+  - [x] Update `saveChatSession` function to accept and store last user request
+  - [x] Update `startNewConversation` to initialize with a placeholder last request
+  - [x] Add code to find the last user request in history if not explicitly provided
+- [x] Update documentation files:
+  - [x] Add latest task and query to tracking files
+  - [x] Ensure all changes are properly documented

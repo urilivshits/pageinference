@@ -117,3 +117,9 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 
 ## 2025-03-11 11:53:37
 "lets also make sure there's not more than 1 exmpty new conversation at a time on the same website. this means whenever new topic starts > check if there is an empty topic previously from the same website > remove the old one and write the new one to the history list"
+
+## 2024-03-11 12:30:00
+"it works, but please try to update all the necessary files again as specified in the @rules.mdc"
+
+## 2025-03-11 12:30:00
+"now also please make sure that the on each history item list the last user request data is shown (now it shows no request even though there was a new request that went well). no need to handle older chats"

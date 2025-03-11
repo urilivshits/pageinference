@@ -467,7 +467,7 @@ select {
 
 #pastConversationsView .chat-sessions-container {
   max-height: 400px;
-  margin-top: 1rem;
+  margin-top: 0;
 }
 
 .chat-session-item {
@@ -477,7 +477,7 @@ select {
   transition: background-color 0.2s;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .chat-session-item:last-child {
@@ -494,12 +494,31 @@ select {
 
 .session-content {
   cursor: pointer;
+  flex: 1;
 }
 
 .chat-session-title {
   font-weight: 600;
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
+  display: flex;
+}
+
+.webpage-title {
+  width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.last-user-request {
+  width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--info-text);
+  font-weight: normal;
+  padding-left: 8px;
 }
 
 .chat-session-meta {
@@ -507,14 +526,13 @@ select {
   justify-content: space-between;
   font-size: 0.75rem;
   color: var(--info-text);
+  align-items: center;
 }
 
 /* Delete button styles */
 .delete-button {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
+  width: 20px;
+  height: 20px;
   background-color: transparent;
   color: var(--delete-button-color);
   cursor: pointer;
@@ -524,16 +542,18 @@ select {
   opacity: 0.6;
   transition: opacity 0.2s, background-color 0.2s;
   position: relative;
+  border: none;
+  margin-left: 8px;
 }
 
 .delete-button:hover {
   opacity: 1;
-  background-color: rgba(239, 68, 68, 0.1);
 }
 
 .delete-button::before {
-  content: '🗑️';
-  font-size: 14px;
+  content: '×';
+  font-size: 18px;
+  font-weight: bold;
 }
 
 .sessions-nav {
@@ -623,4 +643,9 @@ select {
 .icon-button.active {
   background-color: var(--active-icon-bg);
   transform: scale(1.1);
+}
+
+/* Added class to hide the active topic name in history view */
+.hidden-topic-name {
+  display: none;
 } 
