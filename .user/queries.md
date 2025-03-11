@@ -139,3 +139,19 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 
 ## 2025-03-11 14:00:30
 "after the latest update empty conversation is not getting added to the history list as it did before'"
+
+## 2025-03-11 14:12:50
+"great, please also check the @rules.mdc and make it so that the copy icon does not occupy a separate line just for itself"
+
+## 2025-03-11 14:16:20
+"great, but make sure it applies to assistant messages as well"
+
+## 2025-03-11 14:18:17
+"also please make sure that copy icon is in bottom right"
+
+## 2025-03-11 14:20:10
+"now the copy icon is invisible"
+
+## 2025-03-11 14:22:20
+"1. it is not correctly centered in the bottom right (on pic) 
+2. also it needs to have transparent bg"

@@ -389,12 +389,16 @@ select {
 .message {
   position: relative;
   padding: 0.75rem 1rem;
+  padding-bottom: calc(0.75rem + 20px); /* Increased padding to better accommodate copy button */
   margin-bottom: 0.75rem;
   border-radius: var(--border-radius-medium);
+  min-width: 200px;
   max-width: 100%;
   box-shadow: var(--shadow-sm);
   word-wrap: break-word;
   line-height: 1.5;
+  display: flex;
+  flex-direction: column;
 }
 
 .user-message {
@@ -411,12 +415,60 @@ select {
   margin-right: 2rem;
 }
 
+.message-header {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 0.5rem;
+}
+
 .message-timestamp {
   font-size: 0.7rem;
   color: var(--info-text);
-  display: block;
-  margin-top: 0.5rem;
-  text-align: right;
+  margin-left: 0.5rem;
+}
+
+.message-content {
+  padding-right: 2.5rem;
+  word-break: break-word;
+  flex: 1;
+  position: relative;
+}
+
+/* Message copy button styles */
+.copy-button {
+  position: absolute;
+  right: 8px;
+  bottom: 8px; /* Position exactly at the bottom */
+  background-color: transparent !important;
+  color: var(--copy-button-color);
+  border: none;
+  border-radius: var(--border-radius-small);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.message:hover .copy-button {
+  opacity: 0.8;
+}
+
+.copy-button:hover {
+  opacity: 1 !important;
+  transform: scale(1.1);
+}
+
+.copy-button::before {
+  content: var(--copy-icon);
+  font-size: 14px;
 }
 
 /* Conversation info styles */
@@ -587,15 +639,6 @@ select {
   box-shadow: var(--shadow-sm);
 }
 
-.message-header {
-  font-weight: 600;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .header-content {
   font-weight: bold;
 }
@@ -662,43 +705,6 @@ select {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
-}
-
-/* Message copy button styles */
-.copy-button {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  background-color: var(--copy-button-bg);
-  color: var(--copy-button-color);
-  border: none;
-  border-radius: var(--border-radius-small);
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s, background-color 0.2s;
-}
-
-.copy-button::before {
-  content: var(--copy-icon);
-  font-size: 14px;
-}
-
-.message:hover .copy-button {
-  opacity: 1;
-}
-
-.copy-button:hover {
-  background-color: var(--copy-button-hover);
-}
-
-.message-content {
-  padding-right: 2rem; /* Make space for copy button */
-  word-break: break-word;
 }
 
 /* Utility classes */
