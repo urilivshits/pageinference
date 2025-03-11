@@ -289,11 +289,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Get current tab ID and URL
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       console.log('Current tab:', tab);
-      const { url, title } = tab;
       
-      // Get current page load ID
-      const { pageLoadId } = await chrome.storage.local.get('pageLoadId');
-      console.log('Page load ID:', pageLoadId);
+      if (!tab) {
+        throw new Error('No active tab found. Please try again.');
+      }
+      
+      const { id: tabId, url, title } = tab;
+      
+      // Make sure we have the current pageLoadId
+      if (!currentPageLoadId) {
+        // Try to recover the pageLoadId
+        const storageKey = `page_load_${tabId}_${url}`;
+        const { [storageKey]: storedPageLoadId } = await chrome.storage.local.get(storageKey);
+        
+        if (storedPageLoadId) {
+          currentPageLoadId = storedPageLoadId;
+          console.log(`Recovered pageLoadId: ${currentPageLoadId}`);
+        } else {
+          // If we still don't have a pageLoadId, create a new one
+          console.log('Creating new pageLoadId as none was found');
+          currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+        }
+      }
+      
+      console.log('Using pageLoadId:', currentPageLoadId);
       
       // First, get the page content by scraping the current page
       console.log('Sending scrapeCurrentPage message');
@@ -317,7 +337,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         content: scraperResponse.content,
         url,
         tabId: tab.id,
-        pageLoadId,
+        pageLoadId: currentPageLoadId,
         pageTitle: title
       });
       console.log('Inference response:', response);

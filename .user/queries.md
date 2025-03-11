@@ -123,3 +123,7 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 
 ## 2025-03-11 12:30:00
 "now also please make sure that the on each history item list the last user request data is shown (now it shows no request even though there was a new request that went well). no need to handle older chats"
+
+## 2025-03-11 12:39:50
+"lets continue:
+1. after first message is sent upon sending the second message for inference it says no active tab found even though im still on it"

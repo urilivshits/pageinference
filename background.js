@@ -251,11 +251,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         let pageTitle = '';
         
         if (!url && request.tabId) {
-          const tab = await chrome.tabs.get(request.tabId).catch(() => null);
-          if (tab) {
-            url = tab.url;
-            pageTitle = tab.title || '';
+          try {
+            const tab = await chrome.tabs.get(request.tabId).catch(() => null);
+            if (tab) {
+              url = tab.url;
+              pageTitle = tab.title || '';
+            } else {
+              console.error('Tab not found with ID:', request.tabId);
+            }
+          } catch (tabError) {
+            console.error('Error getting tab information:', tabError);
+            // Continue with available data rather than failing completely
           }
+        }
+        
+        if (!url) {
+          console.warn('URL not available, using fallback empty string');
         }
         
         const result = await getOpenAiInference(
@@ -268,7 +279,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         
         // Store in chat history
         if (request.tabId && request.url && request.pageLoadId) {
-          const historyKey = `${request.tabId}_${request.url}_${request.pageLoadId}`;
+          // Use a more reliable key format based on domain
+          const baseDomain = getBaseDomain(request.url);
+          const historyKey = `${request.tabId}_${baseDomain}_${request.pageLoadId}`;
+          
+          console.log(`Storing chat history with key: ${historyKey}`);
+          
           if (!chatHistories[historyKey]) {
             chatHistories[historyKey] = [];
           }
@@ -285,10 +301,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             content: result,
             timestamp: new Date().toISOString()
           });
+        } else {
+          console.warn('Missing data for chat history:', {
+            tabId: request.tabId,
+            url: request.url,
+            pageLoadId: request.pageLoadId
+          });
         }
         
         sendResponse({ answer: result });
       } catch (error) {
+        console.error('Error during inference:', error);
+        
         // Check for specific model-related errors
         if (error.message && error.message.includes('does not exist or you do not have access to it')) {
           sendResponse({ 
@@ -399,5 +423,25 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
   } catch (error) {
     console.error('OpenAI API Error:', error);
     throw error;
+  }
+}
+
+/**
+ * Get the base domain from a URL
+ * @param {string} url - The URL to extract the domain from
+ * @returns {string} The base domain
+ */
+function getBaseDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    // Extract hostname and remove 'www.' if present
+    let hostname = urlObj.hostname;
+    if (hostname.startsWith('www.')) {
+      hostname = hostname.substring(4);
+    }
+    return hostname;
+  } catch (e) {
+    console.error('Error extracting base domain:', e);
+    return url; // Return the original URL if parsing fails
   }
 } 
