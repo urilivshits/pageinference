@@ -503,18 +503,45 @@ function updateConversationInfo(sessionInfo = null) {
   if (!sessionInfo) {
     sessionInfo = {
       title: currentPageTitle || 'Current Page',
-      created: new Date().toISOString()
+      created: new Date().toISOString(),
+      messageCount: 0,
+      lastUserRequest: ''
     };
   }
 
-  // Update the conversation title
-  currentConversationTitle.textContent = truncateText(sessionInfo.title, 40);
-  currentConversationTitle.title = sessionInfo.title; // Full title on hover
+  // Clear previous content
+  currentConversationTitle.innerHTML = '';
   
-  // Format and update the timestamp
+  // Create webpage title element - now takes full width
+  const title = document.createElement('span');
+  title.classList.add('webpage-title');
+  title.title = sessionInfo.title || 'Current Page';
+  title.textContent = truncateText(sessionInfo.title || 'Current Page', 50); // Increased length since using full width
+  
+  // Add webpage title to the title container
+  currentConversationTitle.appendChild(title);
+  
+  // Format and update the timestamp with time on left, message count on right
   const timestamp = new Date(sessionInfo.created);
   const formattedTime = timestamp.toLocaleString();
-  currentConversationTimestamp.textContent = formattedTime;
+  
+  // Create date span for left side
+  const dateSpan = document.createElement('span');
+  dateSpan.classList.add('session-date');
+  dateSpan.textContent = formattedTime;
+  
+  // Create message count span for right side
+  const countSpan = document.createElement('span');
+  countSpan.classList.add('message-count');
+  const messageCountText = sessionInfo.messageCount ? `${sessionInfo.messageCount} messages` : '0 messages';
+  countSpan.textContent = messageCountText;
+  
+  // Clear previous timestamp content
+  currentConversationTimestamp.innerHTML = '';
+  
+  // Add both spans to the timestamp container
+  currentConversationTimestamp.appendChild(dateSpan);
+  currentConversationTimestamp.appendChild(countSpan);
   
   // Make sure the info bar is visible
   currentConversationInfo.classList.remove('hidden');
@@ -566,13 +593,14 @@ async function startNewConversation() {
   // Mark as new conversation
   isInNewConversation = true;
   
-  const conversationInfo = {
-    title: currentPageTitle || 'Chat',
-    created: new Date().toISOString()
-  };
-  
-  // Update conversation info
-  updateConversationInfo(conversationInfo);
+  // Update conversation info with the new format
+  updateConversationInfo({
+    title: currentPageTitle || 'Current Page',
+    created: new Date().toISOString(),
+    messageCount: 0,
+    // We still track lastUserRequest for storage, though it's not displayed
+    lastUserRequest: ''
+  });
   
   // Save this as a new chat session immediately with initial empty last user request
   await saveChatSession(currentTabId, currentUrl, currentPageLoadId, [], 'New conversation');
@@ -685,6 +713,25 @@ async function addMessageToChat(role, content) {
   // Apply appropriate styling based on role
   if (role === 'user') {
     messageElement.classList.add('user-message');
+    
+    // Update conversation info with this latest user message
+    // Get current session info
+    try {
+      const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+      const currentSession = chatSessions.find(s => s.pageLoadId === currentPageLoadId);
+      
+      if (currentSession) {
+        updateConversationInfo({
+          title: currentSession.title || 'Current Page',
+          created: currentSession.created,
+          lastUpdated: new Date().toISOString(),
+          messageCount: (currentSession.messageCount || 0) + 1,
+          lastUserRequest: content
+        });
+      }
+    } catch (error) {
+      console.error('Error updating conversation info with latest message:', error);
+    }
   } else if (role === 'assistant') {
     messageElement.classList.add('ai-message');
   } else if (role === 'system') {
@@ -888,6 +935,19 @@ async function saveChatSession(tabId, url, pageLoadId, history, lastUserRequest)
         tabId: tabId, // Store the tab ID for backward compatibility
         lastUserRequest: lastUserRequest || chatSessions[existingIndex].lastUserRequest // Keep existing lastUserRequest if new one not provided
       };
+      
+      // If this is the current session, also update the conversation info display
+      if (chatSessions[existingIndex].pageLoadId === currentPageLoadId) {
+        updateConversationInfo({
+          title: chatSessions[existingIndex].title || 'Current Page',
+          created: chatSessions[existingIndex].created,
+          lastUpdated: chatSessions[existingIndex].lastUpdated,
+          messageCount: chatSessions[existingIndex].messageCount,
+          // Still tracking lastUserRequest for storage purposes
+          // even though it's not displayed in the header anymore
+          lastUserRequest: chatSessions[existingIndex].lastUserRequest || ''
+        });
+      }
     } else {
       // Add new session
       console.log('Adding new session to chat sessions');
@@ -1258,7 +1318,8 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
                 url: session.url,
                 created: session.created,
                 lastUpdated: session.lastUpdated,
-                messageCount: session.messageCount
+                messageCount: session.messageCount,
+                lastUserRequest: session.lastUserRequest || ''
             };
         }
         

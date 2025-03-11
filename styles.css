@@ -490,25 +490,51 @@ select {
 
 /* Conversation info styles */
 .conversation-info {
-  background-color: var(--conversation-info-bg);
-  border: 1px solid var(--conversation-info-border);
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 1rem;
   border-radius: var(--border-radius-medium);
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
+  background-color: var(--sessions-bg);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   font-size: 0.875rem;
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
 }
 
 #currentConversationTitle {
   font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: flex;
 }
 
 #currentConversationTimestamp {
   color: var(--info-text);
   font-size: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Adjust conversation info title to use full width */
+.conversation-info .webpage-title {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Maintain the existing style for the history items */
+.chat-session-title .webpage-title {
+  width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-info .session-date {
+  margin-right: 0;
+}
+
+.conversation-info .message-count {
+  margin-right: 0;
 }
 
 /* Chat sessions styles */
@@ -590,12 +616,13 @@ select {
   color: var(--info-text);
 }
 
+/* Keep session date on left and message count on right */
 .session-date {
-  margin-right: 1rem;
+  margin-right: auto; /* Push to the left */
 }
 
 .message-count {
-  margin-right: 1rem;
+  margin-left: auto; /* Push to the right */
 }
 
 .empty-state {
