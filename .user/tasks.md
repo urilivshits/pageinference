@@ -450,3 +450,25 @@ Example task format for future use:
 - [x] Update documentation:
   - [x] Add task to tasks.md
   - [x] Update timestamp in all relevant files
+
+## 2025-03-11 14:47:03 - Fix Popup UI Scrollbar Issues
+
+### UI Improvements
+- [x] Hide outer scrollbar of the popup at all times
+- [x] Ensure all elements in chat view are visible without outer scroll:
+  - [x] Header section (chat, history, settings)
+  - [x] Conversation area with inner scroll bar
+  - [x] User input box and "Ask" button
+- [x] Ensure all elements in history view are visible without outer scroll:
+  - [x] Header section
+  - [x] Conversation history list with inner scroll
+  - [x] Return to chat UI elements
+
+## 2025-03-11 14:50:15 - Fix Popup Height Issue
+
+### UI Layout Fix
+- [x] Fix CSS height settings causing popup to display only one line
+- [x] Adjust body and container height settings to use auto height
+- [x] Add appropriate min-height values to ensure content is displayed
+- [x] Maintain overflow hidden to prevent scrollbars
+- [x] Test that all popup content is visible

@@ -155,3 +155,14 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 ## 2025-03-11 14:22:20
 "1. it is not correctly centered in the bottom right (on pic) 
 2. also it needs to have transparent bg"
+
+## 2025-03-11 14:47:03
+"fol@rules.mdc and make sure:
+1. outer scroll bar (scroll bar of popup) is hidden at all times
+2. in conversations (in chat and in history) all the elements are visible without the need for outer scroll, namely:
+- the header section (chat, history, settings)
+- the conversation itself with the inner scroll bar (of the conversation) 
+- user input box and "ask" button"
+
+## 2025-03-11 14:50:15
+"now only 1 line of the popup is visible and thats it"

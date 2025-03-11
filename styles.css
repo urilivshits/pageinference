@@ -107,7 +107,10 @@ body {
   line-height: 1.5;
   /* Apply border radius to the body to create rounded corners for the popup */
   border-radius: var(--border-radius-medium);
-  overflow: hidden;
+  overflow: hidden; /* Prevent body scrolling */
+  height: auto; /* Let content determine height */
+  min-height: 200px; /* Minimum height for the popup */
+  max-height: 600px; /* Maximum height for the popup */
 }
 
 html {
@@ -117,9 +120,14 @@ html {
 
 .container {
   width: 480px;
+  height: auto; /* Let content determine height */
+  min-height: 400px; /* Minimum height for the container */
   padding: 1rem;
   /* Ensure the container respects the body's border radius */
   border-radius: var(--border-radius-medium);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent container scrolling */
 }
 
 /* Header styles */
@@ -228,6 +236,11 @@ h2 {
 /* Content area styles */
 .content-area {
   padding: 1rem 0;
+  flex: 1; /* Allow content area to flex and take available space */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Hide outer scrollbar */
+  min-height: 300px; /* Ensure minimum height for content */
 }
 
 .info-message {
@@ -239,6 +252,7 @@ h2 {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  margin-top: auto; /* Push to bottom of flex container */
 }
 
 /* Form input styling */
@@ -381,10 +395,12 @@ select {
   flex-direction: column;
   gap: 0.75rem;
   max-height: 350px;
-  overflow-y: auto;
+  min-height: 200px; /* Minimum height for chat history */
+  overflow-y: auto; /* Only inner scroll for chat history */
   padding-right: 0.25rem;
   margin-bottom: 1rem;
   scroll-behavior: smooth;
+  flex: 1; /* Allow chat history to flex within content area */
 }
 
 .message {
@@ -499,17 +515,20 @@ select {
 .chat-sessions-container {
   width: 100%;
   max-height: none;
-  overflow-y: auto;
+  overflow-y: auto; /* Only inner scroll for session container */
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-medium);
   margin-bottom: 1rem;
   background-color: var(--sessions-bg);
   box-shadow: var(--shadow-sm);
+  flex: 1; /* Allow session container to flex */
 }
 
 #pastConversationsView .chat-sessions-container {
   max-height: 400px;
+  min-height: 250px; /* Minimum height for past conversations */
   margin-top: 0;
+  flex: 1; /* Allow to flex within the content area */
 }
 
 .chat-session-item {
@@ -749,4 +768,23 @@ select {
 
 .theme-option input[type="radio"] {
   margin: 0;
+}
+
+#pastConversationsView {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px; /* Minimum height for conversations view */
+}
+
+#mainContent {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px; /* Minimum height for main content */
+}
+
+#settingsContent {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px; /* Minimum height for settings content */
+  overflow-y: auto; /* Add scrollbar to settings if needed */
 } 
