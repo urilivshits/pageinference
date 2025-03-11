@@ -316,3 +316,15 @@ Example task format for future use:
 - [x] Fix the loadAndDisplayChatSession function
 - [x] Ensure correct key handling for base domain approach
 - [x] Test history loading across different domains
+
+## 2025-03-11 11:28:46 - Add New Topics to History Immediately
+- [x] Modify `startNewConversation()` function to save new conversations to history immediately
+- [x] Update `saveChatSession()` function to handle empty history arrays
+- [x] Test that new conversations appear in history without requiring messages
+
+## 2025-03-11 11:53:37 - Prevent Multiple Empty Conversations on Same Website
+- [x] Modify `startNewConversation()` to check for existing empty conversations from same domain
+- [x] Add logic to remove empty conversations from the same domain before creating a new one
+- [x] Ensure proper domain comparison using `getBaseDomain()` function
+- [x] Maintain non-empty conversations and conversations from different domains
+- [x] Add error handling to ensure new conversation creation proceeds even if cleanup fails

@@ -502,6 +502,52 @@ function truncateText(text, maxLength) {
 async function startNewConversation() {
   console.log('Starting new conversation');
   
+  // Check for empty conversations from the same website before creating a new one
+  try {
+    // Get all existing chat sessions
+    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+    
+    if (chatSessions.length > 0) {
+      console.log('Checking for empty conversations from the same website...');
+      
+      // Get the current site's base domain
+      const currentDomain = getBaseDomain(currentUrl);
+      
+      // Find empty conversations from the same website
+      const emptyConversations = chatSessions.filter(session => {
+        // Check if it's from the same domain
+        const sessionDomain = getBaseDomain(session.url);
+        const isSameDomain = sessionDomain === currentDomain;
+        
+        // Check if it's empty (0 messages)
+        const isEmpty = session.messageCount === 0;
+        
+        return isSameDomain && isEmpty;
+      });
+      
+      if (emptyConversations.length > 0) {
+        console.log(`Found ${emptyConversations.length} empty conversations from the same website. Removing them.`);
+        
+        // Filter out the empty conversations from the same website
+        const updatedSessions = chatSessions.filter(session => {
+          const sessionDomain = getBaseDomain(session.url);
+          const isSameDomain = sessionDomain === currentDomain;
+          const isEmpty = session.messageCount === 0;
+          
+          // Keep all conversations that are either not from the same domain or not empty
+          return !(isSameDomain && isEmpty);
+        });
+        
+        // Update storage with the filtered sessions
+        await chrome.storage.local.set({ chatSessions: updatedSessions });
+        console.log('Empty conversations removed.');
+      }
+    }
+  } catch (error) {
+    console.error('Error checking for empty conversations:', error);
+    // Continue with new conversation creation even if this check fails
+  }
+  
   // Generate a new page load ID
   currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   
@@ -519,11 +565,16 @@ async function startNewConversation() {
   // Mark as new conversation
   isInNewConversation = true;
   
-  // Update conversation info
-  updateConversationInfo({
-    title: currentPageTitle || 'New Conversation',
+  const conversationInfo = {
+    title: currentPageTitle || 'Active Topic',
     created: new Date().toISOString()
-  });
+  };
+  
+  // Update conversation info
+  updateConversationInfo(conversationInfo);
+  
+  // Save this as a new chat session immediately
+  await saveChatSession(currentTabId, currentUrl, currentPageLoadId, []);
   
   // Show main view and update UI state
   showMainView();
@@ -701,7 +752,8 @@ async function addMessageToChat(role, content) {
  * @param {Array} history - The chat history
  */
 async function saveChatSession(tabId, url, pageLoadId, history) {
-  if (!history || history.length === 0) return;
+  // Allow empty history for new conversations
+  if (!history) history = [];
   
   try {
     // Get the page title
@@ -918,7 +970,7 @@ async function loadAndShowPastSessions() {
   
   // Get current base domain
   const currentBaseDomain = getBaseDomain(currentUrl);
-  header.textContent = `Recent Conversations on ${currentBaseDomain}`;
+  header.textContent = `History on ${currentBaseDomain}`;
   sessionsContainer.appendChild(header);
   
   // Load sessions
@@ -940,7 +992,7 @@ async function loadAndShowPastSessions() {
   if (sessions.length === 0) {
     const emptyItem = document.createElement('div');
     emptyItem.classList.add('chat-session-item');
-    emptyItem.textContent = 'No saved conversations yet';
+    emptyItem.textContent = 'No history yet';
     sessionsContainer.appendChild(emptyItem);
   } else {
     // Add each session
@@ -979,15 +1031,15 @@ async function loadAndShowPastSessions() {
       // Create delete button
       const deleteBtn = document.createElement('button');
       deleteBtn.classList.add('delete-button');
-      deleteBtn.title = 'Delete conversation';
-      deleteBtn.setAttribute('aria-label', 'Delete conversation');
+      deleteBtn.title = 'Delete from history';
+      deleteBtn.setAttribute('aria-label', 'Delete from history');
       
       // Add event listener for delete button
       deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation(); // Prevent triggering the session click
         
         // Add confirmation
-        if (confirm('Delete this conversation? This action cannot be undone.')) {
+        if (confirm('Delete this topic from history? This action cannot be undone.')) {
           await deleteConversation(session.pageLoadId);
         }
       });

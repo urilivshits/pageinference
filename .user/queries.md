@@ -110,3 +110,10 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 
 ## 2025-03-11 10:11:29
 "it looks like now history is not working at all, i see the history title and number of messages but when i click on it nothing happens"
+
+## 2025-03-11 11:28:46
+"1. @rules.mdc  make sure to follow the project rules
+2. make it so if a new active topic is created it gets added to history right away"
+
+## 2025-03-11 11:53:37
+"lets also make sure there's not more than 1 exmpty new conversation at a time on the same website. this means whenever new topic starts > check if there is an empty topic previously from the same website > remove the old one and write the new one to the history list"
