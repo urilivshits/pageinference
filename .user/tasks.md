@@ -472,3 +472,51 @@ Example task format for future use:
 - [x] Add appropriate min-height values to ensure content is displayed
 - [x] Maintain overflow hidden to prevent scrollbars
 - [x] Test that all popup content is visible
+
+## 2025-03-11 15:20:26 - Improve User Input Sizing and Padding
+
+### UI Improvements
+- [x] Reduce textarea height from 80px to 50px
+- [x] Add max-height of 100px to prevent excessive growth
+- [x] Add consistent padding (8px) to textarea
+- [x] Improve line spacing with line-height: 1.4
+- [x] Add padding to question-container for better spacing
+- [x] Update general form input padding for consistency
+
+## 2025-03-11 15:24:52 - Improve User Input Positioning
+
+### UI Improvements
+- [x] Decrease bottom padding of user input and "Ask" button
+  - [x] Reduce padding from 8px to 6px vertically
+  - [x] Reduce margin-bottom from 1rem to 0.5rem
+- [x] Make input area sticky to the bottom of popup
+  - [x] Add position: sticky and bottom: 0
+  - [x] Add z-index to ensure proper layering
+  - [x] Add subtle border top for visual separation
+  - [x] Set background color to match popup background
+- [x] Adjust related elements for proper spacing
+  - [x] Update content-area to create positioning context
+  - [x] Reduce chat-history bottom margin for better spacing
+
+## 2025-03-11 15:33:01 - Improve User Input and Add Button Loading State
+
+### UI Improvements
+- [x] Decrease bottom padding further
+  - [x] Reduce vertical padding from 6px to 4px
+  - [x] Reduce bottom margin from 0.5rem to 0.25rem
+  - [x] Match the compact appearance shown in the image
+
+### Loading State Enhancement
+- [x] Implement in-button loading state
+  - [x] Add spinner inside the Ask button
+  - [x] Create button-loading class to handle visual state
+  - [x] Make button text invisible during loading
+  - [x] Add pointer-events: none to prevent clicks while loading
+  - [x] Ensure loading animation is centered in button
+- [x] Remove separate loading indicator
+  - [x] Remove loading indicator HTML element
+  - [x] Remove JavaScript references to loading indicator
+  - [x] Update all error handling to use button loading state
+- [x] Update error handling
+  - [x] Ensure button loading state is properly toggled on/off
+  - [x] Maintain consistent user experience

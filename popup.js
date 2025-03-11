@@ -43,8 +43,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   const questionInput = document.getElementById('questionInput');
   console.log('questionInput element:', questionInput);
-  const loadingIndicator = document.getElementById('loadingIndicator');
   errorMessage = document.getElementById('errorMessage');
+  console.log('Error message element:', errorMessage);
   const apiKeyInput = document.getElementById('apiKeyInput');
   const toggleApiKeyBtn = document.getElementById('toggleApiKeyBtn');
   modelSelect = document.getElementById('modelSelect');
@@ -282,8 +282,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Clear input after saving
     questionInput.value = '';
     
-    // Show loading indicator
-    loadingIndicator.classList.remove('hidden');
+    // Show loading state in button
+    submitBtn.classList.add('button-loading');
+    submitBtn.querySelector('.spinner').style.display = 'block';
     
     try {
       // Get current tab ID and URL
@@ -324,7 +325,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       if (scraperResponse.error) {
         showError(scraperResponse.error);
-        loadingIndicator.classList.add('hidden');
+        submitBtn.classList.remove('button-loading');
+        submitBtn.querySelector('.spinner').style.display = 'none';
         isProcessing = false; // Reset processing flag
         return;
       }
@@ -342,8 +344,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       console.log('Inference response:', response);
       
-      // Hide loading indicator
-      loadingIndicator.classList.add('hidden');
+      // Hide loading state in button
+      submitBtn.classList.remove('button-loading');
+      submitBtn.querySelector('.spinner').style.display = 'none';
       
       if (response.error) {
         showError(response.error);
@@ -357,7 +360,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Stay in main view
       showMainView();
     } catch (error) {
-      loadingIndicator.classList.add('hidden');
+      submitBtn.classList.remove('button-loading');
+      submitBtn.querySelector('.spinner').style.display = 'none';
       showError(error.message || 'An error occurred');
       console.error('Error:', error);
     } finally {

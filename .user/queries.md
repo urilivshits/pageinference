@@ -166,3 +166,14 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 
 ## 2025-03-11 14:50:15
 "now only 1 line of the popup is visible and thats it"
+
+## 2025-03-11 15:20:26
+"lets make the height of the user input a bit smaller so it fits into popup gracefully without scroll and with a bit of padding."
+
+## 2025-03-11 15:24:52
+"1. decrease the bottom padding of user input and "ask" button a bit
+2. make sure user input and "ask" button are sticky to the bottom of the popup with some padding"
+
+## 2025-03-11 15:33:01
+"1. decrease bottom padding a bit more so its like on the image 
+2. move the loader that appears upon inference inside the "ask" button, so that the ask label disappears and the loader appears while response is loading. make sure button cant be clicked while its in loader state."

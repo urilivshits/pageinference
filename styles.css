@@ -235,12 +235,13 @@ h2 {
 
 /* Content area styles */
 .content-area {
-  padding: 1rem 0;
+  padding: 1rem 0 0.5rem 0; /* Reduced bottom padding */
   flex: 1; /* Allow content area to flex and take available space */
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Hide outer scrollbar */
   min-height: 300px; /* Ensure minimum height for content */
+  position: relative; /* Create positioning context for sticky elements */
 }
 
 .info-message {
@@ -251,8 +252,14 @@ h2 {
 .question-container {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1rem;
-  margin-top: auto; /* Push to bottom of flex container */
+  margin-bottom: 0.25rem;
+  margin-top: auto;
+  padding: 4px 4px;
+  position: sticky;
+  bottom: 0;
+  background-color: var(--background-color);
+  z-index: 10;
+  border-top: 1px solid var(--border-color-light);
 }
 
 /* Form input styling */
@@ -260,7 +267,7 @@ textarea,
 input[type="text"], 
 input[type="password"], 
 select {
-  padding: 0.5rem;
+  padding: 8px;
   border: 1px solid var(--input-border);
   border-radius: var(--border-radius-medium);
   background-color: var(--input-bg);
@@ -281,9 +288,12 @@ select:focus {
 /* Specific textarea styling */
 textarea {
   flex: 1;
-  min-height: 80px;
+  min-height: 50px;
+  max-height: 100px;
   resize: vertical;
   font-family: inherit;
+  padding: 8px;
+  line-height: 1.4;
 }
 
 /* Specific select styling */
@@ -307,6 +317,23 @@ select {
   align-items: center;
   gap: 1rem;
   padding: 2rem 0;
+}
+
+/* Button loading state */
+.button-loading {
+  position: relative;
+  color: transparent !important; /* Hide button text */
+  pointer-events: none; /* Prevent clicks while loading */
+}
+
+.button-loading .spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1.2rem;
+  height: 1.2rem;
+  border-width: 2px;
 }
 
 .spinner {
@@ -398,7 +425,7 @@ select {
   min-height: 200px; /* Minimum height for chat history */
   overflow-y: auto; /* Only inner scroll for chat history */
   padding-right: 0.25rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem; /* Reduced from 1rem to 0.5rem */
   scroll-behavior: smooth;
   flex: 1; /* Allow chat history to flex within content area */
 }
