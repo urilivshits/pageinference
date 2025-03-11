@@ -235,7 +235,7 @@ h2 {
 
 /* Content area styles */
 .content-area {
-  padding: 1rem 0 0.5rem 0; /* Reduced bottom padding */
+  padding: 1rem 0 0.25rem 0; /* Reduced bottom padding from 0.5rem to 0.25rem */
   flex: 1; /* Allow content area to flex and take available space */
   display: flex;
   flex-direction: column;
@@ -252,7 +252,7 @@ h2 {
 .question-container {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem; /* Reduced from 0.25rem to be closer to bottom */
   margin-top: auto;
   padding: 4px 4px;
   position: sticky;
@@ -425,7 +425,7 @@ select {
   min-height: 200px; /* Minimum height for chat history */
   overflow-y: auto; /* Only inner scroll for chat history */
   padding-right: 0.25rem;
-  margin-bottom: 0.5rem; /* Reduced from 1rem to 0.5rem */
+  margin-bottom: 0.125rem; /* Reduced from 0.5rem to match other elements */
   scroll-behavior: smooth;
   flex: 1; /* Allow chat history to flex within content area */
 }
@@ -544,7 +544,6 @@ select {
 .conversation-info .webpage-title {
   width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -552,7 +551,6 @@ select {
 .chat-session-title .webpage-title {
   width: 50%;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -571,7 +569,7 @@ select {
   overflow-y: auto; /* Only inner scroll for session container */
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-medium);
-  margin-bottom: 1rem;
+  margin-bottom: 0.125rem; /* Reduced from 1rem to match question-container */
   background-color: var(--sessions-bg);
   box-shadow: var(--shadow-sm);
   flex: 1; /* Allow session container to flex */

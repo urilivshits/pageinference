@@ -520,3 +520,27 @@ Example task format for future use:
 - [x] Update error handling
   - [x] Ensure button loading state is properly toggled on/off
   - [x] Maintain consistent user experience
+
+## 2025-03-11 15:51:11 - Synchronize Bottom Padding and Margins
+
+### UI Improvements
+- [x] Synchronize bottom padding and margins
+  - [x] Update chat's user input and "ask" button bottom spacing
+  - [x] Update history item's list bottom spacing
+  - [x] Make both elements closer to bottom border of popup
+  - [x] Ensure consistent spacing across all views
+- [x] Update documentation
+  - [x] Add task to tasks.md
+  - [x] Update timestamp in all relevant files
+
+## 2025-03-11 15:55:00 - Update Website Title Text Handling
+
+### UI Improvements
+- [x] Update website title text handling in chat and history views
+  - [x] Remove text truncation for website titles
+  - [x] Implement overflow hiding without ellipsis
+  - [x] Ensure consistent behavior in both chat and history views
+  - [x] Test with various title lengths
+- [x] Update documentation
+  - [x] Add task to tasks.md
+  - [x] Update timestamp in all relevant files

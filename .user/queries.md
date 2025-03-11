@@ -177,3 +177,10 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 ## 2025-03-11 15:33:01
 "1. decrease bottom padding a bit more so its like on the image 
 2. move the loader that appears upon inference inside the "ask" button, so that the ask label disappears and the loader appears while response is loading. make sure button cant be clicked while its in loader state."
+
+## 2025-03-11 15:51:11
+"1. sync bottom padding and margin of chat's user input and "ask" btn with history item's list bottom padding and margin. in both cases the elements should be a bit closer to the bottom border of the popup
+2. dont forget to follow project rules"
+
+## 2025-03-11 15:55:00
+"on "chat" and "history" where the website title is shown for the whole width of its container - dont truncate text. Make sure if it does not fit that it just hides"
