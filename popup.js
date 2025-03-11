@@ -537,31 +537,21 @@ function truncateText(text, maxLength) {
 async function startNewConversation() {
   console.log('Starting new conversation');
   
-  // Check for empty conversations from the same website before creating a new one
+  // Check for empty conversations before creating a new one
   try {
     // Get all existing chat sessions
     const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
     
     if (chatSessions.length > 0) {
-      console.log('Checking for empty conversations from the same website...');
+      console.log('Checking for empty conversations...');
       
-      // Get the current site's base domain
-      const currentDomain = getBaseDomain(currentUrl);
-      
-      // Find empty conversations from the same website
+      // Find all empty conversations (0 messages) - from any domain
       const emptyConversations = chatSessions.filter(session => {
-        // Check if it's from the same domain
-        const sessionDomain = getBaseDomain(session.url);
-        const isSameDomain = sessionDomain === currentDomain;
-        
-        // Check if it's empty (0 messages)
-        const isEmpty = session.messageCount === 0;
-        
-        return isSameDomain && isEmpty;
+        return session.messageCount === 0;
       });
       
       if (emptyConversations.length > 0) {
-        console.log(`Found ${emptyConversations.length} empty conversations from the same domain.`);
+        console.log(`Found ${emptyConversations.length} empty conversations.`);
         
         // Get existing empty conversations' pageLoadIds
         const emptyPageLoadIds = emptyConversations.map(c => c.pageLoadId);
@@ -709,6 +699,9 @@ async function loadSavedInputText() {
  * @param {string} content - The message content
  */
 async function addMessageToChat(role, content) {
+  // Create timestamp for the message
+  const timestamp = new Date().toISOString();
+  
   const messageElement = document.createElement('div');
   messageElement.classList.add('message');
   
@@ -724,14 +717,30 @@ async function addMessageToChat(role, content) {
   const header = document.createElement('div');
   header.classList.add('message-header');
   
+  // Create a container for the header content
+  const headerContent = document.createElement('div');
+  headerContent.classList.add('header-content');
+  
   // Set header text based on role
   if (role === 'user') {
-    header.textContent = 'You';
+    headerContent.textContent = 'You';
   } else if (role === 'assistant') {
-    header.textContent = 'Assistant';
+    headerContent.textContent = 'Assistant';
   } else if (role === 'system') {
-    header.textContent = 'System';
+    headerContent.textContent = 'System';
   }
+  
+  // Add timestamp to header
+  const timeDisplay = document.createElement('span');
+  timeDisplay.classList.add('message-timestamp');
+  
+  // Format the timestamp
+  const messageDate = new Date(timestamp);
+  timeDisplay.textContent = messageDate.toLocaleString();
+  
+  // Add the elements to header
+  header.appendChild(headerContent);
+  header.appendChild(timeDisplay);
   
   const messageContent = document.createElement('div');
   messageContent.classList.add('message-content');
@@ -759,7 +768,7 @@ async function addMessageToChat(role, content) {
     currentHistory.push({
       role,
       content,
-      timestamp: new Date().toISOString()
+      timestamp
     });
     
     await chrome.storage.local.set({ [chatHistoryKey]: currentHistory });
@@ -821,7 +830,39 @@ async function saveChatSession(tabId, url, pageLoadId, history, lastUserRequest)
     
     // Get existing sessions
     const result = await chrome.storage.local.get('chatSessions');
-    const chatSessions = result.chatSessions || [];
+    let chatSessions = result.chatSessions || [];
+    
+    // If this is an empty conversation, check for other empty conversations
+    if (history.length === 0) {
+      console.log('This is an empty conversation, checking for others...');
+      
+      // Find other empty conversations (not this one)
+      const otherEmptyConversations = chatSessions.filter(session => {
+        return session.messageCount === 0 && session.pageLoadId !== pageLoadId;
+      });
+      
+      if (otherEmptyConversations.length > 0) {
+        console.log(`Found ${otherEmptyConversations.length} other empty conversations. Removing them.`);
+        
+        // Get the IDs to remove
+        const idsToRemove = otherEmptyConversations.map(session => session.pageLoadId);
+        
+        // Remove these conversations from the array
+        chatSessions = chatSessions.filter(session => !idsToRemove.includes(session.pageLoadId));
+        
+        // Also delete their storage keys
+        for (const idToRemove of idsToRemove) {
+          // Find the session
+          const sessionToRemove = otherEmptyConversations.find(s => s.pageLoadId === idToRemove);
+          if (sessionToRemove) {
+            // Remove chat history from storage
+            const sessionHistoryKey = getChatHistoryKey(sessionToRemove.url, idToRemove);
+            await chrome.storage.local.remove(sessionHistoryKey);
+            console.log(`Removed empty session chat history with key: ${sessionHistoryKey}`);
+          }
+        }
+      }
+    }
     
     // Check if we already have a session for this pageLoadId
     const existingIndex = chatSessions.findIndex(s => s.pageLoadId === pageLoadId);
@@ -909,7 +950,7 @@ async function loadChatHistory() {
     if (history && history.length > 0) {
       // Display chat history from storage
       history.forEach(message => {
-        displayMessage(message.role, message.content);
+        displayMessage(message.role, message.content, message.timestamp);
       });
       
       console.log(`Displayed ${history.length} messages from history`);
@@ -934,7 +975,7 @@ async function loadChatHistory() {
         
         // Display the legacy history
         legacyHistory.forEach(message => {
-          displayMessage(message.role, message.content);
+          displayMessage(message.role, message.content, message.timestamp);
         });
         
         console.log(`Displayed ${legacyHistory.length} messages from legacy history`);
@@ -1022,134 +1063,119 @@ async function loadAndShowPastSessions() {
   // Clear existing items
   sessionsContainer.innerHTML = '';
   
-  // Add header
-  const header = document.createElement('div');
-  header.classList.add('chat-session-item');
-  header.style.fontWeight = 'bold';
-  header.style.borderBottom = '2px solid var(--border-color)';
-  
-  // Get current base domain
-  const currentBaseDomain = getBaseDomain(currentUrl);
-  header.textContent = `History on ${currentBaseDomain}`;
-  sessionsContainer.appendChild(header);
-  
-  // Load sessions
-  let sessions = await loadChatSessions();
-  
-  // Filter sessions to only show those from the same base domain
-  sessions = sessions.filter(session => {
-    try {
-      const sessionBaseDomain = getBaseDomain(session.url);
-      return sessionBaseDomain === currentBaseDomain;
-    } catch (e) {
-      console.error('Error comparing session domain:', e);
-      return false;
+  try {
+    const sessions = await loadChatSessions();
+    
+    if (!sessions || sessions.length === 0) {
+      const emptyState = document.createElement('div');
+      emptyState.classList.add('empty-state');
+      emptyState.textContent = 'No conversations found';
+      sessionsContainer.appendChild(emptyState);
+      return;
     }
-  });
-  
-  console.log(`Showing ${sessions.length} chat sessions for domain ${currentBaseDomain}`);
-  
-  if (sessions.length === 0) {
-    const emptyItem = document.createElement('div');
-    emptyItem.classList.add('chat-session-item');
-    emptyItem.textContent = 'No history yet';
-    sessionsContainer.appendChild(emptyItem);
-  } else {
-    // Add each session
-    for (const session of sessions) {
-      const item = document.createElement('div');
-      item.classList.add('chat-session-item');
-      if (session.pageLoadId === currentPageLoadId) {
-        item.classList.add('active');
-      }
-      
-      // Create a wrapper for the session content
-      const contentWrapper = document.createElement('div');
-      contentWrapper.classList.add('session-content');
-      
-      const titleContainer = document.createElement('div');
-      titleContainer.classList.add('chat-session-title');
-      
-      // Create webpage title element (50% width)
-      const webpageTitle = document.createElement('div');
-      webpageTitle.classList.add('webpage-title');
-      webpageTitle.textContent = truncateText(session.title || 'Unnamed conversation', 30);
-      webpageTitle.title = session.title; // Full title on hover
-      
-      // Create last user request element (50% width)
-      const lastRequest = document.createElement('div');
-      lastRequest.classList.add('last-user-request');
-      
-      // Get the last user request if available
-      let lastUserRequest = 'No request';
-      if (session.lastUserRequest) {
-        lastUserRequest = session.lastUserRequest;
-      }
-      lastRequest.textContent = truncateText(lastUserRequest, 30);
-      lastRequest.title = lastUserRequest; // Full request on hover
-      
-      // Add both elements to the title container
-      titleContainer.appendChild(webpageTitle);
-      titleContainer.appendChild(lastRequest);
-      
-      const meta = document.createElement('div');
-      meta.classList.add('chat-session-meta');
-      
-      const date = document.createElement('span');
-      date.textContent = new Date(session.lastUpdated).toLocaleString();
-      
-      const count = document.createElement('span');
-      count.textContent = `${session.messageCount} messages`;
-      
-      // Create delete button - now placed in the meta section
-      const deleteBtn = document.createElement('button');
-      deleteBtn.classList.add('delete-button');
-      deleteBtn.title = 'Delete from history';
-      deleteBtn.setAttribute('aria-label', 'Delete from history');
-      
-      // Add event listener for delete button
-      deleteBtn.addEventListener('click', async (e) => {
-        e.stopPropagation(); // Prevent triggering the session click
+    
+    // Add each session to the container
+    sessions.forEach(session => {
+      try {
+        // Create session item container
+        const item = document.createElement('div');
+        item.classList.add('chat-session-item');
+        item.id = `session-${session.pageLoadId}`;
         
-        // Add confirmation
-        if (confirm('Delete this topic from history? This action cannot be undone.')) {
-          await deleteConversation(session.pageLoadId);
-        }
-      });
-      
-      meta.appendChild(date);
-      meta.appendChild(count);
-      meta.appendChild(deleteBtn);
-      
-      contentWrapper.appendChild(titleContainer);
-      contentWrapper.appendChild(meta);
-      
-      item.appendChild(contentWrapper);
-      
-      // Add click handler to load session
-      contentWrapper.addEventListener('click', async () => {
-        try {
-          console.log(`Loading conversation with ID: ${session.pageLoadId}`);
+        // Create content wrapper
+        const contentWrapper = document.createElement('div');
+        contentWrapper.classList.add('session-content');
+        
+        // Create title container to hold both webpage title and last request
+        const titleContainer = document.createElement('div');
+        titleContainer.classList.add('chat-session-title');
+        
+        // Create webpage title element
+        const title = document.createElement('span');
+        title.classList.add('webpage-title');
+        title.title = session.title || 'Untitled';
+        title.textContent = truncateText(session.title || 'Untitled', 30);
+        
+        // Create last user request element
+        const lastRequest = document.createElement('span');
+        lastRequest.classList.add('last-user-request');
+        lastRequest.title = session.lastUserRequest || '';
+        lastRequest.textContent = truncateText(session.lastUserRequest || '', 30);
+        
+        // Add webpage title and last request to title container
+        titleContainer.appendChild(title);
+        titleContainer.appendChild(lastRequest);
+        
+        // Create metadata section
+        const meta = document.createElement('div');
+        meta.classList.add('session-meta');
+        
+        // Create date element with formatted date
+        const date = document.createElement('span');
+        date.classList.add('session-date');
+        const formattedDate = new Date(session.lastUpdated).toLocaleString();
+        date.textContent = formattedDate;
+        date.title = formattedDate;
+        
+        const count = document.createElement('span');
+        count.classList.add('message-count');
+        count.textContent = `${session.messageCount} messages`;
+        
+        // Create delete button - now placed in the meta section
+        const deleteBtn = document.createElement('button');
+        deleteBtn.classList.add('delete-button');
+        deleteBtn.title = 'Delete from history';
+        deleteBtn.setAttribute('aria-label', 'Delete from history');
+        
+        // Add event listener for delete button
+        deleteBtn.addEventListener('click', async (e) => {
+          e.stopPropagation(); // Prevent triggering the session click
           
-          // Set current page load ID before loading
-          currentPageLoadId = session.pageLoadId;
-          
-          // Load and display the selected chat session
-          await loadAndDisplayChatSession(session.pageLoadId, session);
-          
-          // Make sure we're not marked as a new conversation
-          isInNewConversation = false;
-          
-          // Show the main view after loading
-          showMainView();
-        } catch (error) {
-          console.error('Error switching to conversation:', error);
-          showError('Failed to load conversation. Please try again.');
-        }
-      });
-      
-      sessionsContainer.appendChild(item);
-    }
+          // Add confirmation
+          if (confirm('Delete this topic from history? This action cannot be undone.')) {
+            await deleteConversation(session.pageLoadId);
+          }
+        });
+        
+        meta.appendChild(date);
+        meta.appendChild(count);
+        meta.appendChild(deleteBtn);
+        
+        contentWrapper.appendChild(titleContainer);
+        contentWrapper.appendChild(meta);
+        
+        item.appendChild(contentWrapper);
+        
+        // Add click handler to load session
+        contentWrapper.addEventListener('click', async () => {
+          try {
+            console.log(`Loading conversation with ID: ${session.pageLoadId}`);
+            
+            // Set current page load ID before loading
+            currentPageLoadId = session.pageLoadId;
+            
+            // Load and display the selected chat session
+            await loadAndDisplayChatSession(session.pageLoadId, session);
+            
+            // Make sure we're not marked as a new conversation
+            isInNewConversation = false;
+            
+            // Show the main view after loading
+            showMainView();
+          } catch (error) {
+            console.error('Error switching to conversation:', error);
+            showError('Failed to load conversation. Please try again.');
+          }
+        });
+        
+        sessionsContainer.appendChild(item);
+      } catch (error) {
+        console.error('Error creating session item:', error);
+      }
+    });
+  } catch (error) {
+    console.error('Error loading past sessions:', error);
+    showError('Failed to load past conversations. Please try again.');
   }
   
   // Show the past conversations view
@@ -1255,7 +1281,7 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
         // Display messages
         history.forEach((message, index) => {
             try {
-                displayMessage(message.role, message.content);
+                displayMessage(message.role, message.content, message.timestamp);
             } catch (e) {
                 console.error(`Error displaying message ${index}:`, e);
             }
@@ -1282,8 +1308,9 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
  * Display a message in the chat history
  * @param {string} role - 'user', 'assistant', or 'system'
  * @param {string} content - The message content
+ * @param {string} timestamp - The timestamp of the message (optional)
  */
-function displayMessage(role, content) {
+function displayMessage(role, content, timestamp) {
   const messageElement = document.createElement('div');
   messageElement.classList.add('message');
   
@@ -1299,13 +1326,34 @@ function displayMessage(role, content) {
   const header = document.createElement('div');
   header.classList.add('message-header');
   
+  // Create a container for the header content
+  const headerContent = document.createElement('div');
+  headerContent.classList.add('header-content');
+  
   // Set header text based on role
   if (role === 'user') {
-    header.textContent = 'You';
+    headerContent.textContent = 'You';
   } else if (role === 'assistant') {
-    header.textContent = 'Assistant';
+    headerContent.textContent = 'Assistant';
   } else if (role === 'system') {
-    header.textContent = 'System';
+    headerContent.textContent = 'System';
+  }
+  
+  // Add timestamp to header if available
+  if (timestamp) {
+    const timeDisplay = document.createElement('span');
+    timeDisplay.classList.add('message-timestamp');
+    
+    // Format the timestamp
+    const messageDate = new Date(timestamp);
+    timeDisplay.textContent = messageDate.toLocaleString();
+    
+    // Add the timestamp to header
+    header.appendChild(headerContent);
+    header.appendChild(timeDisplay);
+  } else {
+    // If no timestamp, just add the header content
+    header.appendChild(headerContent);
   }
   
   const messageContent = document.createElement('div');

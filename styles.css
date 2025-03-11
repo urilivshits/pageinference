@@ -344,9 +344,22 @@ select {
 
 .message-header {
   font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-content {
+  font-weight: bold;
+}
+
+.message-timestamp {
   font-size: 0.75rem;
-  margin-bottom: 0.25rem;
-  color: #6b7280;
+  color: var(--info-text);
+  font-weight: normal;
+  margin-left: 0.5rem;
 }
 
 .action-buttons {
@@ -500,7 +513,7 @@ select {
 .chat-session-title {
   font-weight: 600;
   font-size: 0.875rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   display: flex;
 }
 
@@ -521,12 +534,26 @@ select {
   padding-left: 8px;
 }
 
-.chat-session-meta {
+.session-meta {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   font-size: 0.75rem;
   color: var(--info-text);
-  align-items: center;
+}
+
+.session-date {
+  margin-right: 1rem;
+}
+
+.message-count {
+  margin-right: 1rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 1rem;
+  color: var(--info-text);
 }
 
 /* Delete button styles */
