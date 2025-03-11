@@ -146,16 +146,20 @@ function modelSupportsBrowsing(model) {
 
 // Listen for messages from the content script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('Background script received message:', request);
+  
   // Handle scraping request (forward to active tab)
   if (request.action === 'scrapeCurrentPage') {
+    console.log('Handling scrapeCurrentPage request');
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
+        console.log('Sending scrapeContent message to tab:', tabs[0].id);
         chrome.tabs.sendMessage(
           tabs[0].id,
           { action: 'scrapeContent' },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.error(chrome.runtime.lastError);
+              console.error('Tab communication error:', chrome.runtime.lastError);
               sendResponse({ error: 'Error communicating with page' });
               return;
             }
@@ -165,6 +169,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             console.log('Detected website type:', websiteType.type);
             
             // Send content and website type
+            console.log('Sending scraped content response');
             sendResponse({ 
               content: response.content,
               websiteType: websiteType.type
@@ -172,6 +177,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
         );
       } else {
+        console.error('No active tab found');
         sendResponse({ error: 'No active tab found' });
       }
     });
@@ -180,6 +186,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // Handle API key storage
   if (request.action === 'setApiKey') {
+    console.log('Setting API key');
     chrome.storage.sync.set({ openAiApiKey: request.apiKey }, () => {
       sendResponse({ success: true });
     });
@@ -188,7 +195,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // Handle API key retrieval
   if (request.action === 'getApiKey') {
+    console.log('Getting API key');
     chrome.storage.sync.get('openAiApiKey', (data) => {
+      console.log('API key exists:', !!data.openAiApiKey);
       sendResponse({ apiKey: data.openAiApiKey || '' });
     });
     return true;
@@ -196,8 +205,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // Handle inference request
   if (request.action === 'getInference') {
+    console.log('Handling inference request');
     chrome.storage.sync.get('openAiApiKey', async (data) => {
       if (!data.openAiApiKey) {
+        console.error('API key not found');
         sendResponse({ error: 'API key not found. Please set your API key in the extension options.' });
         return;
       }

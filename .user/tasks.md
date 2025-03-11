@@ -298,3 +298,21 @@ Example task format for future use:
 - [x] Ensure past conversation messages are properly loaded when selected
 - [x] Verify correct behavior when switching between conversations
 - [x] Test conversation persistence across popup reopens
+
+## 2025-03-10 23:52:04 - Fix URL Handling for Conversation History
+
+### Domain-based Conversation Access
+- [x] Modify URL handling to use base domain instead of full URL
+- [x] Enable access to past conversations from the same base domain
+- [x] Update key generation for chat history storage
+- [x] Fix conversation display when switching between pages with same domain
+- [x] Test behavior across different pages on the same domain
+
+## 2025-03-11 10:11:29 - Fix Broken History Loading
+
+### Conversation History Loading
+- [x] Debug why clicking on history items doesn't load content
+- [x] Investigate console errors when clicking history items
+- [x] Fix the loadAndDisplayChatSession function
+- [x] Ensure correct key handling for base domain approach
+- [x] Test history loading across different domains

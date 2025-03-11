@@ -100,3 +100,13 @@ how come i dont have access to it? its a paid api token. maybe o3-mini is region
 
 ## 2025-03-10 23:14:55
 "there seems to be an issue with how past conversations are stored. Or on what happens when "new conversation" is clicked. basically at some point i cannot access the past conversations' messages anymore - at some point whenever i click on a past conversation thread to continue a previous chat it just sends me to "new conversation" which is empty"
+
+## 2025-03-10 23:52:04
+"ok, so now the issue that remained is:
+1. if i make a conversation on this page: @https://www.linkedin.com/in/yuriy-leonov/  then i can access the history whenever im on that page correctly
+2. if i then switch to this page @https://www.linkedin.com/in/iuliiashyshka/ i still see my conversation from the previous page but i cannot access the messages
+3. the correct way would be:
+- having access to past conversations from the same baseUrl"
+
+## 2025-03-11 10:11:29
+"it looks like now history is not working at all, i see the history title and number of messages but when i click on it nothing happens"

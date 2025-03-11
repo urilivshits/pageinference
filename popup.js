@@ -1,3 +1,5 @@
+console.log('popup.js loaded');
+
 /**
  * Page Inference - Popup Script
  * 
@@ -32,9 +34,15 @@ let isProcessing = false; // Add this flag near the other global variables at th
 
 // Event listeners for all document elements
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('DOMContentLoaded fired');
+  console.log('Initializing DOM elements...');
+  
   // Get DOM elements
   const submitBtn = document.getElementById('submitBtn');
+  console.log('submitBtn element:', submitBtn);
+  
   const questionInput = document.getElementById('questionInput');
+  console.log('questionInput element:', questionInput);
   const loadingIndicator = document.getElementById('loadingIndicator');
   errorMessage = document.getElementById('errorMessage');
   const apiKeyInput = document.getElementById('apiKeyInput');
@@ -237,11 +245,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Handle submit button click
   submitBtn.addEventListener('click', async () => {
+    console.log('Submit button clicked');
     const question = questionInput.value.trim();
-    if (!question || isProcessing) return; // Don't process if already processing
+    console.log('Question:', question);
+    console.log('Is processing:', isProcessing);
+    
+    // Check API key
+    const { apiKey } = await chrome.runtime.sendMessage({ action: 'getApiKey' });
+    console.log('API key exists:', !!apiKey);
+    
+    // Check selected model
+    const selectedModel = modelSelect.value;
+    console.log('Selected model:', selectedModel);
+    
+    if (!apiKey) {
+      showError('Please set your OpenAI API key in settings first.');
+      return;
+    }
+    
+    if (!question || isProcessing) {
+      console.log('Returning early - empty question or already processing');
+      return;
+    }
 
     // Set processing flag to prevent duplicate submissions
     isProcessing = true;
+    console.log('Set processing flag to true');
     hideError();
     
     // Save input before clearing
@@ -259,15 +288,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       // Get current tab ID and URL
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      console.log('Current tab:', tab);
       const { url, title } = tab;
       
       // Get current page load ID
       const { pageLoadId } = await chrome.storage.local.get('pageLoadId');
+      console.log('Page load ID:', pageLoadId);
       
       // First, get the page content by scraping the current page
+      console.log('Sending scrapeCurrentPage message');
       const scraperResponse = await chrome.runtime.sendMessage({
         action: 'scrapeCurrentPage'
       });
+      console.log('Scraper response:', scraperResponse);
       
       if (scraperResponse.error) {
         showError(scraperResponse.error);
@@ -277,6 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       // Now send for inference with the scraped content
+      console.log('Sending getInference message');
       const response = await chrome.runtime.sendMessage({
         action: 'getInference',
         question,
@@ -286,6 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         pageLoadId,
         pageTitle: title
       });
+      console.log('Inference response:', response);
       
       // Hide loading indicator
       loadingIndicator.classList.add('hidden');
@@ -680,6 +715,11 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
     
     console.log(`Saving chat session for ${pageLoadId} with ${history.length} messages`);
     
+    // Save chat history with the domain-based key
+    const chatHistoryKey = getChatHistoryKey(url, pageLoadId);
+    await chrome.storage.local.set({ [chatHistoryKey]: history });
+    console.log(`Saved chat history with key: ${chatHistoryKey}`);
+    
     // Get existing sessions
     const result = await chrome.storage.local.get('chatSessions');
     const chatSessions = result.chatSessions || [];
@@ -693,7 +733,8 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
       chatSessions[existingIndex] = {
         ...chatSessions[existingIndex],
         lastUpdated: new Date().toISOString(),
-        messageCount: history.length
+        messageCount: history.length,
+        tabId: tabId // Store the tab ID for backward compatibility
       };
     } else {
       // Add new session
@@ -704,7 +745,8 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
         title: pageTitle,
         created: new Date().toISOString(),
         lastUpdated: new Date().toISOString(),
-        messageCount: history.length
+        messageCount: history.length,
+        tabId: tabId // Store the tab ID for backward compatibility
       });
     }
     
@@ -723,10 +765,14 @@ async function saveChatSession(tabId, url, pageLoadId, history) {
 
 /**
  * Get the storage key for chat history based on current tab, URL, and pageLoadId
+ * @param {string} url - The URL to use (optional, defaults to currentUrl)
+ * @param {string} pageLoadId - The pageLoadId to use (optional, defaults to currentPageLoadId)
  * @returns {string} The storage key
  */
-function getChatHistoryKey() {
-  return `chat_history_${currentTabId}_${currentUrl}_${currentPageLoadId}`;
+function getChatHistoryKey(url = currentUrl, pageLoadId = currentPageLoadId) {
+  const baseDomain = getBaseDomain(url);
+  console.log(`Using base domain '${baseDomain}' for chat history key`);
+  return `chat_history_${baseDomain}_${pageLoadId}`;
 }
 
 /**
@@ -739,8 +785,8 @@ async function loadChatHistory() {
   }
   
   try {
-    // Get history based on the pageLoadId
-    const chatHistoryKey = getChatHistoryKey();
+    // Get history based on the domain and pageLoadId
+    const chatHistoryKey = getChatHistoryKey(currentUrl, currentPageLoadId);
     console.log(`Loading chat history with key: ${chatHistoryKey}`);
     
     // First try to get from chrome.storage.local for persistence
@@ -765,7 +811,37 @@ async function loadChatHistory() {
         history: history
       });
     } else {
-      console.log('No chat history found for current page or new conversation');
+      // Try legacy format for backward compatibility
+      const legacyKey = `chat_history_${currentTabId}_${currentUrl}_${currentPageLoadId}`;
+      console.log(`No history found with domain key, trying legacy key: ${legacyKey}`);
+      
+      const { [legacyKey]: legacyHistory } = await chrome.storage.local.get(legacyKey);
+      
+      if (legacyHistory && legacyHistory.length > 0) {
+        console.log(`Found ${legacyHistory.length} messages with legacy key`);
+        
+        // Display the legacy history
+        legacyHistory.forEach(message => {
+          displayMessage(message.role, message.content);
+        });
+        
+        console.log(`Displayed ${legacyHistory.length} messages from legacy history`);
+        
+        // Save with the new format for future use
+        await chrome.storage.local.set({ [chatHistoryKey]: legacyHistory });
+        console.log(`Migrated history to new key format: ${chatHistoryKey}`);
+        
+        // Update background script's in-memory history
+        await chrome.runtime.sendMessage({
+          action: 'updateChatHistory',
+          tabId: currentTabId,
+          url: currentUrl,
+          pageLoadId: currentPageLoadId,
+          history: legacyHistory
+        });
+      } else {
+        console.log('No chat history found for current page or new conversation');
+      }
     }
   } catch (error) {
     console.error('Error loading chat history:', error);
@@ -778,17 +854,37 @@ async function loadChatHistory() {
  */
 async function deleteConversation(pageLoadId) {
   try {
-    // Remove chat history from storage
-    const chatHistoryKey = `chat_history_${currentTabId}_${currentUrl}_${pageLoadId}`;
+    // Get the session to access its URL
+    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+    const session = chatSessions.find(s => s.pageLoadId === pageLoadId);
+    
+    if (!session) {
+      console.error('Cannot delete conversation: session not found');
+      return;
+    }
+    
+    // Remove chat history from storage using the new key format
+    const chatHistoryKey = getChatHistoryKey(session.url, pageLoadId);
     await chrome.storage.local.remove(chatHistoryKey);
+    console.log(`Removed chat history with key: ${chatHistoryKey}`);
+    
+    // Also remove any legacy format keys
+    const legacyKeys = [
+      `chat_history_${currentTabId}_${session.url}_${pageLoadId}`,
+      `chat_history_${currentTabId}_${getBaseDomain(session.url)}_${pageLoadId}`
+    ];
+    
+    for (const legacyKey of legacyKeys) {
+      await chrome.storage.local.remove(legacyKey);
+      console.log(`Removed legacy chat history key: ${legacyKey}`);
+    }
     
     // Remove input text from storage
-    const inputTextKey = `input_text_${currentTabId}_${currentUrl}_${pageLoadId}`;
+    const inputTextKey = `input_text_${currentTabId}_${session.url}_${pageLoadId}`;
     await chrome.storage.local.remove(inputTextKey);
     
     // Update sessions list
-    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
-    const updatedSessions = chatSessions.filter(session => session.pageLoadId !== pageLoadId);
+    const updatedSessions = chatSessions.filter(s => s.pageLoadId !== pageLoadId);
     await chrome.storage.local.set({ chatSessions: updatedSessions });
     
     // If we deleted the current conversation, start a new one
@@ -819,11 +915,27 @@ async function loadAndShowPastSessions() {
   header.classList.add('chat-session-item');
   header.style.fontWeight = 'bold';
   header.style.borderBottom = '2px solid var(--border-color)';
-  header.textContent = 'Recent Conversations';
+  
+  // Get current base domain
+  const currentBaseDomain = getBaseDomain(currentUrl);
+  header.textContent = `Recent Conversations on ${currentBaseDomain}`;
   sessionsContainer.appendChild(header);
   
   // Load sessions
-  const sessions = await loadChatSessions();
+  let sessions = await loadChatSessions();
+  
+  // Filter sessions to only show those from the same base domain
+  sessions = sessions.filter(session => {
+    try {
+      const sessionBaseDomain = getBaseDomain(session.url);
+      return sessionBaseDomain === currentBaseDomain;
+    } catch (e) {
+      console.error('Error comparing session domain:', e);
+      return false;
+    }
+  });
+  
+  console.log(`Showing ${sessions.length} chat sessions for domain ${currentBaseDomain}`);
   
   if (sessions.length === 0) {
     const emptyItem = document.createElement('div');
@@ -939,65 +1051,104 @@ async function loadChatSessions() {
  * @param {Object} sessionInfo - Session metadata
  */
 async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
-  try {
-    // Get existing sessions
-    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
-    
-    // Find the session in the sessions list
-    const session = chatSessions.find(s => s.pageLoadId === pageLoadId);
-    
-    if (!session) {
-      console.error('Chat session not found:', pageLoadId);
-      return;
+    try {
+        console.log('Starting to load chat session:', pageLoadId);
+        
+        if (!pageLoadId) {
+            throw new Error('No pageLoadId provided');
+        }
+        
+        // Get existing sessions
+        const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+        console.log('Found total sessions:', chatSessions.length);
+        
+        // Find the session in the sessions list
+        const session = chatSessions.find(s => s.pageLoadId === pageLoadId);
+        
+        if (!session) {
+            throw new Error('Chat session not found: ' + pageLoadId);
+        }
+        
+        console.log('Found session:', {
+            pageLoadId: session.pageLoadId,
+            url: session.url,
+            title: session.title,
+            messageCount: session.messageCount
+        });
+        
+        // Update current conversation info
+        isInNewConversation = false;
+        currentPageLoadId = pageLoadId;
+        
+        // Update UI with session info
+        if (!sessionInfo) {
+            sessionInfo = {
+                title: session.title || 'Unknown Page',
+                url: session.url,
+                created: session.created,
+                lastUpdated: session.lastUpdated,
+                messageCount: session.messageCount
+            };
+        }
+        
+        updateConversationInfo(sessionInfo);
+        
+        // Clear current chat display
+        chatHistory.innerHTML = '';
+        
+        // Try first with the full URL as key
+        let chatHistoryKey = `chat_history_${session.url}_${pageLoadId}`;
+        console.log(`Trying with full URL key: ${chatHistoryKey}`);
+        
+        let { [chatHistoryKey]: history = [] } = await chrome.storage.local.get(chatHistoryKey);
+        
+        // If no messages found with URL key, try with base domain
+        if (!history || history.length === 0) {
+            try {
+                const baseDomain = getBaseDomain(session.url);
+                chatHistoryKey = `chat_history_${baseDomain}_${pageLoadId}`;
+                console.log(`Trying with base domain key: ${chatHistoryKey}`);
+                const result = await chrome.storage.local.get(chatHistoryKey);
+                history = result[chatHistoryKey] || [];
+            } catch (e) {
+                console.error('Error getting base domain:', e);
+            }
+        }
+        
+        console.log(`Found ${history.length} messages`);
+        
+        if (!history || history.length === 0) {
+            throw new Error('No messages found for this conversation');
+        }
+        
+        // Display messages
+        history.forEach((message, index) => {
+            try {
+                displayMessage(message.role, message.content);
+            } catch (e) {
+                console.error(`Error displaying message ${index}:`, e);
+            }
+        });
+        
+        // Scroll to bottom
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        
+        // Show the main view
+        showMainView();
+        console.log('Successfully loaded and displayed chat session');
+        
+    } catch (error) {
+        console.error('Error loading chat session:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        showError(error.message || 'Failed to load conversation');
     }
-    
-    // Update current conversation info
-    isInNewConversation = false;
-    currentPageLoadId = pageLoadId;
-    
-    // Update UI with session info
-    if (!sessionInfo) {
-      sessionInfo = {
-        title: session.title || 'Unknown Page',
-        url: session.url,
-        created: session.created,
-        lastUpdated: session.lastUpdated,
-        messageCount: session.messageCount
-      };
-    }
-    
-    updateConversationInfo(sessionInfo);
-    
-    // Clear current chat display
-    chatHistory.innerHTML = '';
-    
-    // Get the actual chat history from storage
-    const chatHistoryKey = `chat_history_${currentTabId}_${currentUrl}_${pageLoadId}`;
-    const { [chatHistoryKey]: history = [] } = await chrome.storage.local.get(chatHistoryKey);
-    
-    console.log(`Loading chat history for ${pageLoadId}, found ${history.length} messages`);
-    
-    // Display messages
-    if (history && history.length > 0) {
-      history.forEach(message => {
-        displayMessage(message.role, message.content);
-      });
-      
-      // Scroll to bottom
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-    } else {
-      console.warn('No messages found for this chat session');
-    }
-    
-    // Show the main view
-    showMainView();
-  } catch (error) {
-    console.error('Error loading chat session:', error);
-  }
 }
 
 /**
- * Display a message without saving it
+ * Display a message in the chat history
  * @param {string} role - 'user', 'assistant', or 'system'
  * @param {string} content - The message content
  */
@@ -1046,33 +1197,43 @@ function displayMessage(role, content) {
 }
 
 /**
- * Copy content to clipboard and provide visual feedback
- * @param {string} text - The text to copy
+ * Copy text to clipboard and show feedback
+ * @param {string} text - Text to copy
  * @param {HTMLElement} button - The button element that was clicked
  */
 function copyToClipboard(text, button) {
-  navigator.clipboard.writeText(text)
-    .then(() => {
-      // Change button icon temporarily for feedback
-      const originalIcon = button.innerHTML;
-      button.innerHTML = '✓';
-      button.style.backgroundColor = 'var(--success-color)';
-      button.style.color = 'white';
-      
-      // Reset button after 2 seconds
-      setTimeout(() => {
-        button.innerHTML = originalIcon;
-        button.style.backgroundColor = '';
-        button.style.color = '';
-      }, 2000);
-    })
-    .catch(err => {
-      console.error('Failed to copy text: ', err);
-      
-      // Show error feedback
-      button.innerHTML = '❌';
-      setTimeout(() => {
-        button.innerHTML = '📋';
-      }, 2000);
-    });
-} 
+  navigator.clipboard.writeText(text).then(() => {
+    // Store original title
+    const originalTitle = button.title;
+    
+    // Show feedback
+    button.title = 'Copied!';
+    
+    // Reset after a delay
+    setTimeout(() => {
+      button.title = originalTitle;
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy text:', err);
+    button.title = 'Failed to copy';
+  });
+}
+
+/**
+ * Extract the base domain from a URL
+ * @param {string} url - The URL to process
+ * @returns {string} The base domain
+ */
+function getBaseDomain(url) {
+    try {
+        if (!url) {
+            throw new Error('No URL provided');
+        }
+        const urlObj = new URL(url);
+        return urlObj.hostname;
+    } catch (e) {
+        console.error('Error getting base domain:', e);
+        // Return a safe fallback
+        return url.replace(/^https?:\/\//, '').split('/')[0] || 'unknown-domain';
+    }
+}
