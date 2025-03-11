@@ -151,21 +151,53 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Handle scraping request (forward to active tab)
   if (request.action === 'scrapeCurrentPage') {
     console.log('Handling scrapeCurrentPage request');
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        console.log('Sending scrapeContent message to tab:', tabs[0].id);
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      if (!tabs[0]) {
+        sendResponse({ error: 'No active tab found' });
+        return;
+      }
+
+      // Check if we can inject scripts into this tab
+      try {
+        const tab = tabs[0];
+        // Check if this is a supported page
+        if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://')) {
+          sendResponse({ error: 'This page is not supported' });
+          return;
+        }
+
+        // Ensure content script is injected
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              return window.__pageInferenceInitialized === true;
+            }
+          });
+        } catch (e) {
+          console.log('Content script check failed, attempting to inject:', e);
+          // Inject content script if not already present
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+          // Give it a moment to initialize
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Now try to communicate with the tab
         chrome.tabs.sendMessage(
-          tabs[0].id,
+          tab.id,
           { action: 'scrapeContent' },
           (response) => {
             if (chrome.runtime.lastError) {
               console.error('Tab communication error:', chrome.runtime.lastError);
-              sendResponse({ error: 'Error communicating with page' });
+              sendResponse({ error: 'Error communicating with page: ' + chrome.runtime.lastError.message });
               return;
             }
             
             // Detect website type
-            const websiteType = detectWebsiteType(response.content, tabs[0].url);
+            const websiteType = detectWebsiteType(response.content, tab.url);
             console.log('Detected website type:', websiteType.type);
             
             // Send content and website type
@@ -176,9 +208,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
           }
         );
-      } else {
-        console.error('No active tab found');
-        sendResponse({ error: 'No active tab found' });
+      } catch (error) {
+        console.error('Error during tab communication setup:', error);
+        sendResponse({ error: 'Failed to initialize page communication' });
       }
     });
     return true; // Keep the message channel open for async response

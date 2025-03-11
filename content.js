@@ -7,18 +7,33 @@
  * 3. Handling communication between the popup and background script
  */
 
-// Listen for messages from the popup or background script
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Content script received message:', request);
-  if (request.action === 'scrapeContent') {
-    console.log('Scraping page content...');
-    const pageContent = scrapePageContent();
-    console.log('Scraped content length:', pageContent.length);
-    sendResponse({ content: pageContent });
-    console.log('Sent response with content');
-  }
-  return true; // Keep the message channel open for async responses
-});
+// Track initialization status
+window.__pageInferenceInitialized = false;
+
+// Initialize the content script
+function initialize() {
+  // Only initialize once
+  if (window.__pageInferenceInitialized) return;
+  
+  // Listen for messages from the popup or background script
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('Content script received message:', request);
+    if (request.action === 'scrapeContent') {
+      console.log('Scraping page content...');
+      const pageContent = scrapePageContent();
+      console.log('Scraped content length:', pageContent.length);
+      sendResponse({ content: pageContent });
+      console.log('Sent response with content');
+    }
+    return true; // Keep the message channel open for async responses
+  });
+
+  window.__pageInferenceInitialized = true;
+  console.log('Page Inference content script initialized');
+}
+
+// Initialize immediately
+initialize();
 
 /**
  * Scrapes the main content from the current page
