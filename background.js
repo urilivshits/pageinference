@@ -6,6 +6,13 @@
  * 2. Sending requests to the OpenAI API
  * 3. Storing and retrieving API key from Chrome storage
  * 4. Managing chat history
+ * 
+ * Error Handling:
+ * - Defensive null/undefined checks for all parameters in critical functions
+ * - Safe URL handling to prevent "Cannot read properties of undefined" errors
+ * - Graceful fallbacks for missing content or response data
+ * - Comprehensive validation of tab and API responses
+ * - Clear error messages for debugging and user feedback
  */
 
 // Store chat history per tab/URL/pageLoadId
@@ -19,7 +26,8 @@ const BROWSING_CAPABLE_MODELS = [
   'gpt-4-turbo',
   'gpt-4o',
   'gpt-4-vision-preview',
-  'gpt-4-1106-preview'
+  'gpt-4-1106-preview',
+  'gpt-4o-mini'
 ];
 
 // Website type patterns for detection
@@ -109,8 +117,12 @@ function checkIconsExist() {
  * @returns {Object} - The detected website type and corresponding system prompt
  */
 function detectWebsiteType(content, url) {
+  // Ensure parameters are not undefined/null and have valid defaults
+  const safeContent = content || '';
+  const safeUrl = url || '';
+  
   // Create a combined string for pattern matching
-  const combinedText = (content + ' ' + url).toLowerCase();
+  const combinedText = (safeContent + ' ' + safeUrl).toLowerCase();
   
   // Check each website pattern
   for (const website of WEBSITE_PATTERNS) {
@@ -120,7 +132,7 @@ function detectWebsiteType(content, url) {
     ).length;
     
     // If more than 3 patterns match or the URL directly contains the website type, return it
-    if (matchCount >= 3 || url.toLowerCase().includes(website.type)) {
+    if (matchCount >= 3 || (safeUrl.toLowerCase().includes(website.type))) {
       return {
         type: website.type,
         systemPrompt: website.systemPrompt
@@ -161,7 +173,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         const tab = tabs[0];
         // Check if this is a supported page
-        if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://')) {
+        if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://')) {
           sendResponse({ error: 'This page is not supported' });
           return;
         }
@@ -190,22 +202,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           tab.id,
           { action: 'scrapeContent' },
           (response) => {
+            // Check for Chrome runtime errors first
             if (chrome.runtime.lastError) {
               console.error('Tab communication error:', chrome.runtime.lastError);
               sendResponse({ error: 'Error communicating with page: ' + chrome.runtime.lastError.message });
               return;
             }
             
-            // Detect website type
-            const websiteType = detectWebsiteType(response.content, tab.url);
-            console.log('Detected website type:', websiteType.type);
+            // Validate response and content
+            if (!response) {
+              console.error('Empty response from content script');
+              sendResponse({ error: 'No response received from page. The content script may not be properly initialized.' });
+              return;
+            }
             
-            // Send content and website type
-            console.log('Sending scraped content response');
-            sendResponse({ 
-              content: response.content,
-              websiteType: websiteType.type
-            });
+            if (!response.content) {
+              console.error('Missing content in response:', response);
+              sendResponse({ error: 'Invalid response from page. The page content could not be extracted.' });
+              return;
+            }
+            
+            try {
+              // Detect website type with proper error handling
+              const websiteType = detectWebsiteType(response.content, tab.url);
+              console.log('Detected website type:', websiteType.type);
+              
+              // Send content and website type
+              console.log('Sending scraped content response');
+              sendResponse({ 
+                content: response.content,
+                websiteType: websiteType.type
+              });
+            } catch (detectionError) {
+              console.error('Error during website type detection:', detectionError);
+              // Fall back to general type if detection fails
+              sendResponse({ 
+                content: response.content,
+                websiteType: 'general',
+                warning: 'Website type detection failed, using general type'
+              });
+            }
           }
         );
       } catch (error) {
@@ -358,27 +394,53 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 /**
  * Sends a request to the OpenAI API for inference
  * @param {string} apiKey - The OpenAI API key
- * @param {string} pageContent - The scraped page content
- * @param {string} question - The user's question
- * @param {string} model - The model to use (default: gpt-4o-mini)
- * @param {string} url - The URL of the page (for context detection)
+ * @param {string|null} pageContent - The scraped page content
+ * @param {string|null} question - The user's question
+ * @param {string|null} model - The model to use (default: gpt-4o-mini)
+ * @param {string|null} url - The URL of the page (for context detection)
  * @returns {Promise<string>} - The inference result
+ * @throws {Error} - If API request fails or parameters are invalid
  */
 async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT_MODEL, url = '') {
   try {
-    console.log(`Using model: ${model}`);
+    // Validate API key
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+      throw new Error('Invalid API key. Please check your API key in the extension settings.');
+    }
     
-    // Detect website type
-    const websiteType = detectWebsiteType(pageContent, url);
-    console.log(`Detected website type: ${websiteType.type}`);
+    // Ensure all parameters have valid defaults and are properly sanitized
+    const safePageContent = (pageContent || '').toString();
+    const safeQuestion = (question || 'What is on this page?').toString();
+    const safeUrl = (url || '').toString();
+    const safeModel = (model || DEFAULT_MODEL).toString();
+    
+    console.log(`Using model: ${safeModel}`);
+    
+    // Add reasonable constraints on content size to prevent API errors
+    const trimmedContent = safePageContent.length > 15000 
+      ? safePageContent.substring(0, 15000) + '... (content truncated)'
+      : safePageContent;
+    
+    // Detect website type with error handling
+    let websiteType;
+    try {
+      websiteType = detectWebsiteType(trimmedContent, safeUrl);
+      console.log(`Detected website type: ${websiteType.type}`);
+    } catch (typeError) {
+      console.error('Website type detection failed:', typeError);
+      websiteType = {
+        type: 'general',
+        systemPrompt: DEFAULT_SYSTEM_PROMPT
+      };
+    }
     
     // Check if model supports browsing
-    const supportsBrowsing = modelSupportsBrowsing(model);
+    const supportsBrowsing = modelSupportsBrowsing(safeModel);
     console.log(`Model supports browsing: ${supportsBrowsing}`);
     
     // Configure request body based on model capabilities
     const requestBody = {
-      model: model,
+      model: safeModel,
       messages: [
         {
           role: 'system',
@@ -386,7 +448,7 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
         },
         {
           role: 'user',
-          content: `Here is the content of a webpage (URL: ${url}):\n\n${pageContent}\n\nBased on this content, please answer the following question: ${question}`
+          content: `Here is the content of a webpage (URL: ${safeUrl}):\n\n${trimmedContent}\n\nBased on this content, please answer the following question: ${safeQuestion}`
         }
       ],
       temperature: 0.3,
@@ -428,11 +490,33 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
 
 /**
  * Get the base domain from a URL
- * @param {string} url - The URL to extract the domain from
- * @returns {string} The base domain
+ * @param {string|null|undefined} url - The URL to extract the domain from
+ * @returns {string} The base domain or a fallback value
  */
 function getBaseDomain(url) {
   try {
+    // Validate URL before processing
+    if (!url) {
+      console.warn('Empty URL provided to getBaseDomain');
+      return 'unknown-domain';
+    }
+    
+    // Handle non-string values
+    if (typeof url !== 'string') {
+      console.warn('Non-string URL provided to getBaseDomain:', typeof url);
+      return 'invalid-url-type';
+    }
+    
+    // Handle URLs without proper protocol
+    if (!url.includes('://')) {
+      // Simple domain-like strings can still be processed
+      if (url.includes('.') && !url.includes(' ')) {
+        return url;
+      }
+      console.warn('Invalid URL format (missing protocol) in getBaseDomain:', url);
+      return 'invalid-url-format';
+    }
+    
     const urlObj = new URL(url);
     // Extract hostname and remove 'www.' if present
     let hostname = urlObj.hostname;
@@ -442,6 +526,6 @@ function getBaseDomain(url) {
     return hostname;
   } catch (e) {
     console.error('Error extracting base domain:', e);
-    return url; // Return the original URL if parsing fails
+    return 'parse-error'; // Return a descriptive error value if parsing fails
   }
 } 

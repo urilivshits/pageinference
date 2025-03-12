@@ -51,3 +51,22 @@ Refused to execute inline script because it violates the following Content Secur
 Cannot load chat history: missing tab ID, URL, or page load ID
 markdown-it library not found, using fallback basic markdown parser
 markdown-it library not found, using fallback basic markdown parser
+
+"sometimes i get this error on inference:
+
+Error during tab communication setup: TypeError: Cannot read properties of undefined (reading 'startsWith')
+Context
+background.js
+Stack Trace
+background.js:212 (anonymous function)"
+
+"still error on line 212:
+
+Error during tab communication setup: TypeError: Cannot read properties of undefined (reading 'startsWith')
+Context
+background.js
+Stack Trace
+
+dont forget to update the docs"
+
+"try again but also follow the @rules.mdc"

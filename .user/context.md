@@ -27,6 +27,7 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Error Handling]** Added robust error handling for external libraries with graceful fallbacks to maintain functionality even when dependencies fail.
 - **[Progressive Enhancement]** Applied layered approach to markdown rendering with multiple fallback mechanisms, ensuring content is always properly formatted regardless of library availability.
 - **[Content Security Policy Compliance]** Implemented local hosting of external libraries (markdown-it and highlight.js) to comply with Chrome extension Manifest V3 CSP requirements, preventing external script loading issues.
+- **[Defensive Programming]** Applied comprehensive null and undefined value checks throughout the codebase, especially in network and tab communication functions, to prevent "Cannot read properties of undefined" errors and improve extension stability.
 
 ## Implemented Features
 <!-- Track all completed features (no timestamps) -->
@@ -67,6 +68,7 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Markdown Rendering Error]** Fixed "window.markdownit is not a function" error by correcting the library access method to use the global `markdownit` function instead of `window.markdownit`. Added robust error handling with fallback to plain text rendering if the library is unavailable.
 - **[Markdown Parsing Issue]** Resolved issue where markdown was being loaded but not properly rendered in LLM responses. Implemented multi-layered approach for accessing the markdown-it library and added a custom fallback parser to ensure markdown formatting is always applied correctly.
 - **[Content Security Policy Error]** Fixed Content Security Policy (CSP) errors that prevented loading external libraries from CDNs by including local copies of markdown-it and highlight.js, and updating the manifest.json with appropriate CSP settings and web_accessible_resources configurations.
+- **[Undefined Property Error]** Resolved "Cannot read properties of undefined (reading 'startsWith')" error in background.js by implementing comprehensive null and undefined checks in tab communications, the detectWebsiteType function, and the getBaseDomain function, ensuring the extension handles missing URL data gracefully.
 
 ## Documentation Status
 - **[README Review]** README.md accurately describes the extension functionality, installation process, and troubleshooting steps. The model options listed in the README (GPT-3.5 Turbo and GPT-4) are available in the actual implementation, which also includes the newer gpt-4o-mini (default) and gpt-4o models.
