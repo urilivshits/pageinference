@@ -1,78 +1,33 @@
-# Service Context
-<!-- Project context to check for every query. -->
-This document provides essential context about the service we're building. It helps the AI assistant understand the purpose, requirements, and technical details of the project.
+# Project Progress Report
+<!-- Project Progress Report to check and update for every query. -->
+This document tracks the evolution of the project, documenting technical decisions, feature implementations, and bug resolutions.
 
-## Project Overview
-A Chrome browser extension that enables users to ask questions about any webpage using OpenAI's GPT models. The extension extracts content from the current page and leverages OpenAI's API to provide accurate, context-aware answers based on the page's content.
+## Technical Approaches and Architectural Decisions
+<!-- Document all significant technical choices and architectural decisions (no timestamps) -->
 
-## Technical Stack
-- Chrome Extension Framework (Manifest V3)
-- Vanilla JavaScript
-- HTML/CSS for UI
-- OpenAI GPT API (GPT-3.5 Turbo and GPT-4)
-- Chrome Storage API for secure data persistence
-- Chrome Scripting and ActiveTab APIs for page interaction
+<!--
+DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 
-## Key Features
-- Smart webpage content extraction
-- Interactive Q&A interface for webpage content
-- OpenAI GPT model integration (3.5 Turbo and GPT-4)
-- Secure API key management
-- Modern, clean user interface
-- Customizable settings
-- Cross-origin page support
+- **[Framework Selection]** Adopted [Framework Name] for [component] to improve [benefit].
+- **[Architecture Pattern]** Implemented [pattern name] for [purpose] to enhance [benefit].
+-->
 
-## Architecture
-- **Frontend Components:**
-  - popup.html/js: Main user interface and interaction logic
-  - styles.css: UI styling and theming
-- **Background Services:**
-  - background.js: Handles API communication and core extension logic
-  - content.js: Manages webpage content extraction
-- **Configuration:**
-  - manifest.json: Extension configuration and permissions
-  - Storage: Secure API key and settings storage
+## Implemented Features
+<!-- Track all completed features (no timestamps) -->
 
-## User Personas
-assumption: Based on the implementation, the extension targets:
-- General web users seeking to understand webpage content
-- Researchers needing quick information extraction
-- Students studying online content
-- Professionals analyzing web-based documents
+<!--
+DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 
-## Integration Points
-- OpenAI API (GPT-3.5 Turbo and GPT-4 models)
-- Chrome Extension APIs:
-  - Storage API
-  - Scripting API
-  - ActiveTab API
-- Web page DOM integration via content scripts
+- **[Feature Name]** Implemented [feature description] ([relevant-file.js], [another-file.js])
+- **[Feature Name]** Added [feature description] with support for [capability] ([relevant-files])
+-->
 
-## Constraints and Requirements
-- Requires valid OpenAI API key
-- Limited to active tab access for security
-- Must handle varying webpage structures
-- Token limits based on OpenAI model constraints
-- Cross-origin security considerations
-- Chrome browser compatibility (Manifest V3)
+## Resolved Bugs
+<!-- Document fixed issues (no timestamps) -->
 
-## Development Status
-assumption: Project appears to be in active development with:
-- Core functionality implemented
-- Basic error handling in place
-  - Improved tab handling for consistent message sequences
-  - Added recovery mechanisms for missing pageLoadId
-  - Enhanced error logging and debugging capabilities
-- Security measures implemented
-- UI/UX refined
-  - History UI improved with 50/50 split layout for webpage titles and last user requests
-  - Streamlined delete functionality with smaller, more generic icon
-  - Enhanced user experience with better positioning of UI elements
-  - Fixed display of last user requests in history items for better context
-- Testing framework established
+<!--
+DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 
-## Reference Materials
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-- [Chrome Extension Documentation](https://developer.chrome.com/docs/extensions)
-- Project README.md for setup and usage
-- MIT License for terms of use
+- **[Bug ID/Description]** Fixed [issue description] in [file-name.js]
+- **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
+-->
