@@ -116,7 +116,8 @@ await in getOpenAiInference
 (anonymous) @ background.js:308Understand this errorAI
 15:06:10.781 background.js:350 Error during inference: TypeError: Cannot read properties of null (reading 'trim')
     at getOpenAiInference (background.js:502:44)
-    at async background.js:308:24"
+    at async background.js:308:24
+"
 
 "still the same, here's the response obj:
 
@@ -182,3 +183,81 @@ background.js:504 OpenAI API Error: TypeError: Cannot read properties of null (r
 background.js:350 Error during inference: TypeError: Cannot read properties of null (reading 'trim')
     at getOpenAiInference (background.js:502:44)
     at async background.js:308:24"
+
+"follow the rules and lets resolve the following issue with how the search is handled. I get this error still:
+
+background.js:161 Background script received message: {action: 'getApiKey'}
+15:51:50.681 background.js:266 Getting API key
+15:51:50.681 background.js:268 API key exists: true
+15:51:50.703 background.js:161 Background script received message: {action: 'updateChatHistory', tabId: 281323245, url: 'https://www.linkedin.com/in/wael-shamshoum-584141162/', pageLoadId: 'pageload_1741787456690_fcpegld', history: Array(2)}
+15:52:19.536 background.js:161 Background script received message: {action: 'getApiKey'}
+15:52:19.536 background.js:266 Getting API key
+15:52:19.536 background.js:161 Background script received message: {action: 'getApiKey'}
+15:52:19.536 background.js:266 Getting API key
+15:52:19.536 background.js:268 API key exists: true
+15:52:19.537 background.js:268 API key exists: true
+15:52:19.539 background.js:161 Background script received message: {action: 'updateChatHistory', tabId: 281323245, url: 'https://www.linkedin.com/in/wael-shamshoum-584141162/', pageLoadId: 'pageload_1741787523965_t2ktqdk', history: Array(1)}
+15:52:19.544 background.js:161 Background script received message: {action: 'scrapeCurrentPage'}
+15:52:19.544 background.js:165 Handling scrapeCurrentPage request
+15:52:19.548 background.js:228 Detected website type: linkedin
+15:52:19.548 background.js:231 Sending scraped content response
+15:52:19.549 background.js:161 Background script received message: {action: 'getInference', question: 'what is the weather tomorrow?', content: 'Wael Shamshoum 3rd degree connection 3rd Hardware … Sciences 27,992 followers27,992 followers Follow', url: 'https://www.linkedin.com/in/wael-shamshoum-584141162/', tabId: 281323245, …}
+15:52:19.549 background.js:276 Handling inference request
+15:52:19.549 background.js:417 Using model: gpt-4o-mini
+15:52:19.549 background.js:428 Detected website type: linkedin
+15:52:19.549 background.js:439 Model supports browsing: true
+15:52:20.532 background.js:504 OpenAI API Error: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24
+getOpenAiInference @ background.js:504
+await in getOpenAiInference
+(anonymous) @ background.js:308Understand this errorAI
+15:52:20.533 background.js:350 Error during inference: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24
+(anonymous) @ background.js:350Understand this errorAI"
+
+"we're still at the same place and i dont see any new console logs and still if the response returns content: null i get the trim error. Please review the relevant code implementation thoroughly."
+
+"same, this is my complete log and none of those logs were shown:
+
+Background script received message: {action: 'getApiKey'}
+21:00:33.309 background.js:266 Getting API key
+21:00:33.309 background.js:268 API key exists: true
+21:00:33.327 background.js:161 Background script received message: {action: 'updateChatHistory', tabId: 281323231, url: 'https://www.linkedin.com/in/wael-shamshoum-584141162/', pageLoadId: 'pageload_1741779569681_n9e7a2q', history: Array(1)}
+21:00:52.984 background.js:161 Background script received message: {action: 'getApiKey'}
+21:00:52.984 background.js:266 Getting API key
+21:00:52.984 background.js:161 Background script received message: {action: 'getApiKey'}
+21:00:52.984 background.js:266 Getting API key
+21:00:52.984 background.js:268 API key exists: true
+21:00:52.984 background.js:268 API key exists: true
+21:00:52.987 background.js:161 Background script received message: {action: 'updateChatHistory', tabId: 281323231, url: 'https://www.linkedin.com/in/wael-shamshoum-584141162/', pageLoadId: 'pageload_1741806043299_d3bgk4w', history: Array(1)}
+21:00:52.991 background.js:161 Background script received message: {action: 'scrapeCurrentPage'}
+21:00:52.991 background.js:165 Handling scrapeCurrentPage request
+21:00:52.995 background.js:228 Detected website type: linkedin
+21:00:52.995 background.js:231 Sending scraped content response
+21:00:52.996 background.js:161 Background script received message: {action: 'getInference', question: 'what are some major news of today?', content: 'Wael Shamshoum 3rd degree connection 3rd Hardware … Sciences 28,003 followers28,003 followers Follow', url: 'https://www.linkedin.com/in/wael-shamshoum-584141162/', tabId: 281323231, …}
+21:00:52.996 background.js:276 Handling inference request
+21:00:52.996 background.js:417 Using model: gpt-4o-mini
+21:00:52.996 background.js:428 Detected website type: linkedin
+21:00:52.996 background.js:439 Model supports browsing: true
+21:00:53.646 background.js:504 OpenAI API Error: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24
+getOpenAiInference @ background.js:504
+await in getOpenAiInference
+(anonymous) @ background.js:308Understand this errorAI
+21:00:53.646 background.js:350 Error during inference: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24"
+
+"now this error:
+
+Getting API key
+21:07:46.090 background.js:272 API key exists: true
+21:07:46.090 background.js:272 API key exists: true
+21:07:46.093 background.js:165 Background script received message: {action: 'updateChatHistory', tabId: 281322721, url: 'https://www.linkedin.com/in/iuliiashyshka/', pageLoadId: 'pageload_1741806462748_yb8870q', history: Array(1)}
+21:07:46.097 background.js:165 Background script received message: {action: 'scrapeCurrentPage'}
+21:07:46.097 background.js:169 Handling scrapeCurrentPage request
+21:07:46.099 background.js:211 Tab communication error: {message: 'Could not establish connection. Receiving end does not exist.'}
+(anonymous) @ background.js:211Understand this errorAI"

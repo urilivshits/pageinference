@@ -15,6 +15,44 @@ Format for recording tasks:
 - [ ] Another task with details or acceptance criteria
 -->
 
+## Bug Fixes
+
+### API Response Handling
+- [x] Fixed "Cannot read properties of null (reading 'trim')" error in background.js by adding proper null checks before calling trim() on errorText
+- [x] Verified all other instances of trim() usage have proper null checks
+- [x] Added comprehensive debugging logs to trace message content handling
+- [x] Enhanced null checks to also handle undefined values for message content
+- [x] Added detailed API response structure validation to catch potential issues early
+- [x] Fixed tool_calls handling when content is null to properly process search requests and prevent trim errors
+
+### Tab Communication
+- [x] Resolved "Receiving end does not exist" error by implementing retry logic for tab communication
+- [x] Enhanced content script injection with better error handling and longer initialization delay
+- [x] Added graceful recovery when content script fails to initialize or communicate
+- [x] Implemented progressive timeout between retries to allow for page loading
+- [x] Added specialized LinkedIn page handling with dedicated scraping functions
+- [x] Implemented content script initialization tracking across page loads
+- [x] Added automatic status reporting between content script and background script
+
+## New Issues
+
+### LinkedIn Scraping Regression
+- [x] Investigate why LinkedIn scraping is broken after web search tool implementation
+- [x] Compare previous working implementation with current implementation 
+- [x] Determine what specific changes caused the regression
+- [x] Fix LinkedIn profile content extraction while maintaining web search functionality
+- [x] Test LinkedIn scraping on various profile pages
+- [x] Ensure "No active tab found" error doesn't occur on subsequent queries
+
+### Web Search Follow-up Implementation
+- [x] Investigate why the follow-up API call isn't being made after successful tool_calls detection
+- [x] Review handleSequentialApiCalls function implementation and execution flow
+- [x] Add logging to trace execution path for sequential API calls
+- [x] Determine why the follow-up request is not being triggered
+- [x] Implement fix to ensure proper sequential API calls for web search
+- [x] Add verification to confirm second API call is made with search results
+- [x] Test complete web search flow with different search queries
+
 ## Repository Reindexing and Artifact Updates
 
 ### Repository Analysis
