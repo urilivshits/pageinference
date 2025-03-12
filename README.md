@@ -6,9 +6,11 @@ A Chrome extension that allows you to ask questions about any webpage using Open
 
 - 🔍 Smart content extraction from web pages
 - 💬 Ask questions about any webpage
-- 🤖 Powered by OpenAI's GPT models (GPT-3.5 Turbo and GPT-4)
+- 🤖 Powered by OpenAI's GPT models (GPT-4o mini, GPT-3.5 Turbo, GPT-4, and GPT-4o)
 - 🔒 Secure API key storage
-- 🎨 Clean and modern user interface
+- 🎨 Clean and modern user interface with theme options (light, dark, and system)
+- 🌐 Smart website type detection for context-aware responses
+- 🔍 Enhanced browsing capabilities for advanced models
 - ⚙️ Customizable settings
 
 ## Installation
@@ -37,8 +39,13 @@ Before installing, make sure to:
 2. Click the extension icon in Chrome's toolbar
 3. Click the settings icon (⚙️)
 4. Enter your OpenAI API key
-5. Select your preferred model (GPT-3.5 Turbo or GPT-4)
-6. Click "Save Settings"
+5. Select your preferred model:
+   - GPT-4o mini (Default, fastest)
+   - GPT-3.5 Turbo (Fast, good balance)
+   - GPT-4 (High quality, slower)
+   - GPT-4o (Highest quality, with browsing capabilities)
+6. Choose your preferred theme (system, light, or dark)
+7. Click "Save Settings"
 
 ## Usage
 
@@ -47,6 +54,20 @@ Before installing, make sure to:
 3. Type your question in the text area
 4. Click "Ask" or press Enter
 5. Wait for the response from the AI
+
+## Advanced Features
+
+### Website Type Detection
+The extension automatically detects the type of website you're viewing (e.g., LinkedIn, GitHub, documentation, news, etc.) and adjusts its responses to be more relevant to that context.
+
+### Theme Options
+Choose between:
+- **System**: Automatically matches your browser's theme
+- **Light**: Bright theme for daytime use
+- **Dark**: Dark theme for reduced eye strain
+
+### Enhanced Browsing Support
+Advanced models like GPT-4o and GPT-4-turbo include web browsing capabilities to provide more accurate and up-to-date responses.
 
 ## Troubleshooting
 
@@ -101,11 +122,16 @@ To test if the extension is working properly:
    - Ask a specific question about the page content
    - Verify that you receive a relevant answer
 
-4. **Edge Cases**
+4. **Theme Testing**
+   - Try each theme option (system, light, dark)
+   - Verify the UI adjusts correctly
+
+5. **Edge Cases**
    - Test on complex pages with lots of dynamic content
    - Test on pages with minimal content
    - Test with very specific questions
    - Test with very broad questions
+   - Test on different website types to verify context detection
 
 ## Security
 

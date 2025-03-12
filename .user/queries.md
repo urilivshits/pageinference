@@ -9,3 +9,7 @@ Format for recording queries:
 -->
 
 "reindex the repo and update artifacts. follow @rules.mdc"
+
+"lets also review the @README.md and see that its in sync with the current state of the project"
+
+"now lets update the @README.md with the latest as well please"
