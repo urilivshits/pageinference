@@ -273,7 +273,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Show loading state in button
     submitBtn.classList.add('button-loading');
-    submitBtn.querySelector('.spinner').style.display = 'block';
+    const spinner = submitBtn.querySelector('.spinner');
+    if (spinner) {
+      spinner.style.display = 'block';
+      
+      // Make sure the button text is hidden
+      const buttonText = submitBtn.querySelector('.button-text');
+      if (buttonText) {
+        buttonText.style.visibility = 'hidden';
+      }
+    }
     
     try {
       // Get current tab ID and URL
@@ -315,7 +324,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (scraperResponse.error) {
         showError(scraperResponse.error);
         submitBtn.classList.remove('button-loading');
-        submitBtn.querySelector('.spinner').style.display = 'none';
+        const spinner = submitBtn.querySelector('.spinner');
+        if (spinner) {
+          spinner.style.display = 'none';
+          
+          // Make button text visible again
+          const buttonText = submitBtn.querySelector('.button-text');
+          if (buttonText) {
+            buttonText.style.visibility = 'visible';
+          }
+        }
         isProcessing = false; // Reset processing flag
         return;
       }
@@ -335,7 +353,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       // Hide loading state in button
       submitBtn.classList.remove('button-loading');
-      submitBtn.querySelector('.spinner').style.display = 'none';
+      const spinner = submitBtn.querySelector('.spinner');
+      if (spinner) {
+        spinner.style.display = 'none';
+        
+        // Make button text visible again
+        const buttonText = submitBtn.querySelector('.button-text');
+        if (buttonText) {
+          buttonText.style.visibility = 'visible';
+        }
+      }
       
       if (response.error) {
         showError(response.error);
@@ -350,7 +377,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       showMainView();
     } catch (error) {
       submitBtn.classList.remove('button-loading');
-      submitBtn.querySelector('.spinner').style.display = 'none';
+      const spinner = submitBtn.querySelector('.spinner');
+      if (spinner) {
+        spinner.style.display = 'none';
+        
+        // Make button text visible again
+        const buttonText = submitBtn.querySelector('.button-text');
+        if (buttonText) {
+          buttonText.style.visibility = 'visible';
+        }
+      }
       showError(error.message || 'An error occurred');
       console.error('Error:', error);
     } finally {

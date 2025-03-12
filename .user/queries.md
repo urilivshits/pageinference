@@ -17,3 +17,10 @@ Format for recording queries:
 "chrome extension throws Uncaught ReferenceError: themeOptions is not defined on popup.js:670 (anonymous function)."
 
 "ok, but ensure you follow the @rules.mdc thoroughly"
+
+"1. follow the @rules.mdc 
+2. resolve the issue with the load spinner not spinning correctly - it does not do circle now as if it does not fit in its container"
+
+"better, but lets also center it in its container"
+
+"seems like the spinner is still not centered in the "Ask" button - it is now spinning in bottom right of the button"

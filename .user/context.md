@@ -20,6 +20,9 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Model Selection]** Default model set to gpt-4o-mini with options for gpt-3.5-turbo, gpt-4, and gpt-4o.
 - **[Theme Management]** Support for system, light, and dark themes with automatic detection of system preferences.
 - **[Event Handling]** DOM-scoped event handlers to maintain proper variable access and prevent reference errors.
+- **[CSS Box Model]** Explicit box-sizing and proper transform handling for UI animations and styled components.
+- **[Flexbox Layout]** Applied flexbox display properties to buttons and containers for proper element centering and alignment.
+- **[Container-Based Positioning]** Implemented dedicated flex containers for UI elements requiring precise positioning, improving layout reliability across different screen sizes.
 
 ## Implemented Features
 <!-- Track all completed features (no timestamps) -->
@@ -39,6 +42,7 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Website Type Detection]** Implemented automatic detection of website types for specialized system prompts (background.js).
 - **[Theme Customization]** Added theme selection with system, light, and dark modes (popup.js, styles.css).
 - **[Advanced Model Support]** Added support for web browsing capabilities in certain models like gpt-4o and gpt-4-turbo (background.js).
+- **[Loading Indicators]** Enhanced loading indicators with proper animation, responsive behavior, and perfect centering (styles.css, popup.js, popup.html).
 
 ## Resolved Bugs
 <!-- Document fixed issues (no timestamps) -->
@@ -51,6 +55,8 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 -->
 
 - **[Reference Error]** Fixed "themeOptions is not defined" error in popup.js by removing a theme handler in global scope and consolidating theme-related code inside the DOMContentLoaded event handler, ensuring proper variable scoping.
+- **[UI Animation]** Fixed loading spinner not displaying as a proper circle by adding box-sizing, transform-origin properties, and proper container structure. Enhanced spinner styles to prevent clipping and ensure consistent circular animation. Added flexbox display properties to perfectly center the spinner in its container.
+- **[Spinner Positioning]** Resolved issue with spinner appearing in bottom right of button by replacing transform-based positioning with dedicated flex container, ensuring perfect centering regardless of button dimensions.
 
 ## Documentation Status
 - **[README Review]** README.md accurately describes the extension functionality, installation process, and troubleshooting steps. The model options listed in the README (GPT-3.5 Turbo and GPT-4) are available in the actual implementation, which also includes the newer gpt-4o-mini (default) and gpt-4o models.

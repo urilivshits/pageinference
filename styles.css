@@ -154,6 +154,10 @@ h2 {
 
 /* Button styles */
 .primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
   background-color: var(--primary-color);
   color: white;
   border: none;
@@ -163,6 +167,7 @@ h2 {
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
+  min-height: 38px; /* Add consistent minimum height */
 }
 
 .primary-button:hover {
@@ -324,16 +329,43 @@ select {
   position: relative;
   color: transparent !important; /* Hide button text */
   pointer-events: none; /* Prevent clicks while loading */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button-text {
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+}
+
+.spinner-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: none; /* Prevent container from blocking clicks */
 }
 
 .button-loading .spinner {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  position: static; /* Change from absolute to static */
+  transform: none; /* Remove transform that was offsetting position */
   width: 1.2rem;
   height: 1.2rem;
   border-width: 2px;
+  box-sizing: border-box; /* Ensure border is included in dimensions */
+  min-width: 1.2rem; /* Ensure minimum width */
+  min-height: 1.2rem; /* Ensure minimum height */
+  display: block; /* Better for positioning */
+  overflow: visible; /* Prevent clipping */
+  margin: 0; /* Clean slate for margins */
+  z-index: 2; /* Ensure spinner appears above text */
 }
 
 .spinner {
@@ -343,10 +375,18 @@ select {
   border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  box-sizing: border-box; /* Ensure border is included in dimensions */
+  transform-origin: center center; /* Ensure rotation happens from center */
+  display: block; /* Better for positioning */
+  overflow: visible; /* Prevent clipping */
+  margin: 0 auto; /* Center horizontally */
 }
 
 @keyframes spin {
-  to {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
     transform: rotate(360deg);
   }
 }
