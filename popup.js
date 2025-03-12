@@ -679,6 +679,14 @@ questionInput.addEventListener('keydown', (e) => {
 function showError(message) {
   errorMessage.textContent = message;
   errorMessage.classList.remove('hidden');
+  
+  // Ensure error message is visible by scrolling to it
+  errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  
+  // Auto-hide error after 10 seconds
+  setTimeout(() => {
+    hideError();
+  }, 10000);
 }
 
 function hideError() {

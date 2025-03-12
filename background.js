@@ -27,7 +27,11 @@ const BROWSING_CAPABLE_MODELS = [
   'gpt-4o',
   'gpt-4-vision-preview',
   'gpt-4-1106-preview',
-  'gpt-4o-mini'
+  'gpt-4o-mini',
+  'gpt-4-0125-preview',  // Adding newer model versions
+  'gpt-4-turbo-preview',
+  'gpt-4-0613',
+  'gpt-4-32k-0613'
 ];
 
 // Website type patterns for detection
@@ -402,43 +406,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * @throws {Error} - If API request fails or parameters are invalid
  */
 async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT_MODEL, url = '') {
+  console.log('Starting getOpenAiInference');
+  // Ensure we have an API key
+  if (!apiKey || typeof apiKey !== 'string' || (apiKey = apiKey.trim()).length === 0) {
+    return 'Error: Please provide a valid OpenAI API key in the extension settings.';
+  }
+  
+  console.log('Have API key, content length:', pageContent ? pageContent.length : 0);
+  
+  // Ensure all parameters have valid defaults and are properly sanitized
+  const safePageContent = (pageContent || '').toString();
+  const safeQuestion = (question || 'What is on this page?').toString();
+  const safeUrl = (url || '').toString();
+  const safeModel = (model || DEFAULT_MODEL).toString();
+  
+  // Trim long content
+  const MAX_CONTENT_LENGTH = 100000;
+  const trimmedContent = safePageContent.length > MAX_CONTENT_LENGTH 
+    ? safePageContent.substring(0, MAX_CONTENT_LENGTH) + '... (content truncated due to length)'
+    : safePageContent;
+  
+  // Detect website type with error handling
+  let websiteType;
   try {
-    // Validate API key
-    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
-      throw new Error('Invalid API key. Please check your API key in the extension settings.');
-    }
-    
-    // Ensure all parameters have valid defaults and are properly sanitized
-    const safePageContent = (pageContent || '').toString();
-    const safeQuestion = (question || 'What is on this page?').toString();
-    const safeUrl = (url || '').toString();
-    const safeModel = (model || DEFAULT_MODEL).toString();
-    
-    console.log(`Using model: ${safeModel}`);
-    
-    // Add reasonable constraints on content size to prevent API errors
-    const trimmedContent = safePageContent.length > 15000 
-      ? safePageContent.substring(0, 15000) + '... (content truncated)'
-      : safePageContent;
-    
-    // Detect website type with error handling
-    let websiteType;
-    try {
-      websiteType = detectWebsiteType(trimmedContent, safeUrl);
-      console.log(`Detected website type: ${websiteType.type}`);
-    } catch (typeError) {
-      console.error('Website type detection failed:', typeError);
-      websiteType = {
-        type: 'general',
-        systemPrompt: DEFAULT_SYSTEM_PROMPT
-      };
-    }
-    
-    // Check if model supports browsing
-    const supportsBrowsing = modelSupportsBrowsing(safeModel);
-    console.log(`Model supports browsing: ${supportsBrowsing}`);
-    
-    // Configure request body based on model capabilities
+    websiteType = detectWebsiteType(trimmedContent, safeUrl);
+    console.log(`Detected website type: ${websiteType.type}`);
+  } catch (typeError) {
+    console.error('Website type detection failed:', typeError);
+    websiteType = {
+      type: 'general',
+      systemPrompt: DEFAULT_SYSTEM_PROMPT
+    };
+  }
+  
+  // Check if the model supports web browsing capability
+  const supportsBrowsing = safeModel.includes('gpt-4') || safeModel.includes('gpt-4-turbo');
+  console.log('Model supports browsing:', supportsBrowsing);
+  
+  try {
+    // Prepare request body
     const requestBody = {
       model: safeModel,
       messages: [
@@ -451,21 +457,36 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
           content: `Here is the content of a webpage (URL: ${safeUrl}):\n\n${trimmedContent}\n\nBased on this content, please answer the following question: ${safeQuestion}`
         }
       ],
-      temperature: 0.3,
-      max_tokens: 500
+      temperature: 0.7,
+      max_tokens: 1000
     };
     
-    // Add tools for browsing-capable models
+    // If the model supports browsing, add the tools
     if (supportsBrowsing) {
       requestBody.tools = [
         {
-          type: 'web_search',
-          config: { provider: 'you' }
+          type: 'function',
+          function: {
+            name: 'web_search',
+            description: 'Search the web for current information.',
+            parameters: {
+              type: 'object',
+              properties: {
+                query: {
+                  type: 'string',
+                  description: 'The search query to use.'
+                }
+              },
+              required: ['query']
+            }
+          }
         }
       ];
-      requestBody.tool_choice = 'auto';
     }
     
+    console.log('Making API request to OpenAI...');
+    
+    // Make the API request
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -475,16 +496,151 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
       body: JSON.stringify(requestBody)
     });
     
+    console.log('Received API response, status:', response.status);
+    
+    // Handle non-200 responses
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+      // Get the error details as text first to avoid JSON parse errors
+      let errorText = '';
+      try {
+        errorText = await response.text();
+        console.error('API Error Response (text):', errorText);
+        
+        // Try to parse as JSON if it looks like JSON
+        if (errorText.trim().startsWith('{')) {
+          const errorJson = JSON.parse(errorText);
+          console.error('API Error Response (parsed):', errorJson);
+          
+          // Extract error message from various API error formats
+          const errorMessage = 
+            (errorJson.error && errorJson.error.message) || 
+            errorJson.message || 
+            `API Error: ${response.status} ${response.statusText}`;
+          
+          return `Error: ${errorMessage}`;
+        }
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+      }
+      
+      return `Error: The API returned status ${response.status} ${response.statusText}${errorText ? ': ' + errorText : ''}`;
     }
     
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
+    // Get the raw response text first for better logging
+    console.log('Reading response as text...');
+    const responseText = await response.text();
+    
+    // Log the response length for debugging
+    console.log(`Response text length: ${responseText.length}`);
+    console.log(`Response preview: ${responseText.substring(0, 100)}...`);
+    
+    // Parse the response text as JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+      console.log('Successfully parsed API response:', data);
+    } catch (parseError) {
+      console.error('Error parsing API response:', parseError);
+      console.error('Parse error stack:', parseError.stack);
+      console.error('Response text that failed to parse:', responseText);
+      return 'Error: Failed to parse the API response. Please try again.';
+    }
+    
+    // First, check if we have a valid data object with choices
+    if (!data || !data.choices || !data.choices.length || !data.choices[0].message) {
+      console.error('Invalid response structure', data);
+      return 'Error: Received an invalid response structure from the API.';
+    }
+    
+    console.log('Extracting message from response...');
+    
+    try {
+      const message = data.choices[0].message;
+      console.log('Message extracted, content type:', typeof message.content, 'Has tool calls:', !!message.tool_calls);
+      
+      // CRITICAL: First check if content is null before attempting any operation on it
+      if (message.content === null) {
+        console.log('Content is null, checking for tool calls');
+        
+        // Check if we have tool calls
+        if (message.tool_calls && message.tool_calls.length > 0) {
+          // Handle tool calls (web search, etc.)
+          if (supportsBrowsing) {
+            console.log('Tool calls detected in a browsing-capable model, initiating sequential API calls');
+            
+            // Get the messages we sent in the original request
+            const originalMessages = [
+              {
+                role: 'system',
+                content: websiteType.systemPrompt
+              },
+              {
+                role: 'user',
+                content: `Here is the content of a webpage (URL: ${safeUrl}):\n\n${trimmedContent}\n\nBased on this content, please answer the following question: ${safeQuestion}`
+              }
+            ];
+            
+            try {
+              // Use the sequential API calls handler for search-enabled models
+              return await handleSequentialApiCalls(apiKey, data, safeModel, originalMessages);
+            } catch (sequentialError) {
+              console.error('Error in sequential API calls:', sequentialError);
+              return `Error handling search capabilities: ${sequentialError.message}. Please try again.`;
+            }
+          } else {
+            // For non-browsing models that somehow return tool calls
+            console.log('Tool calls detected in a non-browsing model', message.tool_calls);
+            
+            // Extract tool call info in a safe way
+            const toolCallsInfo = message.tool_calls.map(toolCall => {
+              if (toolCall.type === 'function' && toolCall.function) {
+                try {
+                  const name = toolCall.function.name;
+                  const args = JSON.parse(toolCall.function.arguments || '{}');
+                  
+                  // Handle web_search function specifically
+                  if (name === 'web_search' && args.query) {
+                    return `Searching the web for: "${args.query}"`;
+                  }
+                  return `Using function ${name} with arguments: ${JSON.stringify(args)}`;
+                } catch (e) {
+                  return `Using function ${toolCall.function.name || 'unknown'} (with unparseable arguments)`;
+                }
+              }
+              return `Using tool: ${toolCall.type || 'unknown'}`;
+            }).join(' ');
+            
+            return `I need to search for more information to answer your question properly. ${toolCallsInfo}`;
+          }
+        } else {
+          // Null content but no tool calls - this is unexpected but we handle it gracefully
+          console.log('Content is null but no tool calls were found');
+          return 'Processing your request. If searching for information, I\'ll have a complete answer shortly.';
+        }
+      }
+      
+      // Case 2: Normal content case (with proper null check and string check)
+      if (typeof message.content === 'string' && message.content !== null) {
+        try {
+          return message.content.trim();
+        } catch (trimError) {
+          console.error('Error trimming message content:', trimError);
+          return message.content; // Return untrimmed content if trim fails
+        }
+      }
+      
+      // Fallback for unexpected content type (not null, not string)
+      console.log('Unexpected message content type:', typeof message.content);
+      return 'I processed your request, but received an unexpected response format. Please try again.';
+    } catch (messageError) {
+      console.error('Error processing message content:', messageError);
+      console.error('Message error stack:', messageError.stack);
+      return 'Error: Failed to process the API response. Please try again.';
+    }
   } catch (error) {
     console.error('OpenAI API Error:', error);
-    throw error;
+    console.error('Error stack:', error.stack);
+    return `Error: ${error.message || 'Unknown error occurred when calling the OpenAI API'}`;
   }
 }
 
@@ -527,5 +683,237 @@ function getBaseDomain(url) {
   } catch (e) {
     console.error('Error extracting base domain:', e);
     return 'parse-error'; // Return a descriptive error value if parsing fails
+  }
+}
+
+/**
+ * Processes a tool call and returns the result
+ * Currently only handles web_search tools
+ */
+async function executeToolCall(apiKey, toolCall) {
+  try {
+    // Validate toolCall structure
+    if (!toolCall) {
+      console.error('Tool call is undefined or null');
+      return 'Error: Invalid tool call data received.';
+    }
+    
+    if (toolCall.type !== 'function' || !toolCall.function) {
+      console.log('Unsupported tool type or missing function property:', toolCall);
+      return `Unsupported tool type: ${toolCall.type || 'unknown'}`;
+    }
+    
+    const name = toolCall.function.name || 'unknown';
+    let args = {};
+    
+    try {
+      if (toolCall.function.arguments) {
+        args = JSON.parse(toolCall.function.arguments);
+      } else {
+        console.warn('Missing arguments in tool call:', toolCall);
+      }
+    } catch (e) {
+      console.error('Error parsing tool arguments:', e, toolCall.function.arguments);
+      return `Error parsing tool arguments for ${name}: ${e.message}`;
+    }
+    
+    // Handle web_search function
+    if (name === 'web_search' && args.query) {
+      console.log('Executing web_search with query:', args.query);
+      // In a real implementation, this would perform an actual web search
+      // For now, we're returning a placeholder
+      return `Results for search query "${args.query}":\n` +
+             `- This would contain actual search results from the web\n` +
+             `- The results would be processed and formatted for the AI to continue\n` +
+             `- In a complete implementation, this would use a real search provider`;
+    }
+    
+    console.log('Unsupported function called:', name, args);
+    return `Unsupported function: ${name}`;
+  } catch (error) {
+    // Catch-all error handler to ensure we always return a string
+    console.error('Unexpected error in executeToolCall:', error);
+    return `Error executing tool: ${error.message}`;
+  }
+}
+
+/**
+ * Handles sequential API calls when tool execution is required
+ * This function will:
+ * 1. Process the initial API response
+ * 2. Execute any tool calls
+ * 3. Make a follow-up API call with the tool results if needed
+ */
+async function handleSequentialApiCalls(apiKey, initialResponse, model, messages) {
+  try {
+    console.log('Starting sequential API calls handling...');
+    
+    // Validate input parameters
+    if (!apiKey) {
+      console.error('Missing API key in handleSequentialApiCalls');
+      return 'Error: API key is required for sequential API calls.';
+    }
+    
+    if (!model) {
+      console.error('Missing model in handleSequentialApiCalls');
+      return 'Error: Model specification is required for sequential API calls.';
+    }
+    
+    if (!Array.isArray(messages)) {
+      console.error('Invalid messages format in handleSequentialApiCalls:', typeof messages);
+      return 'Error: Invalid message format for sequential API calls.';
+    }
+    
+    // Extract the message from the response
+    if (!initialResponse || !initialResponse.choices || 
+        !initialResponse.choices.length || !initialResponse.choices[0].message) {
+      console.error('Invalid response structure for tool handling', initialResponse);
+      return 'Error: Received an invalid response structure from the API.';
+    }
+    
+    console.log('Initial response is valid, extracting message...');
+    const message = initialResponse.choices[0].message;
+    console.log('Message extracted, tool_calls present:', !!message.tool_calls);
+    
+    // CRITICAL: Check specifically for tool calls first
+    if (!message.tool_calls || !message.tool_calls.length) {
+      console.log('No tool calls found in the message, returning content if available');
+      
+      // No tool calls, handle content
+      if (message.content === null) {
+        return 'Received an empty response with no tool calls. Please try again.';
+      }
+      
+      if (typeof message.content === 'string' && message.content !== null) {
+        try {
+          return message.content.trim();
+        } catch (trimError) {
+          console.error('Error trimming message content:', trimError);
+          return message.content; // Return untrimmed content if trim fails
+        }
+      }
+      
+      return 'Received an unexpected response format with no tool calls.';
+    }
+    
+    console.log('Processing tool calls:', message.tool_calls);
+    
+    // Process all tool calls and get results
+    const toolResults = [];
+    for (const toolCall of message.tool_calls) {
+      try {
+        const result = await executeToolCall(apiKey, toolCall);
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: 'tool',
+          content: result
+        });
+      } catch (toolError) {
+        console.error('Error executing tool call:', toolError);
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: 'tool',
+          content: `Error: ${toolError.message}`
+        });
+      }
+    }
+    
+    // If we have tool results, make a follow-up API call
+    if (toolResults.length > 0) {
+      console.log('Making follow-up API call with tool results:', toolResults);
+      
+      // Prepare messages for the follow-up call
+      const followUpMessages = [
+        ...messages, // Include original system and user messages
+        message,     // Include the assistant's message with tool_calls
+        ...toolResults // Include the tool results
+      ];
+      
+      console.log('Follow-up messages structure:', JSON.stringify(followUpMessages, null, 2));
+      
+      try {
+        // Make the follow-up API call
+        const followUpResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: followUpMessages,
+            temperature: 0.3,
+            max_tokens: 500
+          })
+        });
+        
+        if (!followUpResponse.ok) {
+          const errorText = await followUpResponse.text();
+          console.error('Follow-up API error response:', errorText);
+          
+          try {
+            if (errorText && errorText.trim().startsWith('{')) {
+              const errorJson = JSON.parse(errorText);
+              throw new Error(errorJson.error?.message || `Follow-up API Error: ${followUpResponse.status}`);
+            }
+          } catch (e) {
+            console.error('Error parsing error response:', e);
+          }
+          
+          throw new Error(`Follow-up API Error: ${followUpResponse.status} ${followUpResponse.statusText}`);
+        }
+        
+        // Get response as text first for better error handling
+        const followUpResponseText = await followUpResponse.text();
+        console.log('Follow-up response text length:', followUpResponseText.length);
+        
+        // Parse the response text as JSON
+        let followUpData;
+        try {
+          followUpData = JSON.parse(followUpResponseText);
+        } catch (parseError) {
+          console.error('Error parsing follow-up response:', parseError);
+          return 'Error: Failed to parse the follow-up API response.';
+        }
+        
+        console.log('FOLLOW-UP API RESPONSE:', JSON.stringify(followUpData, null, 2));
+        
+        // Safe extraction of the final answer from the follow-up response
+        if (!followUpData.choices || !followUpData.choices.length || !followUpData.choices[0].message) {
+          console.error('Invalid follow-up response structure', followUpData);
+          return 'Error: Received an invalid structure in the follow-up response.';
+        }
+        
+        const followUpMessage = followUpData.choices[0].message;
+        
+        // Handle potential null content in follow-up response (unlikely but possible)
+        if (followUpMessage.content === null) {
+          console.warn('Follow-up response has null content', followUpData);
+          return 'The web search was completed, but I received an empty follow-up response. Please try asking again.';
+        }
+        
+        // Case 2: Normal content case (with proper null check)
+        if (typeof followUpMessage.content === 'string' && followUpMessage.content !== null) {
+          // Use a safe trim operation with multiple checks
+          try {
+            return followUpMessage.content.trim();
+          } catch (trimError) {
+            console.error('Error trimming follow-up message content:', trimError);
+            return followUpMessage.content; // Return untrimmed content if trim fails
+          }
+        }
+        
+        return 'Received an unexpected format in the follow-up response.';
+      } catch (followUpError) {
+        console.error('Error in follow-up API call:', followUpError);
+        return `Error in follow-up request: ${followUpError.message}`;
+      }
+    } else {
+      // No tool results processed, return a fallback message
+      return 'The tool execution did not return any results. Please try again.';
+    }
+  } catch (error) {
+    console.error('Error in sequential API calls:', error);
+    return `Error processing your request: ${error.message}`;
   }
 } 

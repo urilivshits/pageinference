@@ -69,6 +69,14 @@ Choose between:
 ### Enhanced Browsing Support
 Advanced models like GPT-4o and GPT-4-turbo include web browsing capabilities to provide more accurate and up-to-date responses.
 
+### Web Search Functionality
+The extension now supports web search capabilities with certain AI models (GPT-4o, GPT-4-turbo, and more). When the AI needs additional information to answer your question:
+
+1. It will inform you that it's searching the web for information
+2. Execute the search and collect results
+3. Return a comprehensive answer that integrates the web search findings
+4. All of this happens automatically in a single interaction
+
 ## Troubleshooting
 
 ### Extension Icon Not Showing
@@ -89,6 +97,7 @@ Advanced models like GPT-4o and GPT-4-turbo include web browsing capabilities to
 - "Rate limit exceeded": Wait and try again later as you've exceeded your API usage limits
 - "Invalid model": The selected model may not be available for your API key
 - "Token limit exceeded": The page content plus your question may be too long; try a shorter question or use on a page with less content
+- "Tool calls processing": If the extension seems to take longer when asking complex questions, it may be processing web search requests in the background
 
 ## Development
 
@@ -161,4 +170,15 @@ The only requirements are to include the original license and copyright notice w
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Technical Implementation
+
+### Tool Calls and Sequential API Requests
+For models with web search capabilities, the extension implements a sequential API call pattern:
+
+1. First API call: The model may respond with tool calls (e.g., web search requests)
+2. Tool execution: The extension processes these tool calls
+3. Follow-up API call: The results are sent back to the model for a complete answer
+
+This architecture ensures that responses are comprehensive even when they require external information not present on the current page. 

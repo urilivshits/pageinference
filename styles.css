@@ -429,6 +429,10 @@ select {
   border-radius: var(--border-radius-medium);
   font-size: 0.875rem;
   box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 100;
+  max-height: 100px;
+  overflow-y: auto;
 }
 
 /* Settings styles */

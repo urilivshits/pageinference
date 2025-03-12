@@ -74,3 +74,111 @@ dont forget to update the docs"
 "follow the @rules.mdc and lets fix the issue where on chat and history titles the first 50% of width show the web title and the second 50% of width do not show user's last message:
 - fix chat/history title second 50% of width to show last user message
 - for both first website title and last user message allow the content to overflow instead of trancating (if overflows container - the overflowing part should not be shown)"
+
+"follow the @rules.mdc and:
+1. resolve the issue on inference:
+background.js:486 OpenAI API Error: Error: Missing required parameter: 'tools[0].function'.
+    at getOpenAiInference (background.js:480:13)
+    at async background.js:308:24
+
+background.js:350 Error during inference: Error: Missing required parameter: 'tools[0].function'.
+    at getOpenAiInference (background.js:480:13)
+    at async background.js:308:24
+2. hide the error message box from the UI as it renders below the bottom margin of the popup and is cut"
+
+"error box placement resolved, but still 400 on inference response:
+{
+  "message": "Missing required parameter: 'tools[0].function'.",
+  "type": "invalid_request_error",
+  "param": "tools[0].function",
+  "code": "missing_required_parameter"
+}"
+
+"error:
+
+background.js:504 OpenAI API Error: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24
+
+background.js:350 Error during inference: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24"
+
+"background.js:276 Handling inference request
+15:06:10.140 background.js:417 Using model: gpt-4o-mini
+15:06:10.140 background.js:428 Detected website type: linkedin
+15:06:10.140 background.js:439 Model supports browsing: true
+15:06:10.781 background.js:504 OpenAI API Error: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24
+getOpenAiInference @ background.js:504
+await in getOpenAiInference
+(anonymous) @ background.js:308Understand this errorAI
+15:06:10.781 background.js:350 Error during inference: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24"
+
+"still the same, here's the response obj:
+
+{
+    \"id\": \"chatcmpl-BAG7Pk1LCgNIY7loeOiVfzCYupets\",
+    \"object\": \"chat.completion\",
+    \"created\": 1741784939,
+    \"model\": \"gpt-4o-mini-2024-07-18\",
+    \"choices\": [
+        {
+            \"index\": 0,
+            \"message\": {
+                \"role\": \"assistant\",
+                \"content\": null,
+                \"tool_calls\": [
+                    {
+                        \"id\": \"call_horMVB63PYxgFlXZkW7uQjta\",
+                        \"type\": \"function\",
+                        \"function\": {
+                            \"name\": \"web_search\",
+                            \"arguments\": \"{\\\"query\\\":\\\"major news today\\\"}\"
+                        }
+                    }
+                ],
+                \"refusal\": null,
+                \"annotations\": []
+            },
+            \"logprobs\": null,
+            \"finish_reason\": \"tool_calls\"
+        }
+    ],
+    \"usage\": {
+        \"prompt_tokens\": 3011,
+        \"completion_tokens\": 17,
+        \"total_tokens\": 3028,
+        \"prompt_tokens_details\": {
+            \"cached_tokens\": 2816,
+            \"audio_tokens\": 0
+        },
+        \"completion_tokens_details\": {
+            \"reasoning_tokens\": 0,
+            \"audio_tokens\": 0,
+            \"accepted_prediction_tokens\": 0,
+            \"rejected_prediction_tokens\": 0
+        }
+    },
+    \"service_tier\": \"default\",
+    \"system_fingerprint\": \"fp_06737a9306\"
+}"
+
+"still the same issue but i think its because content of the response is null. And we need to investigate why is it null. lets check the latest openapi docs maybe?"
+
+"yes, lets implement it for the search-enabled models"
+
+"dont forget to follow @rules.mdc . Still the trim error though, we need to udress the trim on null that gets returned on the tool call content first."
+
+"still the same, and i dont see a new request happening after, of course. I think we're not properly handling the message.content === null check:
+
+background.js:504 OpenAI API Error: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24
+
+background.js:350 Error during inference: TypeError: Cannot read properties of null (reading 'trim')
+    at getOpenAiInference (background.js:502:44)
+    at async background.js:308:24"

@@ -212,3 +212,127 @@ Format for recording tasks:
 - [x] Update queries.md with the current user query
 - [x] Update tasks.md with implementation details
 - [x] Update context.md with information about the layout enhancement
+
+## OpenAI API Error Fix
+
+### Error Analysis
+- [x] Identify the cause of the "Missing required parameter: 'tools[0].function'" error in background.js
+- [x] Examine the getOpenAiInference function implementation around line 480
+- [x] Understand how tools are constructed for browsing-capable models
+- [x] Check OpenAI API documentation for correct tools parameters structure
+
+### Implementation
+- [x] Fix the tools configuration in the getOpenAiInference function
+- [x] Ensure the tools parameter includes all required properties including 'function'
+- [x] Update the browsing-capable models detection to properly construct tool objects
+- [x] Add error handling for API configuration issues
+- [x] Test the fix with different models that support browsing
+
+### Documentation Maintenance
+- [x] Update context.md with information about the resolved API error
+- [x] Document correct tools configuration approach in code comments
+
+## Error Message UI Fix
+
+### Layout Analysis
+- [x] Identify the cause of error message being cut off at the bottom of the popup
+- [x] Examine the error message styling and container layout
+- [x] Check popup dimensions and overflow settings
+
+### Implementation
+- [x] Modify error message container positioning to ensure visibility
+- [x] Adjust margins or padding to prevent the message from being cut off
+- [x] Implement auto-scroll or positioning adjustments when showing error messages
+- [x] Ensure error messages are fully visible in all situations
+- [x] Test the implementation with various error message lengths
+
+### Documentation Maintenance
+- [x] Update context.md with information about the UI enhancement
+
+## Persistent OpenAI API Error Fix
+
+### Error Analysis
+- [x] Revisit the "Missing required parameter: 'tools[0].function'" error in background.js
+- [x] Analyze the current tools configuration structure that was previously implemented
+- [x] Verify if the tools configuration meets the latest OpenAI API requirements
+- [x] Check if there are any structural issues with the function definition
+
+### Implementation
+- [x] Update the tools configuration structure to fully comply with OpenAI API requirements
+- [x] Ensure the function property is correctly defined with all required fields
+- [x] Remove any conflicting or improper tool definitions
+- [x] Add more robust validation and error handling for tool configuration
+- [x] Test the fix with different browsing-capable models
+
+### Documentation Maintenance
+- [x] Update context.md with information about the resolved API error
+- [x] Document the correct tools configuration structure in code comments
+
+## API Response Null Content Error Fix
+
+### Error Analysis
+- [x] Investigate the "Cannot read properties of null (reading 'trim')" error in background.js line 502
+- [x] Analyze the API response structure when tools are used
+- [x] Understand how content vs. tool_calls are structured in the OpenAI API response
+- [x] Trace the data.choices[0].message.content access path to identify where it becomes null
+
+### Implementation
+- [x] Modify the getOpenAiInference function to handle null content in responses
+- [x] Add null checks before accessing message.content.trim()
+- [x] Implement support for tool_calls in the response handling
+- [x] Return appropriate content even when the model chooses to use tools
+- [x] Add comprehensive error handling for different response structures
+
+### Documentation Maintenance
+- [x] Update context.md with information about the resolved null content error
+- [x] Document the API response handling approach in code comments
+
+## Persistent API Response Null Content Error Fix
+
+### Error Analysis
+- [x] Re-investigate the persistent "Cannot read properties of null (reading 'trim')" error
+- [x] Add console logging to trace the exact structure of the API response data
+- [x] Verify if data.choices or data.choices[0].message might be null or undefined
+- [x] Check if the API response structure has changed or varies with different model/website combinations
+
+### Implementation
+- [x] Add more comprehensive null checks for all levels of the response object structure
+- [x] Implement a defensive approach assuming any part of the response might be null or undefined
+- [x] Add detailed logging of response structure for easier debugging
+- [x] Ensure all edge cases are handled for different models and tool usage scenarios
+- [x] Simplified the response content handling by properly separating null content checks
+- [x] Fixed bugs in the handleSequentialApiCalls function to ensure it properly handles null content
+- [x] Added additional safety checks in the followUpData processing to prevent trim errors
+- [x] Restructured the content flow in getOpenAiInference for better readability and error prevention
+
+### Deep Null Content Handling
+- [x] Completely restructured the code flow in getOpenAiInference to check for null content before any other operations
+- [x] Added extensive console logging for better debugging of null content scenarios
+- [x] Enhanced sequential API call handling with better null content checks for follow-up responses
+- [x] Added robust error handling in executeToolCall to ensure it always returns a string value
+- [x] Created more detailed and descriptive messages for each error condition and edge case
+- [x] Improved console logging throughout the code to trace execution flow
+
+### Documentation Maintenance
+- [x] Update context.md with information about the revised fix
+- [x] Document the enhanced error handling approach in the code
+- [x] Updated README.md with thorough explanation of the web search feature
+- [x] Added technical implementation details to README.md explaining the API call pattern
+
+## API Response Format Debug Fix
+
+### Error Analysis
+- [x] Examine the exact API response structure from the provided sample
+- [x] Identify any discrepancies between our implementation and actual response format
+- [x] Check why our current tool_calls handling code isn't catching the case in the sample
+- [x] Verify that all property paths and conditions match the actual response
+
+### Implementation
+- [x] Update the tool_calls handling to exactly match the sample response structure
+- [x] Add direct debug logging for the specific case in the sample
+- [x] Test with similar inputs to ensure consistent handling
+- [x] Simplify the code structure for more reliable processing of different responses
+
+### Documentation Maintenance
+- [x] Update context.md with information about the format-specific fix
+- [x] Document the specific structure of tool_calls responses in comments
