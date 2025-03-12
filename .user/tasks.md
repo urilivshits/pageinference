@@ -194,3 +194,21 @@ Format for recording tasks:
 - [x] Add error handling section to the file header
 - [x] Ensure all parameters have proper JSDoc documentation
 - [x] Document defensive programming techniques in the codebase
+
+## Chat and History Title Layout Fix
+
+### Layout Analysis
+- [x] Identify the components responsible for displaying chat and history titles
+- [x] Analyze the current CSS structure for title containers
+- [x] Determine why the second 50% of width doesn't show the user's last message
+
+### Implementation
+- [x] Fix the layout to show website title in first 50% and last user message in second 50%
+- [x] Modify CSS to allow content to overflow rather than truncate for both title sections
+- [x] Ensure overflowing content is properly hidden beyond container boundaries
+- [x] Test the implementation with various title lengths and message content
+
+### Documentation Maintenance
+- [x] Update queries.md with the current user query
+- [x] Update tasks.md with implementation details
+- [x] Update context.md with information about the layout enhancement

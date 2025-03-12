@@ -70,3 +70,7 @@ Stack Trace
 dont forget to update the docs"
 
 "try again but also follow the @rules.mdc"
+
+"follow the @rules.mdc and lets fix the issue where on chat and history titles the first 50% of width show the web title and the second 50% of width do not show user's last message:
+- fix chat/history title second 50% of width to show last user message
+- for both first website title and last user message allow the content to overflow instead of trancating (if overflows container - the overflowing part should not be shown)"

@@ -51,6 +51,7 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Markdown Formatting]** Added support for rich formatting of LLM responses using markdown-it, including headings, lists, code blocks with syntax highlighting, blockquotes, and more (popup.js, styles.css).
 - **[Fallback Markdown Parser]** Implemented custom lightweight markdown parser as a fallback when external libraries are unavailable, ensuring core formatting capabilities are always available (popup.js).
 - **[Local Library Management]** Added local copies of markdown-it and highlight.js libraries rather than loading from CDNs, ensuring extension functionality despite Content Security Policy restrictions (lib/).
+- **[Improved Chat Title Layout]** Enhanced chat and history title display to show both webpage title and last user message in a 50/50 split layout with proper overflow handling (styles.css, popup.js).
 
 ## Resolved Bugs
 <!-- Document fixed issues (no timestamps) -->

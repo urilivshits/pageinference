@@ -541,14 +541,21 @@ function updateConversationInfo(sessionInfo = null) {
   // Clear previous content
   currentConversationTitle.innerHTML = '';
   
-  // Create webpage title element - now takes full width
+  // Create webpage title element - now takes 50% width
   const title = document.createElement('span');
   title.classList.add('webpage-title');
   title.title = sessionInfo.title || 'Current Page';
-  title.textContent = truncateText(sessionInfo.title || 'Current Page', 50); // Increased length since using full width
+  title.textContent = truncateText(sessionInfo.title || 'Current Page', 50);
   
-  // Add webpage title to the title container
+  // Create last user request element - takes the other 50% width
+  const lastRequest = document.createElement('span');
+  lastRequest.classList.add('last-user-request');
+  lastRequest.title = sessionInfo.lastUserRequest || '';
+  lastRequest.textContent = truncateText(sessionInfo.lastUserRequest || '', 50);
+  
+  // Add webpage title and last request to the title container
   currentConversationTitle.appendChild(title);
+  currentConversationTitle.appendChild(lastRequest);
   
   // Format and update the timestamp with time on left, message count on right
   const timestamp = new Date(sessionInfo.created);

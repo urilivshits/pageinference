@@ -934,9 +934,19 @@ select {
 
 /* Adjust conversation info title to use full width */
 .conversation-info .webpage-title {
-  width: 100%;
+  width: 50%;
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* Add last-user-request to conversation info */
+.conversation-info .last-user-request {
+  width: 50%;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--info-text);
+  font-weight: normal;
+  padding-left: 8px;
 }
 
 /* Maintain the existing style for the history items */
@@ -1011,14 +1021,12 @@ select {
 .webpage-title {
   width: 50%;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .last-user-request {
   width: 50%;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--info-text);
   font-weight: normal;
