@@ -13,3 +13,7 @@ Format for recording queries:
 "lets also review the @README.md and see that its in sync with the current state of the project"
 
 "now lets update the @README.md with the latest as well please"
+
+"chrome extension throws Uncaught ReferenceError: themeOptions is not defined on popup.js:670 (anonymous function)."
+
+"ok, but ensure you follow the @rules.mdc thoroughly"

@@ -44,3 +44,18 @@ Format for recording tasks:
 - [x] Add information about website type detection
 - [x] Add information about browsing capabilities for advanced models
 - [x] Ensure formatting and structure remain consistent
+
+## Chrome Extension Bug Fix
+
+### Reference Error Resolution
+- [x] Investigate "themeOptions is not defined" reference error in popup.js
+- [x] Identify scope issues with themeOptions variable
+- [x] Remove redundant theme handler in global scope
+- [x] Clean up duplicated theme handlers within DOMContentLoaded event handler
+- [x] Verify fix resolves the reference error
+
+### Documentation Maintenance
+- [x] Update queries.md with the latest user query
+- [x] Update tasks.md with bug fix details
+- [x] Update context.md with new resolved bug information
+- [x] Ensure complete adherence to documentation rules

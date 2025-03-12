@@ -29,6 +29,7 @@ let currentPageLoadId;
 let isInNewConversation = true;
 let wasInConversationsView = false; // Track last view before going to settings
 let isProcessing = false; // Add this flag near the other global variables at the top
+let currentTheme;
 
 // DOM elements - will be populated in DOMContentLoaded
 
@@ -157,14 +158,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await chrome.storage.sync.set({ model: modelSelect.value });
   });
   
-  themeOptions.forEach(option => {
-    option.addEventListener('change', async () => {
-      if (option.checked) {
-        const theme = option.value;
-        applyTheme(theme);
-        // Save theme preference
-        await chrome.storage.sync.set({ themePreference: theme });
-      }
+  // Theme radio button change handler
+  themeOptions.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      currentTheme = e.target.value;
+      applyTheme(currentTheme);
+      
+      // Save theme preference
+      chrome.storage.sync.set({ themePreference: currentTheme });
     });
   });
 
@@ -219,18 +220,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Ensure we're in main view
   showMainView();
-
-  // Theme settings handling 
-  themeOptions.forEach(option => {
-    option.addEventListener('change', async () => {
-      if (option.checked) {
-        const theme = option.value;
-        applyTheme(theme);
-        // Save theme preference
-        await chrome.storage.sync.set({ themePreference: theme });
-      }
-    });
-  });
 
   // Toggle API key visibility
   toggleApiKeyBtn.addEventListener('click', () => {
@@ -665,17 +654,6 @@ function applyTheme(theme) {
     root.setAttribute('data-theme', theme);
   }
 }
-
-// Theme radio button change handler
-themeOptions.forEach(radio => {
-  radio.addEventListener('change', (e) => {
-    currentTheme = e.target.value;
-    applyTheme(currentTheme);
-    
-    // Save theme preference
-    chrome.storage.sync.set({ themePreference: currentTheme });
-  });
-});
 
 /**
  * Save the current input text to storage

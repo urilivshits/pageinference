@@ -19,6 +19,7 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[API Integration]** OpenAI API for content processing and question answering capabilities.
 - **[Model Selection]** Default model set to gpt-4o-mini with options for gpt-3.5-turbo, gpt-4, and gpt-4o.
 - **[Theme Management]** Support for system, light, and dark themes with automatic detection of system preferences.
+- **[Event Handling]** DOM-scoped event handlers to maintain proper variable access and prevent reference errors.
 
 ## Implemented Features
 <!-- Track all completed features (no timestamps) -->
@@ -48,6 +49,8 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Bug ID/Description]** Fixed [issue description] in [file-name.js]
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
+
+- **[Reference Error]** Fixed "themeOptions is not defined" error in popup.js by removing a theme handler in global scope and consolidating theme-related code inside the DOMContentLoaded event handler, ensuring proper variable scoping.
 
 ## Documentation Status
 - **[README Review]** README.md accurately describes the extension functionality, installation process, and troubleshooting steps. The model options listed in the README (GPT-3.5 Turbo and GPT-4) are available in the actual implementation, which also includes the newer gpt-4o-mini (default) and gpt-4o models.
