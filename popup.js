@@ -786,7 +786,90 @@ async function addMessageToChat(role, content) {
   
   const messageContent = document.createElement('div');
   messageContent.classList.add('message-content');
-  messageContent.textContent = content;
+  
+  // Format content based on the role
+  if (role === 'assistant') {
+    try {
+      let renderedContent = '';
+      let markdownRendered = false;
+      
+      // Check explicitly for the markdown-it library
+      if (typeof window.markdownit === 'function') {
+        console.log('Using window.markdownit for rendering');
+        try {
+          const md = window.markdownit({
+            html: false,
+            breaks: true,
+            linkify: true,
+            typographer: true
+          });
+          renderedContent = md.render(content);
+          markdownRendered = true;
+          console.log('Successfully rendered with window.markdownit');
+        } catch (err) {
+          console.error('Error using window.markdownit:', err);
+        }
+      } else if (typeof markdownit === 'function') {
+        console.log('Using global markdownit for rendering');
+        try {
+          const md = markdownit({
+            html: false,
+            breaks: true,
+            linkify: true,
+            typographer: true
+          });
+          renderedContent = md.render(content);
+          markdownRendered = true;
+          console.log('Successfully rendered with global markdownit');
+        } catch (err) {
+          console.error('Error using global markdownit:', err);
+        }
+      } 
+      
+      if (!markdownRendered) {
+        console.log('markdown-it is not available, falling back to custom parser');
+        renderedContent = basicMarkdownRender(content);
+        markdownRendered = true;
+      }
+      
+      if (markdownRendered) {
+        // Set the rendered HTML content
+        messageContent.innerHTML = renderedContent;
+        
+        // Add target="_blank" to all links to open in new tab
+        const links = messageContent.querySelectorAll('a');
+        links.forEach(link => {
+          link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'noopener noreferrer');
+        });
+        
+        // Apply highlighting to code blocks
+        try {
+          if (typeof hljs !== 'undefined') {
+            messageContent.querySelectorAll('pre code').forEach((block) => {
+              hljs.highlightElement(block);
+            });
+            console.log('Applied code highlighting');
+          } else {
+            console.warn('highlight.js is not available for code highlighting');
+          }
+        } catch (e) {
+          console.warn('Error applying code highlighting:', e);
+        }
+      } else {
+        // Last resort - plain text
+        console.warn('All markdown rendering methods failed, using plain text');
+        messageContent.textContent = content;
+      }
+    } catch (error) {
+      console.error('Error in markdown rendering process:', error);
+      // Fallback to plain text if there's an error
+      messageContent.textContent = content;
+    }
+  } else {
+    // For user and system messages, just use plain text with line breaks
+    messageContent.textContent = content;
+  }
   
   // Add copy button
   const copyButton = document.createElement('button');
@@ -1451,7 +1534,93 @@ function displayMessage(role, content, timestamp) {
   
   const messageContent = document.createElement('div');
   messageContent.classList.add('message-content');
-  messageContent.textContent = content;
+  
+  // Format content based on the role
+  if (role === 'assistant') {
+    try {
+      // Debug info to console
+      console.log('Rendering markdown for assistant message');
+      
+      let renderedContent = '';
+      let markdownRendered = false;
+      
+      // Check explicitly for the markdown-it library
+      if (typeof window.markdownit === 'function') {
+        console.log('Using window.markdownit for rendering');
+        try {
+          const md = window.markdownit({
+            html: false,
+            breaks: true,
+            linkify: true,
+            typographer: true
+          });
+          renderedContent = md.render(content);
+          markdownRendered = true;
+          console.log('Successfully rendered with window.markdownit');
+        } catch (err) {
+          console.error('Error using window.markdownit:', err);
+        }
+      } else if (typeof markdownit === 'function') {
+        console.log('Using global markdownit for rendering');
+        try {
+          const md = markdownit({
+            html: false,
+            breaks: true,
+            linkify: true,
+            typographer: true
+          });
+          renderedContent = md.render(content);
+          markdownRendered = true;
+          console.log('Successfully rendered with global markdownit');
+        } catch (err) {
+          console.error('Error using global markdownit:', err);
+        }
+      } 
+      
+      if (!markdownRendered) {
+        console.log('markdown-it is not available, falling back to custom parser');
+        renderedContent = basicMarkdownRender(content);
+        markdownRendered = true;
+      }
+      
+      if (markdownRendered) {
+        // Set the rendered HTML content
+        messageContent.innerHTML = renderedContent;
+        
+        // Add target="_blank" to all links to open in new tab
+        const links = messageContent.querySelectorAll('a');
+        links.forEach(link => {
+          link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'noopener noreferrer');
+        });
+        
+        // Apply highlighting to code blocks
+        try {
+          if (typeof hljs !== 'undefined') {
+            messageContent.querySelectorAll('pre code').forEach((block) => {
+              hljs.highlightElement(block);
+            });
+            console.log('Applied code highlighting');
+          } else {
+            console.warn('highlight.js is not available for code highlighting');
+          }
+        } catch (e) {
+          console.warn('Error applying code highlighting:', e);
+        }
+      } else {
+        // Last resort - plain text
+        console.warn('All markdown rendering methods failed, using plain text');
+        messageContent.textContent = content;
+      }
+    } catch (error) {
+      console.error('Error in markdown rendering process:', error);
+      // Fallback to plain text if there's an error
+      messageContent.textContent = content;
+    }
+  } else {
+    // For user and system messages, just use plain text with line breaks
+    messageContent.textContent = content;
+  }
   
   // Add copy button
   const copyButton = document.createElement('button');
@@ -1474,20 +1643,33 @@ function displayMessage(role, content, timestamp) {
  * @param {HTMLElement} button - The button element that was clicked
  */
 function copyToClipboard(text, button) {
+  // Store original title
+  const originalTitle = button.title;
+  
   navigator.clipboard.writeText(text).then(() => {
-    // Store original title
-    const originalTitle = button.title;
-    
     // Show feedback
     button.title = 'Copied!';
+    
+    // Briefly change the button appearance to give visual feedback
+    button.classList.add('copy-success');
     
     // Reset after a delay
     setTimeout(() => {
       button.title = originalTitle;
+      button.classList.remove('copy-success');
     }, 2000);
   }).catch(err => {
     console.error('Failed to copy text:', err);
     button.title = 'Failed to copy';
+    
+    // Show error styling
+    button.classList.add('copy-error');
+    
+    // Reset after a delay
+    setTimeout(() => {
+      button.title = originalTitle;
+      button.classList.remove('copy-error');
+    }, 2000);
   });
 }
 
@@ -1508,4 +1690,142 @@ function getBaseDomain(url) {
         // Return a safe fallback
         return url.replace(/^https?:\/\//, '').split('/')[0] || 'unknown-domain';
     }
+}
+
+/**
+ * Basic markdown renderer that can handle common markdown syntax
+ * Used as a fallback when markdown-it is not available
+ * @param {string} text - The markdown text to render
+ * @returns {string} - HTML string with rendered markdown
+ */
+function basicMarkdownRender(text) {
+  if (!text) return '';
+  
+  let html = text;
+  
+  // Convert headers before handling new lines
+  // Handle headers (h1-h6) - Make regex more robust to handle ### at beginning of lines
+  html = html.replace(/^(\s*)#{6}\s+(.+)$/gm, '$1<h6>$2</h6>');
+  html = html.replace(/^(\s*)#{5}\s+(.+)$/gm, '$1<h5>$2</h5>');
+  html = html.replace(/^(\s*)#{4}\s+(.+)$/gm, '$1<h4>$2</h4>');
+  html = html.replace(/^(\s*)#{3}\s+(.+)$/gm, '$1<h3>$2</h3>');
+  html = html.replace(/^(\s*)#{2}\s+(.+)$/gm, '$1<h2>$2</h2>');
+  html = html.replace(/^(\s*)#{1}\s+(.+)$/gm, '$1<h1>$2</h1>');
+  
+  // Replace new lines with <br> but not inside code blocks
+  let parts = html.split(/```[\s\S]*?```/g);
+  let codeBlocks = html.match(/```[\s\S]*?```/g) || [];
+  let result = '';
+  
+  for (let i = 0; i < parts.length; i++) {
+    // Handle newlines in regular text
+    parts[i] = parts[i].replace(/\n/g, '<br>');
+    result += parts[i];
+    if (i < codeBlocks.length) {
+      result += codeBlocks[i];
+    }
+  }
+  html = result;
+  
+  // Handle bold text
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+  
+  // Handle italic text
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+  
+  // Handle code blocks with proper syntax highlighting and language support
+  html = html.replace(/```([a-z]*)\n([\s\S]*?)```/g, function(match, lang, code) {
+    const languageClass = lang ? ` class="language-${lang}"` : '';
+    return `<pre><code${languageClass}>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/<br>/g, '\n')}</code></pre>`;
+  });
+  
+  // Handle inline code (single backtick)
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // Handle unordered lists - improved to better handle nested lists
+  html = html.replace(/^(\s*)([\*\-\+])\s+(.*)$/gm, function(match, indent, bullet, text) {
+    const indentLevel = Math.floor(indent.length / 2);
+    const liClass = indentLevel > 0 ? ` class="indent-${indentLevel}"` : '';
+    return `<li${liClass}>${text}</li>`;
+  });
+  
+  // Wrap lists in <ul> tags
+  let inList = false;
+  const lines = html.split('<br>');
+  html = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].match(/<li[^>]*>/)) {
+      if (!inList) {
+        inList = true;
+        html += '<ul>';
+      }
+      html += lines[i];
+    } else {
+      if (inList) {
+        inList = false;
+        html += '</ul>';
+      }
+      html += lines[i];
+      if (i < lines.length - 1) {
+        html += '<br>';
+      }
+    }
+  }
+  
+  if (inList) {
+    html += '</ul>';
+  }
+  
+  // Handle ordered lists with better nesting support
+  inList = false;
+  const olLines = html.split('<br>');
+  html = '';
+  
+  const orderedListRegex = /^(\s*)(\d+)\.?\s+(.*)$/;
+  for (let i = 0; i < olLines.length; i++) {
+    const match = olLines[i].match(orderedListRegex);
+    if (match) {
+      const [, indent, num, text] = match;
+      const indentLevel = Math.floor(indent.length / 2);
+      const liClass = indentLevel > 0 ? ` class="indent-${indentLevel}"` : '';
+      
+      if (!inList) {
+        inList = true;
+        html += '<ol>';
+      }
+      html += `<li${liClass}>${text}</li>`;
+    } else {
+      if (inList) {
+        inList = false;
+        html += '</ol>';
+      }
+      html += olLines[i];
+      if (i < olLines.length - 1 && !olLines[i].match(/<\/[ou]l>/)) {
+        html += '<br>';
+      }
+    }
+  }
+  
+  if (inList) {
+    html += '</ol>';
+  }
+  
+  // Handle blockquotes with better styling
+  html = html.replace(/^(\s*)&gt;\s+(.*)$/gm, '<blockquote>$2</blockquote>');
+  html = html.replace(/<\/blockquote><br><blockquote>/g, '<br>');
+  
+  // Handle links with target="_blank" for security
+  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  // Handle horizontal rules
+  html = html.replace(/^(\s*)([-*_])\2\2+$/gm, '<hr>');
+  
+  // Clean up any unnecessary <br> tags around block elements
+  html = html.replace(/<br><(h[1-6]|ul|ol|pre|blockquote)/g, '<$1');
+  html = html.replace(/<\/(h[1-6]|ul|ol|pre|blockquote)><br>/g, '</$1>');
+  
+  return html;
 }
