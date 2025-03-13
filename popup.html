@@ -15,7 +15,6 @@
     <header>
       <h1>Talk to any webpage</h1>
       <div class="header-buttons">
-        <button id="newConversationBtn" class="icon-button" title="Chat">📋</button>
         <button id="pastSessionsBtn" class="icon-button" title="History">📅</button>
         <button id="settingsBtn" class="icon-button" title="Settings">⚙️</button>
       </div>
@@ -33,9 +32,19 @@
       <div id="errorMessage" class="error-message hidden"></div>
       
       <div class="question-container">
+        <button id="newConversationBtn" class="icon-button new-chat-button" title="New Chat">
+          <span class="button-text">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </span>
+          <span class="button-text-hover">New</span>
+        </button>
         <textarea id="questionInput" placeholder="What would you like to know about this page?"></textarea>
         <button id="submitBtn" class="primary-button">
-          <span class="button-text">Ask</span>
+          <span class="button-text">✨</span>
+          <span class="button-text-hover">Ask</span>
           <span class="spinner-container">
             <div class="spinner" style="display: none;"></div>
           </span>

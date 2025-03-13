@@ -459,3 +459,29 @@ MESSAGE: Received message action: getApiKey
 15:07:08.642 background.js:166 MESSAGE: Received message action: updateChatHistory"
 
 "please also ensure that you follow the rules at @rules.mdc"
+
+"follow the @rules.mdc and lets do some UI change: lets move the new chat button to be somewhere around (or even inside) the user input area. update the icon, follow best practices"
+
+"cool, one thing that remained align the heights"
+
+"still not very well aligned and it seems that icon is not fitting in its container. lets increse the height of buttons and text input a bit"
+
+"think the height of each of the elements may be increased more. Also the new chat glowing seems to affect it"
+
+"and more"
+
+"ok, i think the glow on new chat icon affects the height, lets use "+" for new chat instead"
+
+"1. lets remove the glow effect from new chat
+2. lets use the previous new chat icon on "Ask"
+3. lets make it "Ask" on hover"
+
+"1. remove zoom effect on new chat icon when its unfocused
+2. add glow to the "ask" button
+3. make sure the new chat icon shows" New" when hovered"
+
+"1. make sure the "ask" button does not jump on hover
+2. make sure the "new chat" button when uses the same font side as the "ask" button.
+3. change the new chat button's icon ("+") to be an actual icon of "+" and not just a text"
+
+as you can see on attached pic the new chat button is still bigger than the elements to its right when unhovered

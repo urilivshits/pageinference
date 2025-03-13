@@ -513,3 +513,50 @@ Format for recording tasks:
 - [x] Add a DOM mutation observer to detect and log potential script duplication issues
 - [x] Implement automatic timeout-based safety resets to prevent stuck states
 - [x] Add comprehensive error handling with proper flag resets to ensure the system recovers from errors
+
+## New Chat Button UI Enhancement
+
+### UI Analysis
+- [x] Identify current location and implementation of the "new chat" button
+- [x] Analyze the user input area structure to determine optimal placement
+- [x] Research best practices for chat interface design and new conversation button placement
+- [x] Determine the most appropriate icon for a "new chat" function
+
+### Implementation
+- [x] Move the "new chat" button to be near or inside the user input area
+- [x] Update the button's icon to follow modern UI design best practices
+- [x] Ensure proper alignment and spacing in the new location
+- [x] Maintain button visibility and accessibility in the new position
+- [x] Update relevant CSS to style the repositioned button
+- [x] Ensure responsive design considerations are addressed
+- [x] Fix height alignment between new chat button, text input, and Ask button
+- [x] Increase size of all input area elements for better icon fit and improved usability
+- [x] Further increase height from 42px to 46px for better proportions and touch target size
+- [x] Refine animation effect to reduce visual interference with the button appearance
+- [x] Further increase height from 46px to 50px for maximum visual prominence and optimal touch targets
+- [x] Replace sparkle icon (✨) with plus sign (+) for better visual clarity and to avoid potential height issues
+
+### Testing
+- [x] Test the new button placement in different window sizes
+- [x] Verify the button functionality remains unchanged
+- [x] Ensure the new design is consistent with the overall UI theme
+- [x] Check for any UI conflicts with other elements
+
+### Documentation Maintenance
+- [x] Update queries.md with the current user query
+- [x] Update tasks.md with implementation details
+- [x] Update context.md with information about the UI enhancement
+
+## UI Enhancements
+
+### Button Styling Refinements
+- [x] Fix "Ask" button to prevent jumping on hover by improving button text positioning
+- [x] Make the "New Chat" button use the same font size as the "Ask" button for visual consistency
+- [x] Replace text plus sign "+" with an SVG plus icon for better visual quality
+- [x] Implement proper flex positioning for button contents
+- [x] Ensure consistent appearance across hover states
+- [x] Maintain proper alignment of all button elements
+- [x] Fix size inconsistency between the new chat button and other input area elements
+- [x] Explicitly set consistent width and height for all question container elements
+- [x] Add overflow control to prevent content from affecting button dimensions
+- [x] Reduce SVG icon size for better proportional appearance

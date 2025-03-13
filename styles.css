@@ -3,6 +3,7 @@
   /* Light theme variables */
   --primary-color: #2563eb;
   --primary-hover: #1d4ed8;
+  --primary-color-rgb: 37, 99, 235; /* Added RGB values for primary color */
   --accent-color: #2563eb; /* Add accent color using primary color */
   --background-color: #ffffff;
   --text-color: #1f2937;
@@ -69,6 +70,7 @@
 [data-theme="dark"] {
   --primary-color: #3b82f6;
   --primary-hover: #2563eb;
+  --primary-color-rgb: 59, 130, 246; /* Added RGB values for primary color */
   --accent-color: #3b82f6; /* Add accent color using primary color */
   --background-color: #1f2937;
   --text-color: #f9fafb;
@@ -197,23 +199,32 @@ h2 {
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
-  min-height: 38px; /* Add consistent minimum height */
+  min-height: 50px;
+  height: 50px;
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  /* Add subtle glow effect to the Ask button */
+  box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.4);
 }
 
 .primary-button:hover {
   background-color: var(--primary-hover);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 0 15px rgba(var(--primary-color-rgb), 0.6);
   transform: translateY(-1px);
 }
 
 .primary-button:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--input-focus-shadow), var(--shadow-sm);
+  box-shadow: 0 0 15px rgba(var(--primary-color-rgb), 0.6), 0 0 0 2px var(--input-focus-shadow);
 }
 
 .primary-button:active {
   transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.4);
 }
 
 .secondary-button {
@@ -289,12 +300,13 @@ h2 {
   gap: 0.5rem;
   margin-bottom: 0.125rem; /* Reduced from 0.25rem to be closer to bottom */
   margin-top: auto;
-  padding: 4px 4px;
+  padding: 10px 10px; /* Increased from 8px */
   position: sticky;
   bottom: 0;
   background-color: var(--background-color);
   z-index: 10;
   border-top: 1px solid var(--border-color-light);
+  align-items: center; /* Center items vertically */
 }
 
 /* Form input styling */
@@ -364,12 +376,46 @@ select {
   justify-content: center;
 }
 
+/* Button text styling */
 .button-text {
-  display: inline-block;
   position: relative;
-  z-index: 1;
+  z-index: 2;
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* Text to show on hover */
+.button-text-hover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+
+/* Show hover text and hide default text on hover */
+.primary-button:hover .button-text {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.primary-button:hover .button-text-hover {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Spinner container positioning */
 .spinner-container {
   position: absolute;
   top: 0;
@@ -379,7 +425,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: 1; /* Behind the text but shown when text is hidden */
   pointer-events: none; /* Prevent container from blocking clicks */
 }
 
@@ -1345,4 +1391,86 @@ select {
 #temperatureValue {
   font-weight: bold;
   color: var(--accent-color);
+}
+
+/* New chat button in question container */
+.new-chat-button {
+  min-width: 50px;
+  max-width: 50px; /* Ensure consistent width */
+  width: 50px; /* Ensure consistent width */
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-medium);
+  background-color: var(--background-color);
+  color: var(--primary-color);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+  padding: 0;
+  flex-shrink: 0; /* Prevent button from shrinking */
+  position: relative; /* Added for hover text positioning */
+  font-size: 0.875rem; /* Reduced to match primary button font size */
+  box-sizing: border-box; /* Ensure border is included in dimensions */
+  overflow: hidden; /* Prevent content from affecting size */
+}
+
+.new-chat-button .button-text {
+  font-size: 0.875rem; /* Match the primary button text size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.new-chat-button .button-text svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.new-chat-button .button-text-hover {
+  font-size: 0.875rem; /* Match the same size as button-text for consistency */
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* Ensure all elements in question container have consistent dimensions */
+.question-container textarea,
+.question-container button {
+  height: 50px; /* Consistent height */
+  box-sizing: border-box; /* Include padding and border in height calculation */
+}
+
+/* Adjust the input field height */
+textarea#questionInput {
+  height: 50px;
+  min-height: 50px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  line-height: 22px;
+  box-sizing: border-box;
+}
+
+/* New chat button hover styles */
+.new-chat-button:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.new-chat-button:active {
+  transform: scale(0.95);
+}
+
+/* Apply hover text functionality to new chat button */
+.new-chat-button:hover .button-text {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.new-chat-button:hover .button-text-hover {
+  opacity: 1;
+  visibility: visible;
 } 
