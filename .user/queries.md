@@ -257,7 +257,8 @@ await in getOpenAiInference
 (anonymous) @ background.js:308Understand this errorAI
 21:00:53.646 background.js:350 Error during inference: TypeError: Cannot read properties of null (reading 'trim')
     at getOpenAiInference (background.js:502:44)
-    at async background.js:308:24"
+    at async background.js:308:24
+"
 
 "now this error:
 
@@ -305,3 +306,102 @@ await in getOpenAiInference
 13:05:53.558 background.js:161 MESSAGE: Received message: undefined
 
 2. do we still need BROWSING_CAPABLE_MODELS and modelSupportsBrowsing?"
+
+"follow the @rules.mdc and lets resolve the following:
+1. user query gets visually duplicated when submitted"
+
+"1. now it duplicates the user query twice and also api inference call and response twice
+2. dont forget to update all the required files as specified in the @rules.mdc"
+
+"still same issue
+
+Extension updated from 1.0 to 1.0
+14:58:36.311 background.js:164 MESSAGE: Received message type: contentScriptInitialized
+14:58:36.312 background.js:262 Content script initialized in tab 281323505 for URL: https://www.linkedin.com/in/yuriy-leonov/
+14:58:42.295 background.js:166 MESSAGE: Received message action: updateChatHistory
+14:58:42.296 background.js:166 MESSAGE: Received message action: getApiKey
+14:58:42.296 background.js:455 Getting API key
+14:58:42.297 background.js:457 API key exists: true
+14:58:42.298 background.js:166 MESSAGE: Received message action: updateChatHistory
+14:58:48.272 background.js:166 MESSAGE: Received message action: getApiKey
+14:58:48.272 background.js:455 Getting API key
+14:58:48.273 background.js:166 MESSAGE: Received message action: getApiKey
+14:58:48.273 background.js:455 Getting API key
+14:58:48.273 background.js:457 API key exists: true
+14:58:48.273 background.js:457 API key exists: true
+14:58:48.282 background.js:166 MESSAGE: Received message action: updateChatHistory
+14:58:48.282 background.js:166 MESSAGE: Received message action: updateChatHistory
+14:58:48.292 background.js:166 MESSAGE: Received message action: scrapeCurrentPage
+14:58:48.292 background.js:274 Handling scrapeCurrentPage request
+14:58:48.292 background.js:166 MESSAGE: Received message action: scrapeCurrentPage
+14:58:48.292 background.js:274 Handling scrapeCurrentPage request
+14:58:48.292 background.js:278 Query for active tab returned: 1 tabs
+14:58:48.292 background.js:304 Active tab found, ID: 281323505 URL: https://www.linkedin.com/in/yuriy-leonov/
+14:58:48.292 background.js:319 Page detected: LinkedIn, using 800ms delay and 3 retries
+14:58:48.293 background.js:278 Query for active tab returned: 1 tabs
+14:58:48.293 background.js:304 Active tab found, ID: 281323505 URL: https://www.linkedin.com/in/yuriy-leonov/
+14:58:48.293 background.js:319 Page detected: LinkedIn, using 800ms delay and 3 retries
+14:58:48.293 background.js:338 Content script already initialized, document state: complete
+14:58:48.293 background.js:366 Sending scrapeContent message to tab 281323505, attempt 1/3
+14:58:48.293 background.js:338 Content script already initialized, document state: complete
+14:58:48.293 background.js:366 Sending scrapeContent message to tab 281323505, attempt 1/3
+14:58:48.300 background.js:407 Received content from tab, length: 22386
+14:58:48.300 background.js:411 Detected website type: {type: 'linkedin', systemPrompt: 'You are a helpful assistant specializing in profes… the content versus what is based on assumptions.'}
+14:58:48.301 background.js:166 MESSAGE: Received message action: getInference
+14:58:48.301 background.js:465 Handling inference request
+14:58:48.302 background.js:498 Using model: gpt-4o-mini
+14:58:48.302 background.js:501 Making initial API request to get response or tool calls
+14:58:48.302 background.js:611 Starting getOpenAiInference
+14:58:48.302 background.js:617 Have API key, content length: 22386
+14:58:48.302 background.js:633 Using temperature: 0
+14:58:48.302 background.js:645 Detected website type: linkedin
+14:58:48.302 background.js:660 Model supports browsing: true
+14:58:48.302 background.js:687 API CALL [req_sp07obbun2]: Adding web search tools for gpt-4o-mini
+14:58:48.302 background.js:709 API CALL [req_sp07obbun2]: Making fetch request to OpenAI API with model gpt-4o-mini
+14:58:48.302 background.js:710 Request body: {
+  "model": "gpt-4o-mini",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant specializing in professional networking and career advice. The user is viewing a LinkedIn page which may contain profile information, job listings, or professional content. Help them extract relevant professional insights, evaluate job opportunities, understand career paths, or analyze professional profiles. Focus on professional development, job search, or recruitment insights...
+14:58:48.303 background.js:407 Received content from tab, length: 22386
+14:58:48.304 background.js:411 Detected website type: {type: 'linkedin', systemPrompt: 'You are a helpful assistant specializing in profes… the content versus what is based on assumptions.'}
+14:58:48.304 background.js:166 MESSAGE: Received message action: getInference
+14:58:48.305 background.js:465 Handling inference request
+14:58:48.305 background.js:498 Using model: gpt-4o-mini
+14:58:48.305 background.js:501 Making initial API request to get response or tool calls
+14:58:48.305 background.js:611 Starting getOpenAiInference
+14:58:48.305 background.js:617 Have API key, content length: 22386
+14:58:48.305 background.js:633 Using temperature: 0
+14:58:48.305 background.js:645 Detected website type: linkedin
+14:58:48.305 background.js:660 Model supports browsing: true
+14:58:48.305 background.js:687 API CALL [req_d8mv0w7u73]: Adding web search tools for gpt-4o-mini
+14:58:48.305 background.js:709 API CALL [req_d8mv0w7u73]: Making fetch request to OpenAI API with model gpt-4o-mini
+14:58:48.305 background.js:710 Request body: {
+  "model": "gpt-4o-mini",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant specializing in professional networking and career advice. The user is viewing a LinkedIn page which may contain profile information, job listings, or professional content. Help them extract relevant professional insights, evaluate job opportunities, understand career paths, or analyze professional profiles. Focus on professional development, job search, or recruitment insights...
+14:58:58.482 background.js:722 API CALL [req_sp07obbun2]: Received API response, status: 200 
+14:58:58.483 background.js:753 API CALL [req_sp07obbun2]: Reading response as text...
+14:58:58.485 background.js:757 API CALL [req_sp07obbun2]: Response text length: 2165
+14:58:58.485 background.js:758 API CALL [req_sp07obbun2]: Response preview: {
+  "id": "chatcmpl-BAcR8ctfizcnkQTt7qE5H9o2AvI1a",
+  "object": "chat.completion",
+  "created": 1741...
+14:58:58.485 background.js:764 API CALL [req_sp07obbun2]: Successfully parsed JSON response
+14:58:58.485 background.js:801 API CALL [req_sp07obbun2]: Successfully extracted content from response, length: 1334
+14:58:58.485 background.js:528 Storing chat history with key: 281323505_linkedin.com_pageload_1741870724347_0gwgvlu
+14:58:58.488 background.js:166 MESSAGE: Received message action: updateChatHistory
+14:58:58.746 background.js:722 API CALL [req_d8mv0w7u73]: Received API response, status: 200 
+14:58:58.746 background.js:753 API CALL [req_d8mv0w7u73]: Reading response as text...
+14:58:58.753 background.js:757 API CALL [req_d8mv0w7u73]: Response text length: 2110
+14:58:58.753 background.js:758 API CALL [req_d8mv0w7u73]: Response preview: {
+  "id": "chatcmpl-BAcR82GVfnkqloxdq9PPgutizpQfA",
+  "object": "chat.completion",
+  "created": 1741...
+14:58:58.753 background.js:764 API CALL [req_d8mv0w7u73]: Successfully parsed JSON response
+14:58:58.754 background.js:801 API CALL [req_d8mv0w7u73]: Successfully extracted content from response, length: 1276
+14:58:58.754 background.js:528 Storing chat history with key: 281323505_linkedin.com_pageload_1741870724347_0gwgvlu
+14:58:58.756 background.js:166 MESSAGE: Received message action: updateChatHistory"

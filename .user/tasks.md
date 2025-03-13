@@ -444,3 +444,53 @@ Format for recording tasks:
 - [x] Updated all code to use SEARCH_MODEL constant instead of hard-coded model names
 - [x] Updated documentation to clarify which model supports search functionality
 - [x] Simplified error logging to include the model name dynamically
+
+## User Query Duplication Issue
+
+### Analysis
+- [x] Identify where in the UI user queries appear duplicated when submitted
+- [x] Examine the code responsible for displaying user queries in the chat interface
+- [x] Investigate event handlers related to query submission
+- [x] Determine if the duplication happens on both visual rendering and data storage
+
+### Implementation
+- [x] Fix the identified root cause of query duplication in the submit handler
+- [x] Restructure the submit flow to avoid calling updateCurrentTabInfo which reloads chat history
+- [x] Add validation in loadChatHistory to avoid re-displaying messages already in the UI
+- [x] Add detailed logging to help diagnose message flow during submission
+- [x] Ensure user queries are displayed only once when submitted
+- [x] Test fix with multiple query submissions to verify solution
+
+### Refinement
+- [x] Remove overly aggressive message duplicate filtering that prevented legitimate duplicate messages 
+- [x] Ensure users can intentionally send identical messages if desired
+- [x] Allow assistant responses that happen to be similar or identical
+- [x] Preserve message submission order integrity
+
+### Final Solution
+- [x] Replace simplistic exact message matching with time-based duplicate detection (within 1 second)
+- [x] Switch from message count comparison to a history-loaded flag for preventing duplicate rendering
+- [x] Remove all instances of the lastSubmittedQuestion variable throughout the codebase
+- [x] Implement proper cleanup of tracking flags when starting new conversations
+- [x] Ensure all legitimate duplicate messages can be sent after a short delay
+
+## Double Message and API Call Issue
+
+### Analysis
+- [x] Identify why both user messages and API calls are duplicated
+- [x] Examine the window focus event that might be triggering duplicate operations
+- [x] Analyze the updateCurrentTabInfo function and how it relates to message duplication
+
+### Implementation 
+- [x] Modify the window focus event handler to prevent triggering duplicate chat history loading
+- [x] Create a more targeted update function that refreshes tab info without reloading messages
+- [x] Add logging to better track focus-related events and their impact on the chat interface
+- [x] Test across different use cases to ensure the fix works consistently
+- [x] Monitor for any side effects related to tab switching or window activation
+
+### Advanced Duplicate Prevention
+- [x] Add explicit initialization detection to identify if popup.js is being loaded multiple times
+- [x] Implement a robust prevention mechanism for duplicate submissions with isSubmitInProgress flag
+- [x] Add a DOM mutation observer to detect and log potential script duplication issues
+- [x] Implement automatic timeout-based safety resets to prevent stuck states
+- [x] Add comprehensive error handling with proper flag resets to ensure the system recovers from errors

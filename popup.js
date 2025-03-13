@@ -1,3 +1,35 @@
+// Prevent multiple initializations with a global flag
+if (window.popupJsInitialized) {
+  console.error('===== DUPLICATE INITIALIZATION DETECTED: popup.js already initialized! =====');
+} else {
+  window.popupJsInitialized = true;
+  console.log('===== FIRST INITIALIZATION OF POPUP.JS =====');
+}
+
+// Log information about scripts for debugging
+console.log('Currently loaded scripts:', Array.from(document.scripts).map(s => s.src || 'inline script'));
+
+// Add handler to detect potential DOM changes that might cause multiple script loading
+if (window.MutationObserver) {
+  const observer = new MutationObserver(mutations => {
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList') {
+        const addedScripts = Array.from(mutation.addedNodes).filter(node => 
+          node.tagName === 'SCRIPT' && (node.src && node.src.includes('popup.js'))
+        );
+        if (addedScripts.length > 0) {
+          console.error('===== POPUP.JS ADDED AGAIN TO DOM! =====', addedScripts);
+        }
+      }
+    }
+  });
+  
+  // Start observing once the DOM is loaded
+  document.addEventListener('DOMContentLoaded', () => {
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }, { once: true }); // Use once:true to ensure this runs only once
+}
+
 console.log('popup.js loaded');
 
 /**
@@ -32,6 +64,8 @@ let isProcessing = false; // Add this flag near the other global variables at th
 let currentTheme;
 let temperatureSlider;
 let temperatureValueDisplay;
+let isSubmitInProgress = false; // Add a flag to track if submit operation is in progress
+let lastSubmittedQuestion = ''; // Track the last submitted question to prevent duplicates
 
 // Function to update the current tab information
 async function updateCurrentTabInfo() {
@@ -48,7 +82,9 @@ async function updateCurrentTabInfo() {
       console.log('Tab info updated successfully:', currentTabId, currentUrl);
       
       // Load chat history for this tab/URL/pageLoadId
+      console.log('LOADING CHAT HISTORY FROM updateCurrentTabInfo');
       await loadChatHistory();
+      console.log('CHAT HISTORY LOADING COMPLETE FROM updateCurrentTabInfo');
       
       // Load saved input text
       await loadSavedInputText();
@@ -110,7 +146,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   await updateCurrentTabInfo();
 
   // Add focus event listener to the window to update tab information when popup regains focus
-  window.addEventListener('focus', updateCurrentTabInfo);
+  window.addEventListener('focus', async () => {
+    console.log('Window regained focus - updating tab info WITHOUT reloading chat history');
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]) {
+        currentTabId = tabs[0].id;
+        currentUrl = tabs[0].url;
+        currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
+        
+        // Check for existing page load ID or create a new one
+        await checkOrCreatePageLoadId();
+        console.log('Tab info updated on focus event:', currentTabId, currentUrl);
+        
+        // Update UI state but DON'T reload chat history to prevent duplication
+        updateUIState();
+        
+        // Load saved input text
+        await loadSavedInputText();
+      }
+    } catch (error) {
+      console.error('Error updating tab info on focus event:', error);
+    }
+  });
   
   // Load saved settings
   const { apiKey } = await chrome.runtime.sendMessage({ action: 'getApiKey' });
@@ -277,130 +335,175 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Toggle API key visibility
   toggleApiKeyBtn.addEventListener('click', () => {
-    if (apiKeyInput.type === 'password') {
-      apiKeyInput.type = 'text';
-      toggleApiKeyBtn.textContent = '🔒';
-    } else {
-      apiKeyInput.type = 'password';
-      toggleApiKeyBtn.textContent = '👁️';
-    }
+    const type = apiKeyInput.type === 'password' ? 'text' : 'password';
+    apiKeyInput.type = type;
+    toggleApiKeyBtn.textContent = type === 'password' ? '👁️' : '🔒';
   });
 
   // Handle submit button click
   submitBtn.addEventListener('click', async () => {
     console.log('Submit button clicked');
-    const question = questionInput.value.trim();
-    console.log('Question:', question);
-    console.log('Is processing:', isProcessing);
     
-    // Check API key
-    const { apiKey } = await chrome.runtime.sendMessage({ action: 'getApiKey' });
-    console.log('API key exists:', !!apiKey);
-    
-    // Check selected model
-    const selectedModel = modelSelect.value;
-    console.log('Selected model:', selectedModel);
-    
-    if (!apiKey) {
-      showError('Please set your OpenAI API key in settings first.');
+    // Prevent duplicate submissions
+    if (preventDuplicateSubmission()) {
+      console.log('Submission prevented - operation already in progress');
       return;
-    }
-    
-    if (!question || isProcessing) {
-      console.log('Returning early - empty question or already processing');
-      return;
-    }
-
-    // Set processing flag to prevent duplicate submissions
-    isProcessing = true;
-    console.log('Set processing flag to true');
-    hideError();
-    
-    // Save input before clearing
-    await saveInputText();
-    
-    // Add user message to chat
-    await addMessageToChat('user', question);
-    
-    // Clear input after saving
-    questionInput.value = '';
-    
-    // Show loading state in button
-    submitBtn.classList.add('button-loading');
-    const spinner = submitBtn.querySelector('.spinner');
-    if (spinner) {
-      spinner.style.display = 'block';
-      
-      // Make sure the button text is hidden
-      const buttonText = submitBtn.querySelector('.button-text');
-      if (buttonText) {
-        buttonText.style.visibility = 'hidden';
-      }
     }
     
     try {
-      // Update current tab information before proceeding
-      const tabInfoUpdated = await updateCurrentTabInfo();
-      if (!tabInfoUpdated) {
-        throw new Error('No active tab found. Please try again.');
+      const question = questionInput.value.trim();
+      console.log('Question:', question);
+      console.log('Is processing:', isProcessing);
+      
+      // Check API key
+      const { apiKey } = await chrome.runtime.sendMessage({ action: 'getApiKey' });
+      console.log('API key exists:', !!apiKey);
+      
+      // Check selected model
+      const selectedModel = modelSelect.value;
+      console.log('Selected model:', selectedModel);
+      
+      if (!apiKey) {
+        showError('Please set your OpenAI API key in settings first.');
+        isSubmitInProgress = false; // Reset the flag
+        return;
       }
       
-      // Get the updated tab information
-      const { id: tabId, url } = { id: currentTabId, url: currentUrl };
+      if (!question || isProcessing) {
+        console.log('Returning early - empty question or already processing');
+        isSubmitInProgress = false; // Reset the flag
+        return;
+      }
+
+      // Check if this is a rapid duplicate submission of the same question (within 1 second)
+      // This prevents accidental double-clicks but allows intentional resubmission of the same question
+      const currentTime = Date.now();
+      const lastSubmissionTimeKey = `last_submission_time_${currentPageLoadId}`;
+      const { [lastSubmissionTimeKey]: lastSubmissionData } = await chrome.storage.local.get(lastSubmissionTimeKey);
       
-      // Make sure we have the current pageLoadId
-      if (!currentPageLoadId) {
-        // Try to recover the pageLoadId
-        const storageKey = `page_load_${tabId}_${url}`;
-        const { [storageKey]: storedPageLoadId } = await chrome.storage.local.get(storageKey);
+      if (lastSubmissionData) {
+        const { text, timestamp } = lastSubmissionData;
+        const timeSinceLastSubmission = currentTime - timestamp;
         
-        if (storedPageLoadId) {
-          currentPageLoadId = storedPageLoadId;
-          console.log(`Recovered pageLoadId: ${currentPageLoadId}`);
-        } else {
-          // If we still don't have a pageLoadId, create a new one
-          console.log('Creating new pageLoadId as none was found');
-          currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-          await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+        // If it's the exact same text and was submitted less than 1 second ago, prevent it
+        if (text === question && timeSinceLastSubmission < 1000) {
+          console.log('Preventing rapid duplicate submission (within 1 second):', timeSinceLastSubmission, 'ms');
+          isSubmitInProgress = false; // Reset the flag
+          return;
         }
       }
       
-      console.log('Using pageLoadId:', currentPageLoadId);
-      
-      // First, get the page content by scraping the current page
-      console.log('Sending scrapeCurrentPage message');
-      const scraperResponse = await chrome.runtime.sendMessage({
-        action: 'scrapeCurrentPage'
+      // Update the last submission data with current text and timestamp
+      await chrome.storage.local.set({ 
+        [lastSubmissionTimeKey]: { 
+          text: question, 
+          timestamp: currentTime 
+        } 
       });
-      console.log('Scraper response:', scraperResponse);
+
+      // Set processing flag to prevent duplicate submissions
+      isProcessing = true;
+      console.log('Set processing flag to true');
+      hideError();
       
-      if (scraperResponse.error) {
-        if (scraperResponse.error.includes('No active tab found')) {
-          // Try once more to update tab information before giving up
-          console.log('Tab may have lost focus, trying to update tab information again...');
-          const retryTabInfo = await updateCurrentTabInfo();
-          
-          if (retryTabInfo) {
-            // Try the scrape request one more time
-            console.log('Tab info updated, retrying scrape request...');
-            const retryResponse = await chrome.runtime.sendMessage({
-              action: 'scrapeCurrentPage'
-            });
+      // Save input before clearing
+      await saveInputText();
+      
+      // Clear input after saving
+      questionInput.value = '';
+      
+      // Show loading state in button
+      submitBtn.classList.add('button-loading');
+      const spinner = submitBtn.querySelector('.spinner');
+      if (spinner) {
+        spinner.style.display = 'block';
+        
+        // Make sure the button text is hidden
+        const buttonText = submitBtn.querySelector('.button-text');
+        if (buttonText) {
+          buttonText.style.visibility = 'hidden';
+        }
+      }
+      
+      try {
+        // Update tab information BUT DON'T reload chat history
+        // since we're manually adding the user message
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+          throw new Error('No active tab found. Please try again.');
+        }
+        
+        // Update core tab information
+        currentTabId = tabs[0].id;
+        currentUrl = tabs[0].url;
+        currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
+        
+        // Check for existing page load ID or create a new one
+        await checkOrCreatePageLoadId();
+        console.log('Tab info updated:', currentTabId, currentUrl);
+        
+        // NOW add the user message to chat AFTER tab info is updated
+        // This ensures the message is associated with the correct pageLoadId
+        console.log('ADDING USER MESSAGE TO CHAT UI');
+        await addMessageToChat('user', question);
+        console.log('DONE ADDING USER MESSAGE TO CHAT UI');
+        
+        // First, get the page content by scraping the current page
+        console.log('Sending scrapeCurrentPage message');
+        const scraperResponse = await chrome.runtime.sendMessage({
+          action: 'scrapeCurrentPage'
+        });
+        console.log('Scraper response:', scraperResponse);
+        
+        if (scraperResponse.error) {
+          if (scraperResponse.error.includes('No active tab found')) {
+            // Try once more to update tab information before giving up
+            console.log('Tab may have lost focus, trying to update tab information again...');
+            const retryTabInfo = await updateCurrentTabInfo();
             
-            if (retryResponse.error) {
-              showError(retryResponse.error);
-              isProcessing = false; // Reset processing flag
+            if (retryTabInfo) {
+              // Try the scrape request one more time
+              console.log('Tab info updated, retrying scrape request...');
+              const retryResponse = await chrome.runtime.sendMessage({
+                action: 'scrapeCurrentPage'
+              });
+              
+              if (retryResponse.error) {
+                showError(retryResponse.error);
+                isProcessing = false; // Reset processing flag
+                lastSubmittedQuestion = ''; // Reset last submitted question
+              } else {
+                // Continue with the successful retry response
+                await continueWithScrapeResponse(retryResponse, question);
+                return;
+              }
             } else {
-              // Continue with the successful retry response
-              await continueWithScrapeResponse(retryResponse, question);
-              return;
+              showError('Unable to find an active browser tab. Please click on a browser tab first.');
             }
           } else {
-            showError('Unable to find an active browser tab. Please click on a browser tab first.');
+            showError(scraperResponse.error);
           }
-        } else {
-          showError(scraperResponse.error);
+          
+          // Hide loading button state
+          submitBtn.classList.remove('button-loading');
+          const spinner = submitBtn.querySelector('.spinner');
+          if (spinner) {
+            spinner.style.display = 'none';
+            
+            // Make button text visible again
+            const buttonText = submitBtn.querySelector('.button-text');
+            if (buttonText) {
+              buttonText.style.visibility = 'visible';
+            }
+          }
+          isProcessing = false; // Reset processing flag
+          return;
         }
+        
+        await continueWithScrapeResponse(scraperResponse, question);
+      } catch (error) {
+        console.error('Error processing request:', error);
+        showError(error.message || 'An error occurred');
         
         // Hide loading button state
         submitBtn.classList.remove('button-loading');
@@ -415,27 +518,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
         isProcessing = false; // Reset processing flag
-        return;
       }
-      
-      await continueWithScrapeResponse(scraperResponse, question);
     } catch (error) {
-      console.error('Error processing request:', error);
-      showError(error.message || 'An error occurred');
-      
-      // Hide loading button state
-      submitBtn.classList.remove('button-loading');
-      const spinner = submitBtn.querySelector('.spinner');
-      if (spinner) {
-        spinner.style.display = 'none';
-        
-        // Make button text visible again
-        const buttonText = submitBtn.querySelector('.button-text');
-        if (buttonText) {
-          buttonText.style.visibility = 'visible';
-        }
-      }
-      isProcessing = false; // Reset processing flag
+      console.error('Error in submit handler:', error);
+    } finally {
+      // Always reset the flag when the operation is complete
+      setTimeout(() => {
+        isSubmitInProgress = false;
+        console.log('Reset isSubmitInProgress to false');
+      }, 1000);
     }
   });
 });
@@ -645,8 +736,30 @@ function truncateText(text, maxLength) {
 async function startNewConversation() {
   console.log('Starting new conversation');
   
+  // Reset state
+  isProcessing = false;
+  
   // Generate a new page load ID first
+  const oldPageLoadId = currentPageLoadId;
   currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  
+  // Save it for the current tab/URL
+  if (currentTabId && currentUrl) {
+    const storageKey = `page_load_${currentTabId}_${currentUrl}`;
+    await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+    
+    // Clear lastSubmissionTime for the new conversation
+    const lastSubmissionTimeKey = `last_submission_time_${currentPageLoadId}`;
+    await chrome.storage.local.remove(lastSubmissionTimeKey);
+    
+    // Clear history loaded flag for the new conversation
+    const historyLoadedKey = `history_loaded_${currentPageLoadId}`;
+    await chrome.storage.local.remove(historyLoadedKey);
+    
+    console.log(`Created new page load ID: ${currentPageLoadId} replacing ${oldPageLoadId}`);
+  } else {
+    console.error('No active tab when starting new conversation');
+  }
   
   // Check for empty conversations before creating a new one
   try {
@@ -1172,12 +1285,29 @@ async function loadChatHistory() {
     console.log(`Found ${history ? history.length : 0} messages in chat history`);
     
     if (history && history.length > 0) {
-      // Display chat history from storage
-      history.forEach(message => {
-        displayMessage(message.role, message.content, message.timestamp);
-      });
+      // Instead of using message count, we'll track whether we've loaded history before
+      // This way we only load history on first load, but not on subsequent updates
+      // which prevents duplicate message rendering
       
-      console.log(`Displayed ${history.length} messages from history`);
+      // Create a flag key for this page load to track if history has been loaded
+      const historyLoadedKey = `history_loaded_${currentPageLoadId}`;
+      const { [historyLoadedKey]: historyLoaded } = await chrome.storage.local.get(historyLoadedKey);
+      
+      if (!historyLoaded) {
+        console.log('First time loading history for this session, displaying messages');
+        
+        // Display chat history from storage
+        history.forEach(message => {
+          displayMessage(message.role, message.content, message.timestamp);
+        });
+        
+        console.log(`Displayed ${history.length} messages from history`);
+        
+        // Mark history as loaded for this session
+        await chrome.storage.local.set({ [historyLoadedKey]: true });
+      } else {
+        console.log('History already loaded for this session, skipping display to avoid duplication');
+      }
       
       // Scroll to bottom with a small delay to ensure DOM is updated
       setTimeout(() => {
@@ -1192,38 +1322,6 @@ async function loadChatHistory() {
         pageLoadId: currentPageLoadId,
         history: history
       });
-    } else {
-      // Try legacy format for backward compatibility
-      const legacyKey = `chat_history_${currentTabId}_${currentUrl}_${currentPageLoadId}`;
-      console.log(`No history found with domain key, trying legacy key: ${legacyKey}`);
-      
-      const { [legacyKey]: legacyHistory } = await chrome.storage.local.get(legacyKey);
-      
-      if (legacyHistory && legacyHistory.length > 0) {
-        console.log(`Found ${legacyHistory.length} messages with legacy key`);
-        
-        // Display the legacy history
-        legacyHistory.forEach(message => {
-          displayMessage(message.role, message.content, message.timestamp);
-        });
-        
-        console.log(`Displayed ${legacyHistory.length} messages from legacy history`);
-        
-        // Save with the new format for future use
-        await chrome.storage.local.set({ [chatHistoryKey]: legacyHistory });
-        console.log(`Migrated history to new key format: ${chatHistoryKey}`);
-        
-        // Update background script's in-memory history
-        await chrome.runtime.sendMessage({
-          action: 'updateChatHistory',
-          tabId: currentTabId,
-          url: currentUrl,
-          pageLoadId: currentPageLoadId,
-          history: legacyHistory
-        });
-      } else {
-        console.log('No chat history found for current page or new conversation');
-      }
     }
   } catch (error) {
     console.error('Error loading chat history:', error);
@@ -1976,6 +2074,26 @@ async function continueWithScrapeResponse(scraperResponse, question) {
       }
     }
     
-    isProcessing = false; // Reset processing flag
+    // Reset processing flag
+    isProcessing = false;
   }
+}
+
+// Helper function to prevent duplicate submissions
+function preventDuplicateSubmission() {
+  if (isSubmitInProgress) {
+    console.log('Preventing duplicate submission - operation already in progress');
+    return true; // Submission should be prevented
+  }
+  
+  isSubmitInProgress = true;
+  console.log('Setting isSubmitInProgress to true');
+  
+  // Automatically reset after 5 seconds as a safety measure
+  setTimeout(() => {
+    isSubmitInProgress = false;
+    console.log('Auto-reset isSubmitInProgress to false after timeout');
+  }, 5000);
+  
+  return false; // Submission can proceed
 }
