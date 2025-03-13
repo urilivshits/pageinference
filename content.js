@@ -77,6 +77,7 @@ function setupMessageListener() {
   // Broadcast initialization status to ensure background script knows we're ready
   try {
     chrome.runtime.sendMessage({ 
+      type: 'contentScriptInitialized',
       action: 'contentScriptInitialized',
       url: window.location.href,
       timestamp: Date.now()
@@ -110,19 +111,32 @@ if (isLinkedIn) {
  */
 function scrapeLinkedInProfile() {
   console.log('===== LINKEDIN SCRAPER: Starting specialized LinkedIn profile scraper =====');
+  console.log('LINKEDIN SCRAPER: URL being scraped:', window.location.href);
+  console.log('LINKEDIN SCRAPER: Document title:', document.title);
+  
+  // Log the available selectors for debugging
+  const debugSelectors = {
+    nameSelectors: document.querySelector('.pv-top-card-section__name') ? 'Found .pv-top-card-section__name' : 'Missing .pv-top-card-section__name',
+    headingXLarge: document.querySelector('.text-heading-xlarge') ? 'Found .text-heading-xlarge' : 'Missing .text-heading-xlarge',
+    h1Heading: document.querySelector('h1.text-heading-xlarge') ? 'Found h1.text-heading-xlarge' : 'Missing h1.text-heading-xlarge',
+    lockupTitle: document.querySelector('.artdeco-entity-lockup__title') ? 'Found .artdeco-entity-lockup__title' : 'Missing .artdeco-entity-lockup__title',
+    breakWords: document.querySelector('.break-words') ? 'Found .break-words' : 'Missing .break-words',
+    profileCardName: document.querySelector('div[data-test-id="profile-card-name"]') ? 'Found div[data-test-id="profile-card-name"]' : 'Missing div[data-test-id="profile-card-name"]'
+  };
+  console.log('LINKEDIN SCRAPER: Debug selector status:', debugSelectors);
   
   // Extract profile name
-  const nameElement = document.querySelector('.pv-top-card-section__name, .text-heading-xlarge, h1.text-heading-xlarge');
+  const nameElement = document.querySelector('.pv-top-card-section__name, .text-heading-xlarge, h1.text-heading-xlarge, .artdeco-entity-lockup__title, .break-words, div[data-test-id="profile-card-name"]');
   const name = nameElement ? nameElement.textContent.trim() : 'Unknown Profile Name';
   console.log('LINKEDIN SCRAPER: Found profile name:', name);
   
   // Extract headline
-  const headlineElement = document.querySelector('.pv-top-card-section__headline, .text-body-medium');
+  const headlineElement = document.querySelector('.pv-top-card-section__headline, .text-body-medium, .artdeco-entity-lockup__subtitle, .pv-text-details__headline, .text-body-small');
   const headline = headlineElement ? headlineElement.textContent.trim() : '';
   console.log('LINKEDIN SCRAPER: Found headline:', headline);
   
   // Extract about section
-  const aboutElements = document.querySelectorAll('.pv-about__summary-text, .display-flex.ph5.pv3 .display-flex.mt2');
+  const aboutElements = document.querySelectorAll('.pv-about__summary-text, .display-flex.ph5.pv3 .display-flex.mt2, .pv-shared-text-with-see-more, section.summary div.core-section-container__content, div[data-test-id="about-section"] p');
   console.log('LINKEDIN SCRAPER: Found about elements:', aboutElements.length);
   const aboutSection = Array.from(aboutElements)
     .map(el => el.textContent.trim())
@@ -131,20 +145,20 @@ function scrapeLinkedInProfile() {
   
   // Extract experience
   const experienceSection = extractLinkedInSection('Experience', [
-    '#experience-section, .pv-profile-section.experience-section, section[id*="experience"]',
-    '.pv-entity__summary-info, .display-flex.flex-column.full-width'
+    '#experience-section, .pv-profile-section.experience-section, section[id*="experience"], div[data-test-id="experience-section"], #experience',
+    '.pv-entity__summary-info, .display-flex.flex-column.full-width, .pv-entity__position-info, .display-flex.align-items-center.mr1, .pv-text-details__right-panel, .pvs-list__outer-container .pvs-entity'
   ]);
   
   // Extract education
   const educationSection = extractLinkedInSection('Education', [
-    '#education-section, .pv-profile-section.education-section, section[id*="education"]',
-    '.pv-entity__summary-info, .display-flex.flex-column.full-width'
+    '#education-section, .pv-profile-section.education-section, section[id*="education"], div[data-test-id="education-section"], #education',
+    '.pv-entity__summary-info, .display-flex.flex-column.full-width, .pv-entity__degree-info, .pv-text-details__right-panel, .pvs-list__outer-container .pvs-entity'
   ]);
   
   // Extract skills
   const skillsSection = extractLinkedInSection('Skills', [
-    '#skills-section, .pv-profile-section.pv-skill-categories-section, section[id*="skills"]',
-    '.pv-skill-category-entity__name, .pv-skill-category-entity__name-text, .mr1'
+    '#skills-section, .pv-profile-section.pv-skill-categories-section, section[id*="skills"], div[data-test-id="skills-section"], #skills',
+    '.pv-skill-category-entity__name, .pv-skill-category-entity__name-text, .mr1, .pv-text-details__right-panel, .pvs-list__outer-container .pvs-entity, span.pvs-skill-pill'
   ]);
   
   // Extract certifications
@@ -185,19 +199,39 @@ function extractLinkedInSection(sectionName, selectors) {
       if (container) break;
     }
     
-    if (!container) return '';
+    if (!container) {
+      console.log(`LINKEDIN SCRAPER: No container found for section ${sectionName}`);
+      return '';
+    }
     
     // Find all items in the section
     let items = [];
     for (const selector of selectors[1].split(',')) {
       const elements = container.querySelectorAll(selector.trim());
       if (elements && elements.length > 0) {
+        console.log(`LINKEDIN SCRAPER: Found ${elements.length} items in section ${sectionName} using selector ${selector.trim()}`);
         items = Array.from(elements).map(el => el.textContent.trim());
         break;
       }
     }
     
-    if (items.length === 0) return '';
+    // If no items found in the container, try searching document-wide as a fallback
+    if (items.length === 0) {
+      console.log(`LINKEDIN SCRAPER: No items found in container for section ${sectionName}, trying document-wide search`);
+      for (const selector of selectors[1].split(',')) {
+        const elements = document.querySelectorAll(selector.trim());
+        if (elements && elements.length > 0) {
+          console.log(`LINKEDIN SCRAPER: Found ${elements.length} items document-wide for section ${sectionName}`);
+          items = Array.from(elements).map(el => el.textContent.trim());
+          break;
+        }
+      }
+    }
+    
+    if (items.length === 0) {
+      console.log(`LINKEDIN SCRAPER: No items found for section ${sectionName}`);
+      return '';
+    }
     
     // Format the section
     return `## ${sectionName}\n${items.join('\n')}`;
