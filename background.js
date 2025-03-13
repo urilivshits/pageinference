@@ -507,16 +507,82 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           url
         );
         
+        // Track if we need to do a follow-up call
+        let finalResult = result;
+        let didFollowUp = false;
+        
         // If the result contains the web search indicator, we should make a follow-up request
         if (result && typeof result === 'string' && result.includes('Searching the web for:')) {
           console.log('Web search indicator detected in response, should trigger follow-up');
           
-          // For future implementation, we would make the actual web search here
-          // and then make a follow-up request with the search results
-          
-          // For now, just inform the user that web search is in progress
-          // In a real implementation, we would store a request ID and handle the follow-up
-          // asynchronously once search results are available
+          try {
+            // Extract the original API response and tool calls
+            const searchMatch = result.match(/Searching the web for: "([^"]+)"/);
+            const searchQuery = searchMatch ? searchMatch[1] : "";
+            
+            if (searchQuery) {
+              console.log('Extracted search query:', searchQuery);
+              
+              // Construct a minimal messages array with the original question
+              const messages = [
+                {
+                  role: 'system',
+                  content: 'You are a helpful assistant.'
+                },
+                {
+                  role: 'user',
+                  content: request.question
+                }
+              ];
+              
+              // Generate a unique ID for easier debugging
+              const callId = 'call_' + Math.random().toString(36).substring(2, 12);
+              console.log(`Web search follow-up: Generated tool call ID: ${callId}`);
+              
+              // Construct a tool call for the web search
+              const toolCalls = [{
+                id: callId,
+                type: 'function',
+                function: {
+                  name: 'web_search',
+                  arguments: JSON.stringify({ query: searchQuery })
+                }
+              }];
+              
+              console.log('Web search follow-up: Tool calls structure:', JSON.stringify(toolCalls));
+              
+              // Make the sequential API calls
+              console.log('Making sequential API calls for web search at:', new Date().toISOString());
+              
+              try {
+                const followUpResult = await handleSequentialApiCalls(
+                  data.openAiApiKey,
+                  messages,
+                  toolCalls
+                );
+                
+                if (followUpResult) {
+                  console.log('Received follow-up result from web search at:', new Date().toISOString());
+                  console.log('Follow-up result length:', followUpResult.length);
+                  finalResult = followUpResult;
+                  didFollowUp = true;
+                } else {
+                  console.warn('Follow-up call returned null or empty');
+                  // Don't modify finalResult, keep the original "Searching..." message
+                }
+              } catch (seqError) {
+                console.error('Error in sequential API calls process:', seqError);
+                finalResult += `\n\nNote: I attempted to search the web for "${searchQuery}" but encountered an error: ${seqError.message}`;
+              }
+            } else {
+              console.error('Could not extract search query from result');
+              finalResult += '\n\nNote: I attempted to search the web but could not determine the search query.';
+            }
+          } catch (followUpError) {
+            console.error('Error in follow-up process:', followUpError);
+            finalResult += '\n\nNote: I encountered an error when attempting to search the web. ' + followUpError.message;
+            // Fallback to original result if follow-up fails
+          }
         }
         
         // Store in chat history
@@ -540,7 +606,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           
           chatHistories[historyKey].push({
             role: 'assistant',
-            content: result,
+            content: finalResult,
             timestamp: new Date().toISOString()
           });
         } else {
@@ -551,7 +617,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           });
         }
         
-        sendResponse({ answer: result });
+        sendResponse({ answer: finalResult });
       } catch (error) {
         console.error('Error during inference:', error);
         
@@ -896,6 +962,7 @@ async function executeToolCall(apiKey, toolCall) {
     // Handle web_search function
     if (name === 'web_search' && args.query) {
       console.log('TOOL EXECUTION: Executing web_search with query:', args.query);
+      console.log('TOOL EXECUTION: Web search started at:', new Date().toISOString());
       
       // Simulate a web search response with detailed mock data
       const mockSearchResultsMap = {
@@ -1236,6 +1303,9 @@ Search results for "${args.query}":
       
       const timestamp = new Date().toISOString();
       
+      console.log('TOOL EXECUTION: Web search completed at:', timestamp);
+      console.log('TOOL EXECUTION: Search results length:', searchResults ? searchResults.length : 0);
+      
       return `Web search results for query "${args.query}" (as of ${timestamp}):\n\n${searchResults.trim()}\n\nNote: This search was performed at the time of your request. Newer information may now be available.`;
     }
     
@@ -1260,6 +1330,13 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
     console.log(`SEQ CALL [${seqId}]: Starting sequential API calls process`);
     console.log(`SEQ CALL [${seqId}]: Message count:`, messages ? messages.length : 0);
     console.log(`SEQ CALL [${seqId}]: Tool calls count:`, toolCalls ? toolCalls.length : 0);
+    console.log(`SEQ CALL [${seqId}]: Starting at timestamp:`, new Date().toISOString());
+    
+    // Validate apiKey
+    if (!apiKey) {
+      console.error(`SEQ CALL [${seqId}]: API key is missing or invalid`);
+      return 'Error: API key is required for sequential API calls';
+    }
     
     // Validate toolCalls structure to ensure it meets OpenAI API expectations
     if (toolCalls && Array.isArray(toolCalls)) {
@@ -1297,6 +1374,9 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
       } else {
         console.log(`SEQ CALL [${seqId}]: Tool calls structure is valid`);
       }
+    } else {
+      console.error(`SEQ CALL [${seqId}]: toolCalls is not an array or is undefined:`, toolCalls);
+      return 'Error: Invalid tool calls data structure';
     }
     
     // Extract the topic to search from the actual tool calls
@@ -1385,17 +1465,17 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
           console.error(`SEQ CALL [${seqId}]: Missing tool call id, generating a random one`);
           // Generate a random ID as fallback
           const randomId = 'call_' + Math.random().toString(36).substring(2, 12);
-        toolResults.push({
+          toolResults.push({
             tool_call_id: randomId,
-          role: 'tool',
+            role: 'tool',
             name: toolCall.function?.name,
-          content: result
-        });
+            content: result
+          });
           console.warn(`SEQ CALL [${seqId}]: Used fallback id ${randomId} for tool result`);
         } else {
-        toolResults.push({
+          toolResults.push({
             tool_call_id: toolCallId,
-          role: 'tool',
+            role: 'tool',
             name: toolCall.function?.name,
             content: result
           });
@@ -1477,9 +1557,21 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
     // Make the second API call with the tool results and a clear instruction 
     // to focus on those results
     console.log(`SEQ CALL [${seqId}]: Making follow-up API call`);
+    console.log(`SEQ CALL [${seqId}]: Follow-up messages structure:`, JSON.stringify(followUpMessages.map(m => ({
+      role: m.role,
+      has_content: m.content !== null && m.content !== undefined,
+      content_length: m.content ? m.content.length : 0,
+      has_tool_calls: !!(m.tool_calls && m.tool_calls.length > 0),
+      tool_call_count: m.tool_calls ? m.tool_calls.length : 0,
+      tool_call_id: m.tool_call_id,
+      name: m.name
+    }))));
+    
     let followUpResponse;
     try {
+      console.log(`SEQ CALL [${seqId}]: Starting callOpenAI for follow-up at:`, new Date().toISOString());
       followUpResponse = await callOpenAI(apiKey, followUpMessages, '', SEARCH_MODEL);
+      console.log(`SEQ CALL [${seqId}]: callOpenAI for follow-up completed at:`, new Date().toISOString());
       
       if (!followUpResponse) {
         console.error(`SEQ CALL [${seqId}]: Empty response from follow-up API call`);
@@ -1493,7 +1585,7 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
       return `Based on web search results:\n\n${followUpResponse}`;
     } catch (error) {
       console.error(`SEQ CALL [${seqId}]: Error in follow-up API call:`, error);
-      throw error;
+      return `Error during web search follow-up: ${error.message}\n\nHere's a summary of what I found:\n\n${toolResults[0]?.content || 'No results available'}`;
     }
   } catch (error) {
     console.error('SEQ CALL: Fatal error in handleSequentialApiCalls:', error);
@@ -1604,7 +1696,7 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = SEARCH_MO
   
   // Generate a unique request ID to track this call through the logs
   const requestId = 'req_' + Math.random().toString(36).substring(2, 12);
-  console.log(`API CALL [${requestId}]: Request started`);
+  console.log(`API CALL [${requestId}]: Request started at ${new Date().toISOString()}`);
   
   if (!apiKey) {
     console.error(`API CALL [${requestId}]: Missing API key`);
@@ -1655,19 +1747,102 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = SEARCH_MO
         toolMessageWithoutPrecedingToolCall = true;
         console.error(`API CALL [${requestId}]: Message structure error: Tool message at index ${i} is not preceded by an assistant message with tool_calls`);
       }
+      
+      // Validate tool message has required fields
+      if (!msg.tool_call_id) {
+        console.error(`API CALL [${requestId}]: Tool message at index ${i} is missing required 'tool_call_id' field`);
+        // Add a fallback ID to prevent API errors
+        msg.tool_call_id = 'fallback_' + Math.random().toString(36).substring(2, 12);
+        console.log(`API CALL [${requestId}]: Added fallback tool_call_id: ${msg.tool_call_id}`);
+      }
+    }
+    
+    // Validate assistant messages with tool_calls
+    if (msg.role === 'assistant' && msg.tool_calls) {
+      for (let j = 0; j < msg.tool_calls.length; j++) {
+        const toolCall = msg.tool_calls[j];
+        if (!toolCall.id) {
+          console.error(`API CALL [${requestId}]: Tool call missing id at index ${i}, tool call index ${j}`);
+          toolCall.id = 'fallback_' + Math.random().toString(36).substring(2, 12);
+          console.log(`API CALL [${requestId}]: Added fallback id: ${toolCall.id}`);
+        }
+        if (!toolCall.type) {
+          console.log(`API CALL [${requestId}]: Tool call missing type, adding default 'function'`);
+          toolCall.type = 'function';
+        }
+        if (!toolCall.function || !toolCall.function.name || !toolCall.function.arguments) {
+          console.error(`API CALL [${requestId}]: Tool call missing function details at index ${i}, tool call index ${j}`);
+        }
+      }
     }
   }
   
+  // Fix message structure if needed
   if (toolMessageWithoutPrecedingToolCall) {
-    console.log(`API CALL [${requestId}]: ⚠️ Warning: Invalid message structure detected - a tool message must be preceded by an assistant message with tool_calls`);
-    console.log(`API CALL [${requestId}]: Tool role messages found at indices:`, toolRoleIndices);
-    // Don't throw an error, just log the warning to help with debugging
+    console.log(`API CALL [${requestId}]: Attempting to fix invalid message structure`);
+    
+    const fixedMessages = [];
+    let previousToolCallId = null;
+    
+    for (let i = 0; i < messagesWithSystem.length; i++) {
+      const msg = messagesWithSystem[i];
+      
+      if (msg.role === 'tool') {
+        // If tool message appears without preceding assistant+tool_calls
+        // Insert a synthetic assistant message with tool_calls
+        if (i === 0 || 
+            messagesWithSystem[i-1].role !== 'assistant' || 
+            !messagesWithSystem[i-1].tool_calls) {
+          
+          console.log(`API CALL [${requestId}]: Adding synthetic assistant message before tool message at index ${i}`);
+          
+          // Generate an ID for the tool call
+          const toolCallId = msg.tool_call_id || ('synth_' + Math.random().toString(36).substring(2, 12));
+          previousToolCallId = toolCallId;
+          
+          // Add a synthetic assistant message with tool_calls
+          fixedMessages.push({
+            role: 'assistant',
+            content: null,
+            tool_calls: [{
+              id: toolCallId,
+              type: 'function',
+              function: {
+                name: msg.name || 'web_search',
+                arguments: JSON.stringify({ query: 'synthetic query' })
+              }
+            }]
+          });
+          
+          // Make sure the tool message uses the same tool_call_id
+          if (!msg.tool_call_id) {
+            msg.tool_call_id = toolCallId;
+          }
+        }
+      }
+      
+      fixedMessages.push(msg);
+    }
+    
+    console.log(`API CALL [${requestId}]: Fixed message structure, original count: ${messagesWithSystem.length}, new count: ${fixedMessages.length}`);
+    messagesWithSystem = fixedMessages;
   }
   
   try {
     console.log(`API CALL [${requestId}]: Preparing API request`);
     console.log(`API CALL [${requestId}]: Using model:`, model);
     console.log(`API CALL [${requestId}]: Messages count:`, messagesWithSystem.length);
+    
+    // Dump the full messages array in debug for troubleshooting
+    console.log(`API CALL [${requestId}]: Full messages structure:`, JSON.stringify(messagesWithSystem.map(m => ({
+      role: m.role,
+      content: m.content ? (m.content.length > 50 ? m.content.substring(0, 50) + '...' : m.content) : null,
+      has_tool_calls: !!(m.tool_calls && m.tool_calls.length),
+      tool_call_count: m.tool_calls ? m.tool_calls.length : 0,
+      is_tool: m.role === 'tool',
+      tool_call_id: m.tool_call_id,
+      name: m.name
+    }))));
     
     // Log message types for debugging
     const messageRoles = messagesWithSystem.map(m => m.role);
@@ -1679,6 +1854,7 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = SEARCH_MO
       console.log(`API CALL [${requestId}]: Found ${toolMessages.length} tool messages`);
       toolMessages.forEach((tm, i) => {
         console.log(`API CALL [${requestId}]: Tool message ${i+1} name:`, tm.name);
+        console.log(`API CALL [${requestId}]: Tool message ${i+1} tool_call_id:`, tm.tool_call_id);
         console.log(`API CALL [${requestId}]: Tool message ${i+1} preview:`, tm.content.substring(0, 100) + '...');
       });
     }
@@ -1689,6 +1865,10 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = SEARCH_MO
       console.log(`API CALL [${requestId}]: Found ${assistantWithToolCalls.length} assistant messages with tool_calls`);
       assistantWithToolCalls.forEach((am, i) => {
         console.log(`API CALL [${requestId}]: Assistant message ${i+1} has ${am.tool_calls.length} tool_calls`);
+        am.tool_calls.forEach((tc, j) => {
+          console.log(`API CALL [${requestId}]: Tool call ${j+1} id:`, tc.id);
+          console.log(`API CALL [${requestId}]: Tool call ${j+1} name:`, tc.function?.name);
+        });
       });
     }
     

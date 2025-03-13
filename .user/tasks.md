@@ -44,14 +44,33 @@ Format for recording tasks:
 - [x] Test LinkedIn scraping on various profile pages
 - [x] Ensure "No active tab found" error doesn't occur on subsequent queries
 
-### Web Search Follow-up Implementation
-- [x] Investigate why the follow-up API call isn't being made after successful tool_calls detection
-- [x] Review handleSequentialApiCalls function implementation and execution flow
-- [x] Add logging to trace execution path for sequential API calls
-- [x] Determine why the follow-up request is not being triggered
-- [x] Implement fix to ensure proper sequential API calls for web search
-- [x] Add verification to confirm second API call is made with search results
-- [x] Test complete web search flow with different search queries
+### Web Search Follow-up API Call Fix
+
+### Issue Analysis
+- [x] Investigate why the second API call for web search isn't happening
+- [x] Review logs to identify exactly where the process stops working
+- [x] Analyze the flow from initial API call to web search detection to follow-up call
+- [x] Identify critical issues in the message structure for the follow-up API call
+
+### Implementation
+- [x] Add detailed logging throughout the web search flow for debugging
+- [x] Fix the getInference handler to properly trigger handleSequentialApiCalls
+- [x] Enhance the callOpenAI function to correctly handle and validate messages with tool calls
+- [x] Add proper error handling and recovery mechanisms for sequential API calls
+- [x] Fix message structure validation to ensure tool messages have proper tool_call_id values
+- [x] Implement better error fallbacks to provide search results even when API call fails
+- [x] Ensure consistent and unique request IDs for better traceability in logs
+
+### Testing and Verification
+- [ ] Test web search with a variety of search queries
+- [ ] Verify both API calls complete successfully
+- [ ] Ensure search results are returned to the user
+- [ ] Check error handling in case of API failures
+- [ ] Verify consistent behavior across different search topics
+
+### Documentation Maintenance
+- [x] Update tasks.md with implementation details
+- [ ] Update context.md with information about the fix
 
 ## Feature Implementations
 

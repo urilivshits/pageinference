@@ -2,14 +2,14 @@
 <!-- Project Progress Report to check and update for every query. -->
 This document tracks the evolution of the project, documenting technical decisions, feature implementations, and bug resolutions.
 
-## Technical Approaches and Architectural Decisions
+## Architectural Decisions
 <!-- Document all significant technical choices and architectural decisions (no timestamps) -->
 
 <!--
 DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 
-- **[Framework Selection]** Adopted [Framework Name] for [component] to improve [benefit].
 - **[Architecture Pattern]** Implemented [pattern name] for [purpose] to enhance [benefit].
+- **[Framework Selection]** Adopted [Framework Name] for [component] to improve [benefit].
 -->
 
 - **[Browser Extension Architecture]** Chrome extension using Manifest V3 for improved security and performance.
@@ -20,7 +20,7 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Model Selection]** Default model set to gpt-4o-mini with options for gpt-3.5-turbo, gpt-4, and gpt-4o.
 - **[Theme Management]** Support for system, light, and dark themes with automatic detection of system preferences.
 - **[Event Handling]** DOM-scoped event handlers to maintain proper variable access and prevent reference errors.
-- **[CSS Box Model]** Explicit box-sizing and proper transform handling for UI animations and styled components.
+- **[CSS Box Model]** Explicit box-sizing and transform-origin properties for UI animations and styled components.
 - **[Flexbox Layout]** Applied flexbox display properties to buttons and containers for proper element centering and alignment.
 - **[Container-Based Positioning]** Implemented dedicated flex containers for UI elements requiring precise positioning, improving layout reliability across different screen sizes.
 - **[Markdown Rendering]** Implemented markdown-it for rendering LLM responses with proper formatting, supporting code blocks with syntax highlighting through highlight.js.
@@ -43,6 +43,7 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Focus-Based Duplication Fix]** Resolved an issue where window focus events were triggering duplicate message displays and API calls. Replaced the generic tab info update handler with a targeted version that refreshes necessary tab data without reloading the chat history, preventing message duplication when the popup window regains focus.
 - **[Script Duplication Detection]** Implemented robust script initialization tracking to prevent potential duplicate loading of popup.js. Added global initialization flag, script execution tracking, and DOM mutation observation to identify and prevent multiple instances of the same script from executing simultaneously, addressing a deep-rooted cause of duplicate API calls and message submissions.
 - **[Advanced Submission Protection]** Added comprehensive safeguards against duplicate form submissions with an isSubmitInProgress flag, automatic timeouts for safety resets, and proper error handling to ensure the system recovers gracefully from any state. Implemented both preventative checks at submission time and cleanup mechanisms to prevent the UI from getting stuck.
+- **[Enhanced Web Search Workflow]** Implemented a robust sequential API call system that reliably executes follow-up API calls after web search requests. Added precise message structure validation, automatic correction of incorrectly formatted messages, and consistent correlation between tool calls and tool results using unique IDs to ensure the API properly processes search results.
 
 ## Implemented Features
 <!-- Track all completed features (no timestamps) -->
@@ -103,3 +104,4 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Refined Duplicate Handling]** Fixed an issue where legitimate duplicate messages were being filtered out, preventing users from intentionally sending the same message twice. Removed overly aggressive content matching that was suppressing desired duplicate messages, focusing instead on preventing unintentional duplication at the submission source while preserving message integrity.
 - **[Window Focus Duplication Fix]** Resolved a critical issue where user messages and API calls were being duplicated due to window focus events. Fixed by implementing a specialized focus event handler that updates essential tab information without triggering a full chat history reload, preventing the cascade of duplicate operations that occurred when the popup window regained focus.
 - **[Script Initialization Duplication]** Fixed a fundamental issue where duplicate script initialization could cause multiple simultaneous event handlers to fire for the same user action. Implemented script initialization tracking, DOM mutation observation, and explicit flag-based protection to prevent the same code from executing multiple times, eliminating duplicate API calls and message submissions at their source.
+- **[Web Search Follow-up Failure]** Fixed an issue where web search functionality was detecting the need for search correctly but failing to execute the follow-up API call. Implemented proper message structure for sequential API calls, added comprehensive logging, robust error handling with graceful recovery, and automatic correction of message format issues to ensure proper API interaction.

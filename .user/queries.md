@@ -405,3 +405,57 @@ Extension updated from 1.0 to 1.0
 14:58:58.754 background.js:801 API CALL [req_d8mv0w7u73]: Successfully extracted content from response, length: 1276
 14:58:58.754 background.js:528 Storing chat history with key: 281323505_linkedin.com_pageload_1741870724347_0gwgvlu
 14:58:58.756 background.js:166 MESSAGE: Received message action: updateChatHistory"
+
+"follow @rules.mdc and lets resolve:
+1. on inference when inference is about web search only the first api call happens and returns content null as it should. 
+2. but second api call never happens now
+
+
+logs:
+MESSAGE: Received message action: getApiKey
+15:07:07.797 background.js:455 Getting API key
+15:07:07.797 background.js:457 API key exists: true
+15:07:07.802 background.js:166 MESSAGE: Received message action: updateChatHistory
+15:07:07.807 background.js:166 MESSAGE: Received message action: scrapeCurrentPage
+15:07:07.807 background.js:274 Handling scrapeCurrentPage request
+15:07:07.807 background.js:278 Query for active tab returned: 0 tabs
+15:07:07.807 background.js:282 No active tab found in current window, checking all windows
+15:07:07.807 background.js:284 Query for active tabs in all windows returned: 2 tabs
+15:07:07.807 background.js:304 Active tab found, ID: 281323504 URL: https://www.linkedin.com/in/iuliiashyshka/
+15:07:07.807 background.js:319 Page detected: LinkedIn, using 800ms delay and 3 retries
+15:07:07.808 background.js:338 Content script already initialized, document state: complete
+15:07:07.808 background.js:366 Sending scrapeContent message to tab 281323504, attempt 1/3
+15:07:07.812 background.js:407 Received content from tab, length: 26870
+15:07:07.812 background.js:411 Detected website type: {type: 'linkedin', systemPrompt: 'You are a helpful assistant specializing in profes… the content versus what is based on assumptions.'}
+15:07:07.813 background.js:166 MESSAGE: Received message action: getInference
+15:07:07.813 background.js:465 Handling inference request
+15:07:07.814 background.js:498 Using model: gpt-4o-mini
+15:07:07.814 background.js:501 Making initial API request to get response or tool calls
+15:07:07.814 background.js:611 Starting getOpenAiInference
+15:07:07.814 background.js:617 Have API key, content length: 26870
+15:07:07.814 background.js:633 Using temperature: 0
+15:07:07.814 background.js:645 Detected website type: linkedin
+15:07:07.814 background.js:660 Model supports browsing: true
+15:07:07.814 background.js:687 API CALL [req_xbesqkbjx5]: Adding web search tools for gpt-4o-mini
+15:07:07.814 background.js:709 API CALL [req_xbesqkbjx5]: Making fetch request to OpenAI API with model gpt-4o-mini
+15:07:07.814 background.js:710 Request body: {
+  "model": "gpt-4o-mini",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant specializing in professional networking and career advice. The user is viewing a LinkedIn page which may contain profile information, job listings, or professional content. Help them extract relevant professional insights, evaluate job opportunities, understand career paths, or analyze professional profiles. Focus on professional development, job search, or recruitment insights...
+15:07:08.626 background.js:722 API CALL [req_xbesqkbjx5]: Received API response, status: 200 
+15:07:08.626 background.js:753 API CALL [req_xbesqkbjx5]: Reading response as text...
+15:07:08.639 background.js:757 API CALL [req_xbesqkbjx5]: Response text length: 1104
+15:07:08.639 background.js:758 API CALL [req_xbesqkbjx5]: Response preview: {
+  "id": "chatcmpl-BAcZCI7g89i0Phjn9kNr0eRoaFkUc",
+  "object": "chat.completion",
+  "created": 1741...
+15:07:08.639 background.js:764 API CALL [req_xbesqkbjx5]: Successfully parsed JSON response
+15:07:08.639 background.js:778 API CALL [req_xbesqkbjx5]: Response contains tool calls
+15:07:08.639 background.js:789 API CALL [req_xbesqkbjx5]: Web search requested for query: "current weather today"
+15:07:08.639 background.js:512 Web search indicator detected in response, should trigger follow-up
+15:07:08.639 background.js:528 Storing chat history with key: 281323504_linkedin.com_pageload_1741871213494_fs0hk1t
+15:07:08.642 background.js:166 MESSAGE: Received message action: updateChatHistory"
+
+"please also ensure that you follow the rules at @rules.mdc"
