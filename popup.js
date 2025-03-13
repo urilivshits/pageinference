@@ -33,6 +33,43 @@ let currentTheme;
 let temperatureSlider;
 let temperatureValueDisplay;
 
+// Function to update the current tab information
+async function updateCurrentTabInfo() {
+  console.log('Updating current tab information');
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]) {
+      currentTabId = tabs[0].id;
+      currentUrl = tabs[0].url;
+      currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
+      
+      // Check for existing page load ID or create a new one
+      await checkOrCreatePageLoadId();
+      console.log('Tab info updated successfully:', currentTabId, currentUrl);
+      
+      // Load chat history for this tab/URL/pageLoadId
+      await loadChatHistory();
+      
+      // Load saved input text
+      await loadSavedInputText();
+      
+      // Update conversation info in the UI
+      updateConversationInfo();
+      
+      // Update UI state
+      updateUIState();
+      
+      return true;
+    } else {
+      console.error('No active tab found when trying to update tab info');
+      return false;
+    }
+  } catch (error) {
+    console.error('Error updating tab information:', error);
+    return false;
+  }
+}
+
 // DOM elements - will be populated in DOMContentLoaded
 
 // Event listeners for all document elements
@@ -69,29 +106,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   showMainView();
   updateUIState();
 
-  // Get current tab information
-  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-    if (tabs[0]) {
-      currentTabId = tabs[0].id;
-      currentUrl = tabs[0].url;
-      currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
-      
-      // Check for existing page load ID or create a new one
-      await checkOrCreatePageLoadId();
-      
-      // Load chat history for this tab/URL/pageLoadId
-      await loadChatHistory();
-      
-      // Load saved input text
-      await loadSavedInputText();
-      
-      // Update conversation info
-      updateConversationInfo();
-      
-      // Update UI state
-      updateUIState();
-    }
-  });
+  // Initial tab information update
+  await updateCurrentTabInfo();
+
+  // Add focus event listener to the window to update tab information when popup regains focus
+  window.addEventListener('focus', updateCurrentTabInfo);
   
   // Load saved settings
   const { apiKey } = await chrome.runtime.sendMessage({ action: 'getApiKey' });
@@ -320,15 +339,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     try {
-      // Get current tab ID and URL
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      console.log('Current tab:', tab);
-      
-      if (!tab) {
+      // Update current tab information before proceeding
+      const tabInfoUpdated = await updateCurrentTabInfo();
+      if (!tabInfoUpdated) {
         throw new Error('No active tab found. Please try again.');
       }
       
-      const { id: tabId, url, title } = tab;
+      // Get the updated tab information
+      const { id: tabId, url } = { id: currentTabId, url: currentUrl };
       
       // Make sure we have the current pageLoadId
       if (!currentPageLoadId) {
@@ -357,7 +375,34 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('Scraper response:', scraperResponse);
       
       if (scraperResponse.error) {
-        showError(scraperResponse.error);
+        if (scraperResponse.error.includes('No active tab found')) {
+          // Try once more to update tab information before giving up
+          console.log('Tab may have lost focus, trying to update tab information again...');
+          const retryTabInfo = await updateCurrentTabInfo();
+          
+          if (retryTabInfo) {
+            // Try the scrape request one more time
+            console.log('Tab info updated, retrying scrape request...');
+            const retryResponse = await chrome.runtime.sendMessage({
+              action: 'scrapeCurrentPage'
+            });
+            
+            if (retryResponse.error) {
+              showError(retryResponse.error);
+              isProcessing = false; // Reset processing flag
+            } else {
+              // Continue with the successful retry response
+              await continueWithScrapeResponse(retryResponse, question);
+              return;
+            }
+          } else {
+            showError('Unable to find an active browser tab. Please click on a browser tab first.');
+          }
+        } else {
+          showError(scraperResponse.error);
+        }
+        
+        // Hide loading button state
         submitBtn.classList.remove('button-loading');
         const spinner = submitBtn.querySelector('.spinner');
         if (spinner) {
@@ -373,44 +418,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
       
-      // Now send for inference with the scraped content
-      console.log('Sending getInference message');
-      const response = await chrome.runtime.sendMessage({
-        action: 'getInference',
-        question,
-        content: scraperResponse.content,
-        url,
-        tabId: tab.id,
-        pageLoadId: currentPageLoadId,
-        pageTitle: title
-      });
-      console.log('Inference response:', response);
-      
-      // Hide loading state in button
-      submitBtn.classList.remove('button-loading');
-      const spinner = submitBtn.querySelector('.spinner');
-      if (spinner) {
-        spinner.style.display = 'none';
-        
-        // Make button text visible again
-        const buttonText = submitBtn.querySelector('.button-text');
-        if (buttonText) {
-          buttonText.style.visibility = 'visible';
-        }
-      }
-      
-      if (response.error) {
-        showError(response.error);
-        isProcessing = false; // Reset processing flag
-        return;
-      }
-      
-      // Add AI response to chat
-      await addMessageToChat('assistant', response.answer);
-      
-      // Stay in main view
-      showMainView();
+      await continueWithScrapeResponse(scraperResponse, question);
     } catch (error) {
+      console.error('Error processing request:', error);
+      showError(error.message || 'An error occurred');
+      
+      // Hide loading button state
       submitBtn.classList.remove('button-loading');
       const spinner = submitBtn.querySelector('.spinner');
       if (spinner) {
@@ -422,10 +435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           buttonText.style.visibility = 'visible';
         }
       }
-      showError(error.message || 'An error occurred');
-      console.error('Error:', error);
-    } finally {
-      isProcessing = false; // Always reset processing flag
+      isProcessing = false; // Reset processing flag
     }
   });
 });
@@ -1889,4 +1899,83 @@ function updateSliderGradient(slider) {
   const max = slider.max || 100;
   const percentage = (value / max) * 100;
   slider.style.background = `linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) ${percentage}%, var(--input-bg) ${percentage}%, var(--input-bg) 100%)`;
+}
+
+// Helper function to continue processing after scraping is successful
+async function continueWithScrapeResponse(scraperResponse, question) {
+  try {
+    // Now send for inference with the scraped content
+    console.log('Sending getInference message');
+    console.log('Content length being sent:', scraperResponse.content ? scraperResponse.content.length : 0);
+    
+    const response = await chrome.runtime.sendMessage({
+      action: 'getInference',
+      question,
+      content: scraperResponse.content,
+      url: currentUrl,
+      tabId: currentTabId,
+      pageLoadId: currentPageLoadId,
+      pageTitle: currentPageTitle
+    });
+    
+    console.log('Inference response received:', response);
+    
+    // Hide loading state in button
+    submitBtn.classList.remove('button-loading');
+    const spinner = submitBtn.querySelector('.spinner');
+    if (spinner) {
+      spinner.style.display = 'none';
+      
+      // Make button text visible again
+      const buttonText = submitBtn.querySelector('.button-text');
+      if (buttonText) {
+        buttonText.style.visibility = 'visible';
+      }
+    }
+    
+    if (!response) {
+      showError('No response received from the inference API. Please try again.');
+      isProcessing = false; // Reset processing flag
+      return;
+    }
+    
+    if (response.error) {
+      showError(response.error);
+      isProcessing = false; // Reset processing flag
+      return;
+    }
+    
+    if (!response.answer) {
+      showError('The API response did not contain an answer. Please try again.');
+      isProcessing = false; // Reset processing flag
+      return;
+    }
+    
+    // Add AI response to chat
+    await addMessageToChat('assistant', response.answer);
+    
+    // Stay in main view
+    showMainView();
+    
+    // Reset processing flag
+    isProcessing = false;
+  } catch (error) {
+    console.error('Error in inference:', error);
+    showError(error.message || 'An error occurred during inference');
+    
+    // Hide loading button state
+    submitBtn.classList.remove('button-loading');
+    const spinner = submitBtn.querySelector('.spinner');
+    if (spinner) {
+      spinner.style.display = 'none';
+      
+      // Make button text visible again
+      const buttonText = submitBtn.querySelector('.button-text');
+      if (buttonText) {
+        buttonText.style.visibility = 'visible';
+      }
+    }
+    
+    isProcessing = false; // Reset processing flag
+  }
 }

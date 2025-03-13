@@ -159,7 +159,14 @@ function modelSupportsBrowsing(model) {
 
 // Listen for messages from the content script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('MESSAGE: Received message:', request.type);
+  // Log message type or action, depending on what's available
+  if (request.type) {
+    console.log('MESSAGE: Received message type:', request.type);
+  } else if (request.action) {
+    console.log('MESSAGE: Received message action:', request.action);
+  } else {
+    console.log('MESSAGE: Received message without type or action:', request);
+  }
   
   if (request.type === 'processTab') {
     console.log('MESSAGE: Handling processTab request');
@@ -265,20 +272,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Handle scraping request (forward to active tab)
   if (request.action === 'scrapeCurrentPage') {
     console.log('Handling scrapeCurrentPage request');
+    
+    // First try to get the active tab in the current window
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       console.log('Query for active tab returned:', tabs.length, 'tabs');
       
-      if (!tabs[0]) {
-        console.error('ERROR: No active tab found in chrome.tabs.query result');
-        sendResponse({ error: 'No active tab found' });
-        return;
+      // If no active tab found in current window, try to find active tabs in all windows
+      if (!tabs || !tabs.length) {
+        console.log('No active tab found in current window, checking all windows');
+        chrome.tabs.query({ active: true }, async (allWindowTabs) => {
+          console.log('Query for active tabs in all windows returned:', allWindowTabs.length, 'tabs');
+          
+          if (!allWindowTabs || !allWindowTabs.length) {
+            console.error('ERROR: No active tab found in any window');
+            sendResponse({ error: 'No active tab found. Please make sure a browser tab is active.' });
+            return;
+          }
+          
+          // Use the first active tab from any window
+          processTab(allWindowTabs[0]);
+        });
+        return; // Exit the first callback
       }
-
-      console.log('Active tab found, ID:', tabs[0].id, 'URL:', tabs[0].url);
+      
+      // If we found an active tab in the current window, process it
+      processTab(tabs[0]);
+    });
+    
+    // Helper function to process the tab once we've found it
+    async function processTab(tab) {
+      console.log('Active tab found, ID:', tab.id, 'URL:', tab.url);
 
       // Check if we can inject scripts into this tab
       try {
-        const tab = tabs[0];
         // Check if this is a supported page
         if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://')) {
           sendResponse({ error: 'This page is not supported' });
@@ -298,8 +324,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           let scriptLoaded = false;
           try {
             const checkResult = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
+              target: { tabId: tab.id },
+              func: () => {
                 return {
                   initialized: window.__pageInferenceInitialized === true,
                   documentState: document.readyState
@@ -312,219 +338,92 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               console.log('Content script already initialized, document state:', checkResult[0].result.documentState);
               scriptLoaded = true;
             } else {
-              console.log('Content script not initialized or not detected, document state:', 
-                          checkResult && checkResult[0] && checkResult[0].result ? checkResult[0].result.documentState : 'unknown');
+              console.log('Content script not initialized, injecting...');
             }
-        } catch (e) {
-            console.log('Content script check failed, assuming not loaded:', e);
+          } catch (checkError) {
+            console.warn('Error checking content script initialization:', checkError);
+            // Continue to injection
           }
           
-          // Only inject if not already loaded
+          // Inject the content script if not already loaded
           if (!scriptLoaded) {
             console.log('Injecting content script...');
-            try {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['content.js']
-          });
-              console.log('Content script injection successful');
-              
-              // Give it more time to initialize
-              console.log(`Waiting ${initializationDelay}ms for content script to initialize...`);
-              await new Promise(resolve => setTimeout(resolve, initializationDelay));
-              
-              // Verify initialization after injection
-              try {
-                const verifyResult = await chrome.scripting.executeScript({
-                  target: { tabId: tab.id },
-                  func: () => window.__pageInferenceInitialized === true
-                });
-                
-                if (verifyResult && verifyResult[0] && verifyResult[0].result) {
-                  console.log('Content script successfully initialized after injection');
-                } else {
-                  console.warn('Content script injected but not showing as initialized, proceeding anyway');
-                }
-              } catch (verifyError) {
-                console.warn('Could not verify content script initialization:', verifyError);
-              }
-            } catch (injectionError) {
-              console.error('Failed to inject content script:', injectionError);
-              
-              // For LinkedIn pages, try a fallback method
-              if (isLinkedIn) {
-                console.log('Attempting alternative content extraction for LinkedIn...');
-                
-                // Generate a descriptive fallback content based on available tab information
-                let fallbackContent = '';
-                
-                if (tab.title) {
-                  fallbackContent += `# ${tab.title}\n\n`;
-                }
-                
-                // Include the URL and basic profile indication
-                fallbackContent += `LinkedIn profile page: ${tab.url}\n\n`;
-                fallbackContent += 'Due to LinkedIn\'s security measures, detailed profile information could not be extracted automatically. ';
-                fallbackContent += 'However, I can still help answer questions about this profile based on the information you can see.';
-                
-                // Try to extract profile name from title if available
-                if (tab.title && tab.title.includes('|')) {
-                  const possibleName = tab.title.split('|')[0].trim();
-                  if (possibleName) {
-                    fallbackContent = fallbackContent.replace('# ' + tab.title, '# ' + possibleName);
-                    fallbackContent += `\n\nProfile name: ${possibleName}`;
-                  }
-                }
-                
-                console.log('Created LinkedIn fallback content, length:', fallbackContent.length);
-                
-                sendResponse({ 
-                  content: fallbackContent,
-                  websiteType: 'linkedin',
-                  warning: 'Limited content extraction due to LinkedIn security restrictions'
-                });
-                return;
-              } else {
-                sendResponse({ error: 'Unable to inject content script into the page. The page might be protected or not fully loaded.' });
-                return;
-              }
-            }
-          }
-        } catch (e) {
-          console.error('Error during content script verification:', e);
-          sendResponse({ error: 'Error verifying content script: ' + e.message });
-          return;
-        }
-
-        // Now try to communicate with the tab
-        try {
-          let retryCount = 0;
-          const maxRetries = maxRetryAttempts;
-          
-          // Check if we already know the content script is initialized
-          if (contentScriptStatus[tab.id] && contentScriptStatus[tab.id].initialized) {
-            console.log(`Content script was previously confirmed as initialized for tab ${tab.id}`);
-            // Check how old the initialization is
-            const initAge = Date.now() - contentScriptStatus[tab.id].timestamp;
-            if (initAge > 30000) { // 30 seconds
-              console.log(`But initialization is ${initAge}ms old, might need to reinject`);
-              delete contentScriptStatus[tab.id]; // Force reinjection
-            } else if (contentScriptStatus[tab.id].url !== tab.url) {
-              console.log(`But URL has changed from ${contentScriptStatus[tab.id].url} to ${tab.url}, might need to reinject`);
-              delete contentScriptStatus[tab.id]; // Force reinjection
-            }
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['content.js']
+            });
+            console.log('Content script injected');
+            
+            // Give the content script time to initialize
+            await new Promise(resolve => setTimeout(resolve, initializationDelay));
           }
           
+          // Function to send message with retry
           const sendMessageWithRetry = () => {
-        chrome.tabs.sendMessage(
-          tab.id,
-          { action: 'scrapeContent' },
-          (response) => {
-            // Check for Chrome runtime errors first
-            if (chrome.runtime.lastError) {
-              console.error('Tab communication error:', chrome.runtime.lastError);
-                  
-                  // If the error is about receiving end not existing, retry with delay
-                  if (chrome.runtime.lastError.message.includes('Receiving end does not exist') && retryCount < maxRetries) {
-                    console.log(`Retrying tab communication (attempt ${retryCount + 1} of ${maxRetries})...`);
-                    retryCount++;
-                    // Wait longer before each retry, with progressively longer delays
-                    setTimeout(sendMessageWithRetry, 500 * retryCount);
-                    return;
-                  }
-                  
-                  // If we've exhausted retries and it's LinkedIn, use the fallback
-                  if (isLinkedIn && retryCount >= maxRetries) {
-                    console.log('Using LinkedIn fallback after exhausting retries...');
-                    
-                    // Generate a descriptive fallback content based on available tab information
-                    let fallbackContent = '';
-                    
-                    if (tab.title) {
-                      fallbackContent += `# ${tab.title}\n\n`;
-                    }
-                    
-                    // Include the URL and basic profile indication
-                    fallbackContent += `LinkedIn profile page: ${tab.url}\n\n`;
-                    fallbackContent += 'Due to LinkedIn\'s security measures, detailed profile information could not be extracted automatically. ';
-                    fallbackContent += 'However, I can still help answer questions about this profile based on the information you can see.';
-                    
-                    // Try to extract profile name from title if available
-                    if (tab.title && tab.title.includes('|')) {
-                      const possibleName = tab.title.split('|')[0].trim();
-                      if (possibleName) {
-                        fallbackContent = fallbackContent.replace('# ' + tab.title, '# ' + possibleName);
-                        fallbackContent += `\n\nProfile name: ${possibleName}`;
-                      }
-                    }
-                    
-                    console.log('Created LinkedIn fallback content, length:', fallbackContent.length);
-                    
-                    const websiteType = detectWebsiteType(fallbackContent, tab.url);
-                    sendResponse({ 
-                      content: fallbackContent,
-                      websiteType: 'linkedin', // Force LinkedIn type regardless of detection
-                      warning: 'Limited content extraction due to LinkedIn security restrictions'
-                    });
-                    return;
-                  }
-                  
-              sendResponse({ error: 'Error communicating with page: ' + chrome.runtime.lastError.message });
-              return;
-            }
-                
-                // Update our initialization tracking on successful communication
-                if (!contentScriptStatus[tab.id] || !contentScriptStatus[tab.id].initialized) {
-                  console.log(`Updating content script status for tab ${tab.id} - successful communication`);
-                  contentScriptStatus[tab.id] = {
-                    initialized: true,
-                    timestamp: Date.now(),
-                    url: tab.url
-                  };
-                }
+            let retryCount = 0;
             
-            // Validate response and content
-            if (!response) {
-              console.error('Empty response from content script');
-              sendResponse({ error: 'No response received from page. The content script may not be properly initialized.' });
-              return;
-            }
-                
-                // If there was an error during scraping but we got some content back
-                if (response.error && response.content) {
-                  console.warn('Content script reported error but returned content:', response.error);
-                  // We can still use the content
-                }
-            
-            if (!response.content) {
-              console.error('Missing content in response:', response);
-              sendResponse({ error: 'Invalid response from page. The page content could not be extracted.' });
-              return;
-            }
-            
-            try {
-              // Detect website type with proper error handling
-              const websiteType = detectWebsiteType(response.content, tab.url);
-              console.log('Detected website type:', websiteType.type);
+            const attemptSend = () => {
+              console.log(`Sending scrapeContent message to tab ${tab.id}, attempt ${retryCount + 1}/${maxRetryAttempts}`);
               
-              // Send content and website type
-              console.log('Sending scraped content response');
-              sendResponse({ 
-                content: response.content,
+              chrome.tabs.sendMessage(
+                tab.id,
+                { action: 'scrapeContent' },
+                (response) => {
+                  const lastError = chrome.runtime.lastError;
+                  
+                  if (lastError) {
+                    console.warn(`Error in sendMessage attempt ${retryCount + 1}:`, lastError);
+                    
+                    if (retryCount < maxRetryAttempts - 1) {
+                      retryCount++;
+                      console.log(`Retrying in ${initializationDelay}ms...`);
+                      setTimeout(attemptSend, initializationDelay);
+                    } else {
+                      console.error('Max retry attempts reached, giving up');
+                      sendResponse({ 
+                        error: 'Failed to communicate with the page after multiple attempts. Please refresh the page and try again.',
+                        details: lastError.message
+                      });
+                    }
+                    return;
+                  }
+                  
+                  if (!response) {
+                    console.warn(`No response received on attempt ${retryCount + 1}`);
+                    
+                    if (retryCount < maxRetryAttempts - 1) {
+                      retryCount++;
+                      console.log(`Retrying in ${initializationDelay}ms...`);
+                      setTimeout(attemptSend, initializationDelay);
+                    } else {
+                      console.error('Max retry attempts reached, giving up');
+                      sendResponse({ 
+                        error: 'No response received from the page after multiple attempts. Please refresh the page and try again.'
+                      });
+                    }
+                    return;
+                  }
+                  
+                  console.log('Received content from tab, length:', response.content ? response.content.length : 0);
+                  
+                  // Detect website type
+                  const websiteType = detectWebsiteType(response.content, tab.url);
+                  console.log('Detected website type:', websiteType);
+                  
+                  // Send the response back to the popup
+                  sendResponse({
+                    content: response.content,
                     websiteType: websiteType.type,
-                    warning: response.warning // Pass through any warnings from content script
-              });
-            } catch (detectionError) {
-              console.error('Error during website type detection:', detectionError);
-              // Fall back to general type if detection fails
-              sendResponse({ 
-                content: response.content,
-                websiteType: 'general',
-                warning: 'Website type detection failed, using general type'
-              });
-            }
-          }
-        );
+                    warning: websiteType.type === 'general' ? 
+                      'Website type detection failed, using general type' : 
+                      undefined
+                  });
+                }
+              );
+            };
+            
+            // Start the process
+            attemptSend();
           };
           
           // Start the process
@@ -537,7 +436,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.error('Error during tab communication setup:', error);
         sendResponse({ error: 'Failed to initialize page communication' });
       }
-    });
+    }
+    
     return true; // Keep the message channel open for async response
   }
   
@@ -806,7 +706,8 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
       ];
     }
     
-    console.log(`API CALL [${requestId}]: Making fetch request to OpenAI API`);
+    console.log(`API CALL [${requestId}]: Making fetch request to OpenAI API with model ${safeModelToUse}`);
+    console.log('Request body:', JSON.stringify(requestBody, null, 2).substring(0, 500) + '...');
     
     // Make the API request
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -818,7 +719,7 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
       body: JSON.stringify(requestBody)
     });
     
-    console.log('Received API response, status:', response.status);
+    console.log(`API CALL [${requestId}]: Received API response, status: ${response.status} ${response.statusText}`);
     
     // Handle non-200 responses
     if (!response.ok) {
@@ -826,12 +727,12 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
       let errorText = '';
       try {
         errorText = await response.text();
-        console.error('API Error Response (text):', errorText);
+        console.error(`API CALL [${requestId}]: Error Response (text):`, errorText);
         
         // Try to parse as JSON if it looks like JSON
         if (errorText && typeof errorText === 'string' && errorText.trim().startsWith('{')) {
           const errorJson = JSON.parse(errorText);
-          console.error('API Error Response (parsed):', errorJson);
+          console.error(`API CALL [${requestId}]: Error Response (parsed):`, errorJson);
           
           // Extract error message from various API error formats
           const errorMessage = 
@@ -842,133 +743,72 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
           return `Error: ${errorMessage}`;
         }
       } catch (e) {
-        console.error('Failed to parse error response:', e);
+        console.error(`API CALL [${requestId}]: Failed to parse error response:`, e);
       }
       
       return `Error: The API returned status ${response.status} ${response.statusText}${errorText ? ': ' + errorText : ''}`;
     }
     
     // Get the raw response text first for better logging
-    console.log('Reading response as text...');
+    console.log(`API CALL [${requestId}]: Reading response as text...`);
     const responseText = await response.text();
     
     // Log the response length for debugging
-    console.log(`Response text length: ${responseText.length}`);
-    console.log(`Response preview: ${responseText.substring(0, 100)}...`);
+    console.log(`API CALL [${requestId}]: Response text length: ${responseText.length}`);
+    console.log(`API CALL [${requestId}]: Response preview: ${responseText.substring(0, 100)}...`);
     
     // Parse the response text as JSON
     let data;
     try {
       data = JSON.parse(responseText);
-      console.log('Successfully parsed API response:', data);
-    } catch (parseError) {
-      console.error('Error parsing API response:', parseError);
-      console.error('Parse error stack:', parseError.stack);
-      console.error('Response text that failed to parse:', responseText);
-      return 'Error: Failed to parse the API response. Please try again.';
+      console.log(`API CALL [${requestId}]: Successfully parsed JSON response`);
+    } catch (error) {
+      console.error(`API CALL [${requestId}]: Error parsing response as JSON:`, error);
+      return `Error: The API returned an invalid JSON response: ${responseText.substring(0, 100)}...`;
     }
     
-    // First, check if we have a valid data object with choices
-    if (!data || !data.choices || !data.choices.length || !data.choices[0].message) {
-      console.error('Invalid response structure', data);
-      return 'Error: Received an invalid response structure from the API.';
+    // Check for errors in the parsed response
+    if (data.error) {
+      console.error(`API CALL [${requestId}]: Error in parsed response:`, data.error);
+      return `Error: ${data.error.message || 'Unknown API error'}`;
     }
     
-    console.log('Extracting message from response...');
-    
-    try {
-      const message = data.choices[0].message;
-      console.log('Message extracted, content type:', typeof message.content, 'Has tool calls:', !!message.tool_calls);
+    // Handle tool calls in the response
+    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.tool_calls) {
+      console.log(`API CALL [${requestId}]: Response contains tool calls`);
+      const toolCalls = data.choices[0].message.tool_calls;
       
-      // CRITICAL: First check if content is null before attempting any operation on it
-      if (message.content === null || typeof message.content === 'undefined') {
-        console.log('Content is null or undefined, checking for tool calls');
+      // Handle web search tool call
+      if (toolCalls.some(call => call.function && call.function.name === 'web_search')) {
+        const searchCall = toolCalls.find(call => call.function && call.function.name === 'web_search');
         
-        // Check if we have tool calls
-        if (message.tool_calls && message.tool_calls.length > 0) {
-          console.log('Tool calls detected, extracting information');
-          console.log('*** TOOL CALLS FOUND - Should trigger sequential API call flow ***');
-          
-          // Let's log the tool calls for debugging
-          console.log('Tool calls details:', JSON.stringify(message.tool_calls));
-          
-          // IMPORTANT: Check if we need to make a sequential API call
-          console.log('Checking if we should make a sequential API call with handleSequentialApiCalls');
-          try {
-            console.log('Preparing to call handleSequentialApiCalls with tool calls from response');
-            
-            // Extract tool calls from the message
-            const toolCalls = message.tool_calls;
-            
-            // Call our new sequential API handler with the correct parameters
-            const sequentialResult = await handleSequentialApiCalls(
-              apiKey,
-              requestBody.messages,
-              toolCalls
-            );
-            
-            console.log('Sequential API call completed, result length:', sequentialResult ? sequentialResult.length : 0);
-            if (sequentialResult) {
-              console.log('Sequential result preview:', sequentialResult.substring(0, 100) + '...');
-              
-              // Use the result from sequential API call
-              return sequentialResult;
-          } else {
-              console.log('No result from sequential API call, falling back to original approach');
-              // Continue with fallback approach
-            }
-          } catch (seqError) {
-            console.error('Error during sequential API call handling:', seqError);
-            console.error('Sequential API call error stack:', seqError.stack);
-            // Continue with the original approach as fallback
-          }
-            
-            // Extract tool call info in a safe way
-            const toolCallsInfo = message.tool_calls.map(toolCall => {
-              if (toolCall.type === 'function' && toolCall.function) {
-                try {
-                  const name = toolCall.function.name;
-                  const args = JSON.parse(toolCall.function.arguments || '{}');
-                  
-                  // Handle web_search function specifically
-                  if (name === 'web_search' && args.query) {
-                    return `Searching the web for: "${args.query}"`;
-                  }
-                  return `Using function ${name} with arguments: ${JSON.stringify(args)}`;
-                } catch (e) {
-                  return `Using function ${toolCall.function.name || 'unknown'} (with unparseable arguments)`;
-                }
-              }
-              return `Using tool: ${toolCall.type || 'unknown'}`;
-            }).join(' ');
-            
-            return `I need to search for more information to answer your question properly. ${toolCallsInfo}`;
-        } else {
-          // Null content but no tool calls - this is unexpected but we handle it gracefully
-          console.log('Content is null but no tool calls were found');
-          return 'Processing your request. If searching for information, I\'ll have a complete answer shortly.';
-        }
-      }
-      
-      if (typeof message.content === 'string' && message.content !== null && message.content !== undefined) {
-        console.log('About to trim content in handleSequentialApiCalls');
         try {
-          const trimmedContent = message.content.trim();
-          console.log('Successfully trimmed content in handleSequentialApiCalls');
-          return trimmedContent;
-        } catch (trimError) {
-          console.error('Error trimming message content in handleSequentialApiCalls:', trimError);
-          return message.content; // Return untrimmed content if trim fails
+          const searchArgs = JSON.parse(searchCall.function.arguments);
+          const searchQuery = searchArgs.query;
+          
+          console.log(`API CALL [${requestId}]: Web search requested for query: "${searchQuery}"`);
+          return `Searching the web for: "${searchQuery}"...\n\nPlease wait a moment for search results.`;
+        } catch (error) {
+          console.error(`API CALL [${requestId}]: Error parsing web search arguments:`, error);
+          return 'Error: Failed to parse web search query from API response.';
         }
       }
-      
-      // Fallback for unexpected content type (not null, not string)
-      console.log('Unexpected message content type:', typeof message.content, 'Content value:', message.content);
-      return 'I processed your request, but received an unexpected response format. Please try again.';
-    } catch (messageError) {
-      console.error('Error processing message content:', messageError);
-      console.error('Message error stack:', messageError.stack);
-      return 'Error: Failed to process the API response. Please try again.';
+    }
+    
+    // Extract the content from the response
+    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+      const content = data.choices[0].message.content;
+      console.log(`API CALL [${requestId}]: Successfully extracted content from response, length: ${content.length}`);
+      return content;
+    } else if (data.choices && data.choices[0] && data.choices[0].message) {
+      console.error(`API CALL [${requestId}]: Message found but content is missing:`, data.choices[0].message);
+      return 'Error: The API response is missing expected content.';
+    } else if (data.choices && data.choices[0]) {
+      console.error(`API CALL [${requestId}]: No message found in API response:`, data.choices[0]);
+      return 'Error: The API response structure is unexpected.';
+    } else {
+      console.error(`API CALL [${requestId}]: No choices found in API response:`, data);
+      return 'Error: The API response does not contain any choices.';
     }
   } catch (error) {
     console.error('OpenAI API Error:', error);
@@ -1946,6 +1786,7 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = SEARCH_MO
         console.error(`API CALL [${requestId}]: Error getting error response text:`, textError);
         throw new Error(`API Error: ${response.status} ${response.statusText}`);
       }
+
     }
     
     const data = await response.json();
