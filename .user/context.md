@@ -30,6 +30,9 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Defensive Programming]** Applied comprehensive null and undefined value checks throughout the codebase, especially in network and tab communication functions, to prevent "Cannot read properties of undefined" errors and improve extension stability.
 - **[Sequential API Call Pattern]** Implemented two-stage API request system for web search functionality, with dedicated handlers for tool calls, search execution, and follow-up responses.
 - **[Tool Result Processing]** Developed a robust approach for handling web search tool results, including clear separation of original content from search results and improved context maintenance.
+- **[Prompt Configuration]** Custom system prompts based on website type detection to provide more relevant answers.
+- **[Permissive Response System]** Enhanced system prompts to allow reasonable assumptions when page content lacks information, while clearly distinguishing between content-derived information and assumptions.
+- **[Query-Content Ordering]** Optimized user query and scraped content ordering to present the user query first, improving context understanding and response relevance.
 
 ## Implemented Features
 <!-- Track all completed features (no timestamps) -->
@@ -60,6 +63,8 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Web Search Simulation]** Enhanced the web search functionality with mock search result generation for common queries. Implemented context-aware search results based on query content, with timestamp information and formatting appropriate for follow-up API processing. Added pattern matching to provide relevant simulated search results when available.
 - **[Advanced Web Search Functionality]** Completely restructured the API call system for web search with streamlined callOpenAI function, robust processOpenAIResponse function, and dedicated handleSequentialApiCalls function for two-stage API requests.
 - **[Enhanced Mock Search Results]** Expanded search result templates with more detailed content, implemented smarter query matching with category detection, added specialized responses for different query types, and improved formatting of search results.
+- **[Website Presets Enhancement]** Updated all website-specific system message presets to provide more permissive responses while maintaining transparency about information sources.
+- **[Query Positioning Improvement]** Modified API call format to present user query before scraped content, improving context understanding and response quality.
 
 ## Resolved Bugs
 <!-- Document fixed issues (no timestamps) -->

@@ -384,3 +384,24 @@ Format for recording tasks:
 - [x] Ensure proper organization of the consolidated content
 - [x] Delete the redundant root-level context.md file
 - [x] Verify the combined file maintains all important information
+
+## System Message Preset Enhancement
+
+### Content Response Enhancement
+- [x] Review current website-specific system message presets
+- [x] Update all presets to allow reasonable assumptions when page content lacks information
+- [x] Ensure each preset instructs the AI to clearly distinguish between content-derived information and assumptions
+- [x] Update the default system prompt to be more permissive while maintaining transparency
+- [x] Test different presets to ensure they produce the desired behavior
+
+### Content Ordering Improvement
+- [x] Review current implementation of user query and scraped content ordering
+- [x] Identify locations where user query is placed after scraped content
+- [x] Update main API call to present user query first, followed by scraped content
+- [x] Update follow-up query handling to also place user query first
+- [x] Ensure consistent ordering across all API calls
+
+### Documentation Maintenance
+- [x] Update queries.md with the current user query
+- [x] Update tasks.md with implementation details
+- [x] Update context.md with information about the enhancement

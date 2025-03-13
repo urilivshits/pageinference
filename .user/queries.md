@@ -5,7 +5,7 @@
 DO NOT DELETE THIS EXAMPLE - It serves as a format guide
 
 Format for recording queries:
-"This is an example of a user query. It shows how queries should be formatted in this document with the query text in quotes."
+User: This is an example of a user query. It shows how queries should be formatted in this document.
 -->
 
 "reindex the repo and update artifacts. follow @rules.mdc"
@@ -263,3 +263,10 @@ Getting API key
 (anonymous) @ background.js:211Understand this errorAI"
 
 "follow the @rules.mdc and notice there are two context.md files. its a mistake, the only context.md file that should be in the project is the one located at /.user folder. Please combine them."
+
+"follow the @rules.mdc and:
+1. currently there are a few presets for system message based on website type:
+- lets make each of them more permissive, meaning it shouldn't say something like "sorry but the content provided does not have it so i cant answer that". Allow reasonable assumptions if page content does not have the data required for the user question asnwer. Make sure it clearly states what's based on content and whats based on assumptions if message contains both userQuery and scrappedContent
+2. make sure that the user query is joined before the scrapped page content (userQuery+scrappedContent)"
+
+"cool, but please make sure to follow @rules.mdc."
