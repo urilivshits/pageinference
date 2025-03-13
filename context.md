@@ -53,4 +53,30 @@ Fixed a critical issue with the sequential API call structure that was preventin
    - Added a final user message after tool responses to clearly prompt for a summary
    - Ensured all messages are properly formatted according to OpenAI API specifications
 
-This fixes the error "Invalid parameter: messages with role 'tool' must be a response to a preceeding message with 'tool_calls'" that was preventing the follow-up API call from working. 
+This fixes the error "Invalid parameter: messages with role 'tool' must be a response to a preceeding message with 'tool_calls'" that was preventing the follow-up API call from working.
+
+## Search Query Matching Fix
+
+Fixed a critical issue where web search queries were mismatched with the actual user questions, causing irrelevant search results:
+
+1. **Improved Topic Extraction**:
+   - Enhanced query extraction logic to better identify the actual topic from user messages
+   - Added specific pattern matching to detect phrases like "asked about X" in user messages
+   - Implemented multiple fallback mechanisms to ensure the correct topic is identified
+
+2. **Search Topic Prioritization**:
+   - Modified the system to prioritize the explicitly requested search topic from tool calls
+   - Improved message structure to emphasize the specific topic in follow-up prompts
+   - Added clear instructions to the model about how to handle mismatched search results
+
+3. **Specialized Content Handlers**:
+   - Added comprehensive mock content for technical topics like cron expressions and systemd timers
+   - Implemented specialized keyword detection for technical queries
+   - Created intuitive category mapping to provide relevant information even for partial matches
+
+4. **Context Clarification**:
+   - Enhanced follow-up messages to explicitly acknowledge when search results don't match the question
+   - Modified user prompts to instruct the model to clearly indicate relevance of search results
+   - Added feedback mechanisms to help users understand search limitations
+
+This fix resolves the issue where the system would search for generic topics like "major news today" when users were asking about specific technical topics, resulting in irrelevant responses that fell back to the original page content. 

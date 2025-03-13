@@ -281,7 +281,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
 
       console.log('Active tab found, ID:', tabs[0].id, 'URL:', tabs[0].url);
-      
+
       // Check if we can inject scripts into this tab
       try {
         const tab = tabs[0];
@@ -304,8 +304,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           let scriptLoaded = false;
           try {
             const checkResult = await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              func: () => {
+            target: { tabId: tab.id },
+            func: () => {
                 return {
                   initialized: window.__pageInferenceInitialized === true,
                   documentState: document.readyState
@@ -321,7 +321,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               console.log('Content script not initialized or not detected, document state:', 
                           checkResult && checkResult[0] && checkResult[0].result ? checkResult[0].result.documentState : 'unknown');
             }
-          } catch (e) {
+        } catch (e) {
             console.log('Content script check failed, assuming not loaded:', e);
           }
           
@@ -329,10 +329,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           if (!scriptLoaded) {
             console.log('Injecting content script...');
             try {
-              await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                files: ['content.js']
-              });
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
               console.log('Content script injection successful');
               
               // Give it more time to initialize
@@ -422,13 +422,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
           
           const sendMessageWithRetry = () => {
-            chrome.tabs.sendMessage(
-              tab.id,
-              { action: 'scrapeContent' },
-              (response) => {
-                // Check for Chrome runtime errors first
-                if (chrome.runtime.lastError) {
-                  console.error('Tab communication error:', chrome.runtime.lastError);
+        chrome.tabs.sendMessage(
+          tab.id,
+          { action: 'scrapeContent' },
+          (response) => {
+            // Check for Chrome runtime errors first
+            if (chrome.runtime.lastError) {
+              console.error('Tab communication error:', chrome.runtime.lastError);
                   
                   // If the error is about receiving end not existing, retry with delay
                   if (chrome.runtime.lastError.message.includes('Receiving end does not exist') && retryCount < maxRetries) {
@@ -475,9 +475,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     return;
                   }
                   
-                  sendResponse({ error: 'Error communicating with page: ' + chrome.runtime.lastError.message });
-                  return;
-                }
+              sendResponse({ error: 'Error communicating with page: ' + chrome.runtime.lastError.message });
+              return;
+            }
                 
                 // Update our initialization tracking on successful communication
                 if (!contentScriptStatus[tab.id] || !contentScriptStatus[tab.id].initialized) {
@@ -488,49 +488,49 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     url: tab.url
                   };
                 }
-                
-                // Validate response and content
-                if (!response) {
-                  console.error('Empty response from content script');
-                  sendResponse({ error: 'No response received from page. The content script may not be properly initialized.' });
-                  return;
-                }
+            
+            // Validate response and content
+            if (!response) {
+              console.error('Empty response from content script');
+              sendResponse({ error: 'No response received from page. The content script may not be properly initialized.' });
+              return;
+            }
                 
                 // If there was an error during scraping but we got some content back
                 if (response.error && response.content) {
                   console.warn('Content script reported error but returned content:', response.error);
                   // We can still use the content
                 }
-                
-                if (!response.content) {
-                  console.error('Missing content in response:', response);
-                  sendResponse({ error: 'Invalid response from page. The page content could not be extracted.' });
-                  return;
-                }
-                
-                try {
-                  // Detect website type with proper error handling
-                  const websiteType = detectWebsiteType(response.content, tab.url);
-                  console.log('Detected website type:', websiteType.type);
-                  
-                  // Send content and website type
-                  console.log('Sending scraped content response');
-                  sendResponse({ 
-                    content: response.content,
+            
+            if (!response.content) {
+              console.error('Missing content in response:', response);
+              sendResponse({ error: 'Invalid response from page. The page content could not be extracted.' });
+              return;
+            }
+            
+            try {
+              // Detect website type with proper error handling
+              const websiteType = detectWebsiteType(response.content, tab.url);
+              console.log('Detected website type:', websiteType.type);
+              
+              // Send content and website type
+              console.log('Sending scraped content response');
+              sendResponse({ 
+                content: response.content,
                     websiteType: websiteType.type,
                     warning: response.warning // Pass through any warnings from content script
-                  });
-                } catch (detectionError) {
-                  console.error('Error during website type detection:', detectionError);
-                  // Fall back to general type if detection fails
-                  sendResponse({ 
-                    content: response.content,
-                    websiteType: 'general',
-                    warning: 'Website type detection failed, using general type'
-                  });
-                }
-              }
-            );
+              });
+            } catch (detectionError) {
+              console.error('Error during website type detection:', detectionError);
+              // Fall back to general type if detection fails
+              sendResponse({ 
+                content: response.content,
+                websiteType: 'general',
+                warning: 'Website type detection failed, using general type'
+              });
+            }
+          }
+        );
           };
           
           // Start the process
@@ -899,7 +899,7 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
               
               // Use the result from sequential API call
               return sequentialResult;
-            } else {
+          } else {
               console.log('No result from sequential API call, falling back to original approach');
               // Continue with fallback approach
             }
@@ -908,27 +908,27 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
             console.error('Sequential API call error stack:', seqError.stack);
             // Continue with the original approach as fallback
           }
-          
-          // Extract tool call info in a safe way
-          const toolCallsInfo = message.tool_calls.map(toolCall => {
-            if (toolCall.type === 'function' && toolCall.function) {
-              try {
-                const name = toolCall.function.name;
-                const args = JSON.parse(toolCall.function.arguments || '{}');
-                
-                // Handle web_search function specifically
-                if (name === 'web_search' && args.query) {
-                  return `Searching the web for: "${args.query}"`;
+            
+            // Extract tool call info in a safe way
+            const toolCallsInfo = message.tool_calls.map(toolCall => {
+              if (toolCall.type === 'function' && toolCall.function) {
+                try {
+                  const name = toolCall.function.name;
+                  const args = JSON.parse(toolCall.function.arguments || '{}');
+                  
+                  // Handle web_search function specifically
+                  if (name === 'web_search' && args.query) {
+                    return `Searching the web for: "${args.query}"`;
+                  }
+                  return `Using function ${name} with arguments: ${JSON.stringify(args)}`;
+                } catch (e) {
+                  return `Using function ${toolCall.function.name || 'unknown'} (with unparseable arguments)`;
                 }
-                return `Using function ${name} with arguments: ${JSON.stringify(args)}`;
-              } catch (e) {
-                return `Using function ${toolCall.function.name || 'unknown'} (with unparseable arguments)`;
               }
-            }
-            return `Using tool: ${toolCall.type || 'unknown'}`;
-          }).join(' ');
-          
-          return `I need to search for more information to answer your question properly. ${toolCallsInfo}`;
+              return `Using tool: ${toolCall.type || 'unknown'}`;
+            }).join(' ');
+            
+            return `I need to search for more information to answer your question properly. ${toolCallsInfo}`;
         } else {
           // Null content but no tool calls - this is unexpected but we handle it gracefully
           console.log('Content is null but no tool calls were found');
@@ -1174,6 +1174,116 @@ Evidence-based health recommendations from recent research:
    - Vitamin D and omega-3 supplementation beneficial for specific populations
    - Standing and moving at least 5 minutes every hour reduces risks of sedentary behavior
    - Personalized preventive health strategies based on genomic profiles showing promising results
+        `,
+        'cron expression': `
+Comprehensive information about cron expressions:
+
+1. Definition and Purpose
+   - Cron expressions are strings that define when automated tasks should run
+   - They are used in job schedulers like the Unix cron daemon to trigger recurring jobs
+   - Standard format consists of five or six fields representing: minute, hour, day of month, month, day of week, and optionally year
+   - Example: "0 15 * * *" means "run at 3:00 PM every day"
+
+2. Syntax Breakdown
+   - Field positions: [minute] [hour] [day of month] [month] [day of week] [year]
+   - Valid time values: minutes (0-59), hours (0-23), day of month (1-31), month (1-12 or JAN-DEC), day of week (0-6 or SUN-SAT)
+   - Special characters: asterisk (*) means "every", comma (,) for value lists, hyphen (-) for ranges, slash (/) for increments
+   - Example: "*/15 9-17 * * MON-FRI" means "every 15 minutes from 9 AM to 5 PM, Monday through Friday"
+
+3. Common Patterns
+   - @yearly (or @annually): Run once a year at midnight on January 1st (0 0 1 1 *)
+   - @monthly: Run once a month at midnight on the first day (0 0 1 * *)
+   - @weekly: Run once a week at midnight on Sunday (0 0 * * 0)
+   - @daily (or @midnight): Run once a day at midnight (0 0 * * *)
+   - @hourly: Run once an hour at the beginning of the hour (0 * * * *)
+
+4. Implementation Variations
+   - Different cron implementations may have slight syntax variations
+   - Some systems support additional special strings like @reboot (run at startup)
+   - Extended cron expressions may include seconds as the first field
+   - Non-standard implementations may offer additional features like timezones or error handling
+   
+5. Best Practices
+   - Test cron expressions with online validators before implementation
+   - Use comment lines in crontab files to document the purpose of each job
+   - Consider job execution time when scheduling to avoid resource contention
+   - Implement proper logging and error notification for cron jobs
+   - Use absolute paths in cron job commands to avoid environment-related issues
+        `,
+        'linux cron': `
+Linux cron system information:
+
+1. Crontab Files
+   - System-wide crontab: Located at /etc/crontab, managed by system administrators
+   - User crontabs: Typically stored in /var/spool/cron/crontabs/, one file per user
+   - crontab -e: Edit your user crontab
+   - crontab -l: List your current crontab entries
+   - crontab -r: Remove your crontab
+
+2. Crontab Format
+   - Each line represents a scheduled job with the format: minute hour day-of-month month day-of-week command
+   - Fields are separated by spaces or tabs
+   - Comments begin with # and are ignored by the cron daemon
+   - Environment variables can be set at the top of the file
+   - Example: 30 2 * * 1-5 /path/to/script.sh > /path/to/log.txt 2>&1
+
+3. System Directories
+   - /etc/cron.d/: Directory for additional system crontab files
+   - /etc/cron.hourly/, /etc/cron.daily/, /etc/cron.weekly/, /etc/cron.monthly/: Directories for scripts to run at specified intervals
+   - Scripts in these directories are executed by the run-parts command
+
+4. Security Considerations
+   - /etc/cron.allow and /etc/cron.deny control which users can create crontabs
+   - Cron jobs run with the permissions of the user who created them
+   - System crontabs run with root privileges unless otherwise specified
+   - Use the principle of least privilege when setting up cron jobs
+
+5. Troubleshooting
+   - Check system logs in /var/log/syslog or journalctl for cron-related messages
+   - Ensure scripts have proper execution permissions (chmod +x)
+   - Redirect output to a log file for debugging
+   - Test commands manually before adding to crontab
+   - Be aware of environment differences (PATH, working directory) when running via cron
+        `,
+        'systemd timer': `
+Comprehensive guide to systemd timers:
+
+1. Basic Concepts
+   - Systemd timers are an alternative to traditional cron jobs
+   - Timers consist of two files: a .timer unit file and a .service unit file
+   - Timers can be one-shot or recurring
+   - Advantages include better logging, dependency management, and resource control
+   - Example location: /etc/systemd/system/ or /usr/lib/systemd/system/
+
+2. Timer Unit File Structure
+   - [Unit] section: Description and dependencies
+   - [Timer] section: When and how the timer triggers
+   - [Install] section: How the timer is enabled
+   - OnBootSec: Defines when timer activates after boot
+   - OnUnitActiveSec: Defines recurring intervals
+   - OnCalendar: Calendar event expressions (similar to cron syntax)
+   - AccuracySec: Defines the accuracy window for timer execution
+
+3. Calendar Event Syntax
+   - Format: DayOfWeek Year-Month-Day Hour:Minute:Second
+   - Supports ranges (Mon..Fri), lists (Mon,Wed,Fri), and wildcards (*)
+   - Special expressions: minutely, hourly, daily, weekly, monthly, yearly
+   - Example: "Mon,Tue *-*-* 00:00:00" runs at midnight on Mondays and Tuesdays
+
+4. Management Commands
+   - systemctl list-timers: View all active timers
+   - systemctl start/stop unit.timer: Start/stop a timer
+   - systemctl enable/disable unit.timer: Enable/disable a timer at boot
+   - systemctl status unit.timer: Check timer status
+   - journalctl -u unit.timer: View timer logs
+
+5. Comparison with Cron
+   - Better integration with system boot and shutdown sequences
+   - More precise control over execution timing
+   - Built-in logging and status monitoring
+   - Can define dependencies on other services
+   - Resource control via cgroups
+   - Ability to run missed jobs after system recovery
         `
       };
       
@@ -1208,10 +1318,32 @@ Evidence-based health recommendations from recent research:
       
       searchResults = findBestMatch();
       
-      // Generic response for queries without specific mock data
+      // Special case handlers for specific topics
       if (!searchResults) {
+        // Handle cron-related queries
+        if (query.includes('cron') || query.includes('schedule') || query.includes('job timing') || 
+            query.includes('scheduled task') || query.includes('periodic task')) {
+          console.log('TOOL EXECUTION: Detected cron-related query, providing cron expression info');
+          searchResults = mockSearchResultsMap['cron expression'];
+        }
+        // For time-scheduling related queries
+        else if (query.includes('expression') || query.includes('syntax') || query.includes('format')) {
+          console.log('TOOL EXECUTION: Detected expression-related query, providing cron expression info');
+          searchResults = mockSearchResultsMap['cron expression'];
+        }
+        // For systemd-related queries
+        else if (query.includes('systemd') || query.includes('timer') || query.includes('service scheduling')) {
+          console.log('TOOL EXECUTION: Detected systemd-related query, providing systemd timer info');
+          searchResults = mockSearchResultsMap['systemd timer'];
+        }
+        // For Linux administration queries
+        else if (query.includes('linux') || query.includes('unix') || query.includes('bash') || 
+                 query.includes('shell') || query.includes('command line')) {
+          console.log('TOOL EXECUTION: Detected Linux-related query, providing Linux cron info');
+          searchResults = mockSearchResultsMap['linux cron'];
+        }
         // For news-related queries
-        if (query.includes('news') || query.includes('today') || query.includes('current') || query.includes('recent')) {
+        else if (query.includes('news') || query.includes('today') || query.includes('current') || query.includes('recent')) {
           searchResults = mockSearchResultsMap['major news today'];
         }
         // For weather-related queries
@@ -1313,14 +1445,43 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
       }
     }
     
-    // Extract the original user query from the last user message
+    // Extract the topic to search from the actual tool calls
+    // This is more reliable than extracting from the user message
+    let searchTopic = '';
+    if (toolCalls && toolCalls.length > 0) {
+      for (const call of toolCalls) {
+        if (call.function && call.function.name === 'web_search' && call.function.arguments) {
+          try {
+            const args = JSON.parse(call.function.arguments);
+            if (args.query) {
+              searchTopic = args.query;
+              console.log(`SEQ CALL [${seqId}]: Extracted search topic from tool call:`, searchTopic);
+              break;
+            }
+          } catch (e) {
+            console.error(`SEQ CALL [${seqId}]: Error parsing tool call arguments:`, e);
+          }
+        }
+      }
+    }
+    
+    // Fallback: Extract the original user query from the last user message
     let userQuery = '';
     if (Array.isArray(messages)) {
       for (let i = messages.length-1; i >= 0; i--) {
         if (messages[i].role === 'user') {
           // Try to extract the original question from the user message
-          const userMessage = messages[i].content;
+          const userMessage = messages[i].content || '';
           console.log(`SEQ CALL [${seqId}]: Found user message, content length:`, userMessage.length);
+          
+          // Extract the actual question/topic the user is asking about
+          // Look for specific patterns indicating what the user actually wants to know
+          const aboutMatch = userMessage.match(/asked about (.*?)(?:\.|\,|\n|$)/i);
+          if (aboutMatch && aboutMatch[1]) {
+            userQuery = aboutMatch[1].trim();
+            console.log(`SEQ CALL [${seqId}]: Extracted question topic from 'asked about':`, userQuery);
+            break;
+          }
           
           // First look for explicit questions
           const searchMatch = userMessage.match(/search(?:ing)? (?:for|about) ["']?(.*?)["']?[.?!]|what (?:is|are) (.*?)[.?!]|tell me about (.*?)[.?!]|information on (.*?)[.?!]|how to (.*?)[.?!]|why (?:is|are|do|does) (.*?)[.?!]/i);
@@ -1328,21 +1489,26 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
           if (searchMatch) {
             const matchGroups = searchMatch.filter(Boolean).slice(1);
             userQuery = matchGroups[0].trim();
-            console.log(`SEQ CALL [${seqId}]: Extracted user query:`, userQuery);
+            console.log(`SEQ CALL [${seqId}]: Extracted user query from question pattern:`, userQuery);
+            break;
           } else {
             // If no explicit question, try to get any question structure
             const questionMatch = userMessage.match(/[^.!?]*\?/);
             if (questionMatch) {
               userQuery = questionMatch[0].trim();
               console.log(`SEQ CALL [${seqId}]: Extracted question form:`, userQuery);
+              break;
             }
           }
-          break;
         }
       }
     } else {
       console.warn(`SEQ CALL [${seqId}]: Messages is not an array, type:`, typeof messages);
     }
+
+    // Use the extracted search topic from tool calls if available, otherwise use the user query
+    const finalSearchTopic = searchTopic || userQuery || 'general information';
+    console.log(`SEQ CALL [${seqId}]: Final search topic:`, finalSearchTopic);
 
     if (!toolCalls || toolCalls.length === 0) {
       console.log(`SEQ CALL [${seqId}]: No tool calls found, returning null`);
@@ -1365,17 +1531,17 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
           console.error(`SEQ CALL [${seqId}]: Missing tool call id, generating a random one`);
           // Generate a random ID as fallback
           const randomId = 'call_' + Math.random().toString(36).substring(2, 12);
-          toolResults.push({
+        toolResults.push({
             tool_call_id: randomId,
-            role: 'tool',
+          role: 'tool',
             name: toolCall.function?.name,
-            content: result
-          });
+          content: result
+        });
           console.warn(`SEQ CALL [${seqId}]: Used fallback id ${randomId} for tool result`);
         } else {
-          toolResults.push({
+        toolResults.push({
             tool_call_id: toolCallId,
-            role: 'tool',
+          role: 'tool',
             name: toolCall.function?.name,
             content: result
           });
@@ -1418,14 +1584,12 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
     }
     
     // Add a clear user message emphasizing to use the search results
-    const queryText = userQuery || 'my question';
-    const userPrompt = `I asked about ${queryText}. Please provide a comprehensive answer based primarily on the web search results I'm about to provide. The web search results contain the most up-to-date and relevant information, while the webpage content I initially shared may not have this information.`;
-    
+    // Use the finalSearchTopic which should now be properly extracted
     followUpMessages.push({
       role: 'user',
-      content: userPrompt
+      content: `I need information about "${finalSearchTopic}". Please provide a comprehensive answer based on the search results I'm about to share. If the search results don't contain relevant information about "${finalSearchTopic}", please clearly state that and provide any information you have about the topic.`
     });
-    console.log(`SEQ CALL [${seqId}]: Added user message with search instructions`);
+    console.log(`SEQ CALL [${seqId}]: Added user message with search instructions for topic: ${finalSearchTopic}`);
 
     // CRITICAL: When adding the assistant message with tool_calls, make sure it's in the correct format
     followUpMessages.push({
@@ -1449,9 +1613,9 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
     // Add a final user message to clearly ask for a response based on the search results
     followUpMessages.push({
       role: 'user',
-      content: `Now please answer my question about ${queryText} using the information from these search results.`
+      content: `Now please answer my question about "${finalSearchTopic}" using the information from these search results. If the search results don't contain relevant information about this topic, please indicate that clearly and provide the best information you have.`
     });
-    console.log(`SEQ CALL [${seqId}]: Added final user message to prompt for response`);
+    console.log(`SEQ CALL [${seqId}]: Added final user message to prompt for response about: ${finalSearchTopic}`);
     
     console.log(`SEQ CALL [${seqId}]: Follow-up message count:`, followUpMessages.length);
     console.log(`SEQ CALL [${seqId}]: Follow-up message roles:`, followUpMessages.map(m => m.role).join(', '));
@@ -1696,11 +1860,11 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = 'gpt-4') 
     console.log(`API CALL [${requestId}]: Making fetch request to OpenAI API`);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
       body: JSON.stringify(requestBody)
     });
     
@@ -1718,8 +1882,8 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = 'gpt-4') 
         
         try {
           // Try to parse as JSON
-          if (errorText && errorText.trim().startsWith('{')) {
-            const errorJson = JSON.parse(errorText);
+            if (errorText && errorText.trim().startsWith('{')) {
+              const errorJson = JSON.parse(errorText);
             console.error(`API CALL [${requestId}]: Error details:`, JSON.stringify(errorJson));
             
             // Extract detailed error message
