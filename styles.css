@@ -199,8 +199,8 @@ h2 {
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
-  min-height: 50px;
-  height: 50px;
+  min-height: 60px;
+  height: 60px;
   width: 50px;
   min-width: 50px;
   max-width: 50px;
@@ -1398,7 +1398,7 @@ select {
   min-width: 50px;
   max-width: 50px; /* Ensure consistent width */
   width: 50px; /* Ensure consistent width */
-  height: 50px;
+  height: 60px; /* Increased by 20% from 50px */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1440,14 +1440,14 @@ select {
 /* Ensure all elements in question container have consistent dimensions */
 .question-container textarea,
 .question-container button {
-  height: 50px; /* Consistent height */
+  height: 60px; /* Consistent height - increased by 20% from 50px */
   box-sizing: border-box; /* Include padding and border in height calculation */
 }
 
 /* Adjust the input field height */
 textarea#questionInput {
-  height: 50px;
-  min-height: 50px;
+  height: 60px; /* Increased by 20% from 50px */
+  min-height: 60px; /* Increased by 20% from 50px */
   padding-top: 14px;
   padding-bottom: 14px;
   line-height: 22px;
