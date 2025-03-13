@@ -1,7 +1,7 @@
 ---
 description: Guidelines for every query.
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # Cursor AI Guidelines
 <!-- Guidelines for every query. -->
