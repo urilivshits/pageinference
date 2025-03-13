@@ -374,3 +374,13 @@ Format for recording tasks:
 ### Documentation Maintenance
 - [x] Update context.md with information about the format-specific fix
 - [x] Document the specific structure of tool_calls responses in comments
+
+## Context Files Consolidation
+
+### File Organization
+- [x] Identify duplicate context.md files in the project
+- [x] Compare content between the root-level context.md and .user/context.md
+- [x] Combine content from both files into the .user/context.md file
+- [x] Ensure proper organization of the consolidated content
+- [x] Delete the redundant root-level context.md file
+- [x] Verify the combined file maintains all important information

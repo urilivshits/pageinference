@@ -261,3 +261,5 @@ Getting API key
 21:07:46.097 background.js:169 Handling scrapeCurrentPage request
 21:07:46.099 background.js:211 Tab communication error: {message: 'Could not establish connection. Receiving end does not exist.'}
 (anonymous) @ background.js:211Understand this errorAI"
+
+"follow the @rules.mdc and notice there are two context.md files. its a mistake, the only context.md file that should be in the project is the one located at /.user folder. Please combine them."

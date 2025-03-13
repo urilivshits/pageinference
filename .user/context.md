@@ -28,6 +28,8 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Progressive Enhancement]** Applied layered approach to markdown rendering with multiple fallback mechanisms, ensuring content is always properly formatted regardless of library availability.
 - **[Content Security Policy Compliance]** Implemented local hosting of external libraries (markdown-it and highlight.js) to comply with Chrome extension Manifest V3 CSP requirements, preventing external script loading issues.
 - **[Defensive Programming]** Applied comprehensive null and undefined value checks throughout the codebase, especially in network and tab communication functions, to prevent "Cannot read properties of undefined" errors and improve extension stability.
+- **[Sequential API Call Pattern]** Implemented two-stage API request system for web search functionality, with dedicated handlers for tool calls, search execution, and follow-up responses.
+- **[Tool Result Processing]** Developed a robust approach for handling web search tool results, including clear separation of original content from search results and improved context maintenance.
 
 ## Implemented Features
 <!-- Track all completed features (no timestamps) -->
@@ -56,6 +58,8 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Content Script Tracking]** Implemented persistent tracking of content script initialization status across page loads to reduce reinjection attempts and improve communication reliability. Added automated status reporting from content scripts to background script, timeout-based validation of previously initialized scripts, and URL change detection to ensure scripts are always fresh and available.
 - **[LinkedIn Fallback Content]** Implemented enhanced fallback content generation for LinkedIn profiles that cannot be directly scraped. Created structured fallback content with formatted profile information based on available tab data, including title parsing to extract profile names and improved formatting for better user experience.
 - **[Web Search Simulation]** Enhanced the web search functionality with mock search result generation for common queries. Implemented context-aware search results based on query content, with timestamp information and formatting appropriate for follow-up API processing. Added pattern matching to provide relevant simulated search results when available.
+- **[Advanced Web Search Functionality]** Completely restructured the API call system for web search with streamlined callOpenAI function, robust processOpenAIResponse function, and dedicated handleSequentialApiCalls function for two-stage API requests.
+- **[Enhanced Mock Search Results]** Expanded search result templates with more detailed content, implemented smarter query matching with category detection, added specialized responses for different query types, and improved formatting of search results.
 
 ## Resolved Bugs
 <!-- Document fixed issues (no timestamps) -->
@@ -87,6 +91,8 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Advanced Debugging Implementation]** Enhanced error handling with comprehensive debugging logs throughout the API response processing flow. Added detailed structure validation, explicit null/undefined checks, and step-by-step tracing of content handling to identify and prevent "Cannot read properties of null (reading 'trim')" errors.
 - **[Tool Calls Processing Fix]** Resolved "Cannot read properties of null (reading 'trim')" error by implementing proper handling of OpenAI API responses where content is null but tool_calls are present. Added specialized processing for web_search function calls that extracts the search query and provides a user-friendly message about the search operation being performed.
 - **[Tab Communication Resilience]** Fixed "Receiving end does not exist" error by implementing a robust retry mechanism for tab communication. Added better error handling for content script injection, longer initialization delays, and progressive timeouts between retries to ensure successful communication with the active tab even under slow loading conditions.
+- **[Critical Sequential API Call Fix]** Fixed an issue with the sequential API call structure by ensuring proper message structure implementation complying with OpenAI API requirements, implementing tool call ID matching, enhancing error diagnostics, and ensuring proper conversation flow.
+- **[Search Query Matching Fix]** Resolved a critical issue where web search queries were mismatched with actual user questions by improving topic extraction logic, implementing search topic prioritization, adding specialized content handlers, and enhancing context clarification in follow-up messages.
 
 ## Documentation Status
 - **[README Review]** README.md accurately describes the extension functionality, installation process, and troubleshooting steps. The model options listed in the README (GPT-3.5 Turbo and GPT-4) are available in the actual implementation, which also includes the newer gpt-4o-mini (default) and gpt-4o models.
