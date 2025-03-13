@@ -48,15 +48,16 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Button Interaction Enhancement]** Improved button interaction patterns with specialized hover effects for both the "Ask" and "New Chat" buttons. Added subtle glow effect to the "Ask" button for enhanced visibility, removed zoom effect from the new chat button's unfocused state to create a cleaner visual experience, and implemented hover text functionality showing "Ask" and "New" labels on hover for clearer button purpose indication.
 - **[Button Styling Refinement]** Enhanced button styling for improved consistency and usability. Fixed position jumping on hover transitions by replacing absolute positioning with flex layouts, standardized font sizes across all action buttons, and replaced text-based "+" character with an SVG icon for the New Chat button to improve visual clarity and scaling. These changes create a more polished and professional user interface with smoother interactions.
 - **[UI Size Consistency]** Improved the visual consistency of UI elements by ensuring all buttons and input fields in the question container have exactly the same dimensions. Fixed an issue where the new chat button appeared larger than adjacent elements by applying explicit width constraints, adding overflow control, precisely sizing the SVG icon, and ensuring all elements have the same box model calculation with box-sizing: border-box. This creates a more cohesive and visually balanced interface with professional alignment.
+- **[UI View Management]** Enhanced UI state handling for view transitions with direct approach for more reliable button focus states, preventing unintended navigation indicators.
 
 ## Implemented Features
-<!-- Track all completed features (no timestamps) -->
+<!-- Document all features implemented (no timestamps) -->
 
 <!--
 DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 
-- **[Feature Name]** Developed functionality for [purpose] that enables users to [capability].
-- **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
+- **[Feature Name]** Added [feature description] to enable users to [capability].
+- **[Feature Enhancement]** Extended [existing feature] with [new functionality] for [purpose].
 -->
 
 - **[Smart Content Extraction]** Page content extraction that intelligently adapts to the page structure.
@@ -70,6 +71,10 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Code Syntax Highlighting]** Automatic syntax highlighting for code blocks in AI responses.
 - **[Web Search Tool]** Integrated web search capability allowing the AI to search the web for answers.
 - **[Response Variety Setting]** Added user-friendly "Response Variety" slider (temperature setting) allowing users to control how creative or precise AI responses are, ranging from 0.0 (precise) to 1.0 (creative).
+- **[Button Styling Refinement]** Enhanced button styling for improved consistency and usability. Fixed position jumping on hover transitions by replacing absolute positioning with flex layouts, standardized font sizes across all action buttons, and replaced text-based "+" character with an SVG icon for the New Chat button to improve visual clarity and scaling. These changes create a more polished and professional user interface with smoother interactions.
+- **[UI Size Consistency]** Improved the visual consistency of UI elements by ensuring all buttons and input fields in the question container have exactly the same dimensions. Fixed an issue where the new chat button appeared larger than adjacent elements by applying explicit width constraints, adding overflow control, precisely sizing the SVG icon, and ensuring all elements have the same box model calculation with box-sizing: border-box. This creates a more cohesive and visually balanced interface with professional alignment.
+- **[Settings Interface]** Improved settings page UI by hiding chat title window for cleaner, more focused settings experience.
+- **[History Navigation]** Enhanced history item click handling to prevent the history button from remaining highlighted when viewing chat sessions from history list.
 
 ## Resolved Bugs
 <!-- Document fixed issues (no timestamps) -->
@@ -85,6 +90,8 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[UI Animation]** Fixed loading spinner not displaying as a proper circle by adding box-sizing, transform-origin properties, and proper container structure. Enhanced spinner styles to prevent clipping and ensure consistent circular animation. Added flexbox display properties to perfectly center the spinner in its container.
 - **[Spinner Positioning]** Resolved issue with spinner appearing in bottom right of button by replacing transform-based positioning with dedicated flex container, ensuring perfect centering regardless of button dimensions.
 - **[Markdown Rendering Error]** Fixed "window.markdownit is not a function" error by correcting the library access method to use the global `markdownit` function instead of `window.markdownit`. Added robust error handling with fallback to plain text rendering if the library is unavailable.
+- **[Script Initialization Duplication]** Fixed a fundamental issue where duplicate script initialization could cause multiple simultaneous event handlers to fire for the same user action. Implemented script initialization tracking, DOM mutation observation, and explicit flag-based protection to prevent the same code from executing multiple times, eliminating duplicate API calls and message submissions at their source.
+- **[Web Search Follow-up Failure]** Fixed an issue where web search functionality was detecting the need for search correctly but failing to execute the follow-up API call. Implemented proper message structure for sequential API calls, added comprehensive logging, robust error handling with graceful recovery, and automatic correction of message format issues to ensure proper API interaction.
 - **[Markdown Parsing Issue]** Resolved issue where markdown was being loaded but not properly rendered in LLM responses. Implemented multi-layered approach for accessing the markdown-it library and added a custom fallback parser to ensure markdown formatting is always applied correctly.
 - **[Content Security Policy Error]** Fixed Content Security Policy (CSP) errors that prevented loading external libraries from CDNs by including local copies of markdown-it and highlight.js, and updating the manifest.json with appropriate CSP settings and web_accessible_resources configurations.
 - **[Undefined Property Error]** Resolved "Cannot read properties of undefined (reading 'startsWith')" error in background.js by implementing comprehensive null and undefined checks in tab communications, the detectWebsiteType function, and the getBaseDomain function, ensuring the extension handles missing URL data gracefully.
@@ -107,5 +114,3 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[User Query Duplication Fix]** Resolved an issue where user queries were appearing twice in the chat interface by identifying and fixing the root cause in the message submission flow. Restructured the submit button handler to update tab information first, then add user messages to chat after the correct context is established, preventing the duplication caused by history reloading. Added additional safeguards in the chat history loading process to prevent re-displaying messages that are already in the UI.
 - **[Refined Duplicate Handling]** Fixed an issue where legitimate duplicate messages were being filtered out, preventing users from intentionally sending the same message twice. Removed overly aggressive content matching that was suppressing desired duplicate messages, focusing instead on preventing unintentional duplication at the submission source while preserving message integrity.
 - **[Window Focus Duplication Fix]** Resolved a critical issue where user messages and API calls were being duplicated due to window focus events. Fixed by implementing a specialized focus event handler that updates essential tab information without triggering a full chat history reload, preventing the cascade of duplicate operations that occurred when the popup window regained focus.
-- **[Script Initialization Duplication]** Fixed a fundamental issue where duplicate script initialization could cause multiple simultaneous event handlers to fire for the same user action. Implemented script initialization tracking, DOM mutation observation, and explicit flag-based protection to prevent the same code from executing multiple times, eliminating duplicate API calls and message submissions at their source.
-- **[Web Search Follow-up Failure]** Fixed an issue where web search functionality was detecting the need for search correctly but failing to execute the follow-up API call. Implemented proper message structure for sequential API calls, added comprehensive logging, robust error handling with graceful recovery, and automatic correction of message format issues to ensure proper API interaction.

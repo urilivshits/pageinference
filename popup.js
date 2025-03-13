@@ -60,6 +60,7 @@ let currentPageTitle;
 let currentPageLoadId;
 let isInNewConversation = true;
 let wasInConversationsView = false; // Track last view before going to settings
+let loadedFromHistoryItem = false; // New flag to track if we loaded from history item click
 let isProcessing = false; // Add this flag near the other global variables at the top
 let currentTheme;
 let temperatureSlider;
@@ -544,6 +545,11 @@ function showMainView() {
   if (isInNewConversation) {
     newConversationBtn.classList.add('active');
     pastSessionsBtn.classList.remove('active');
+  } else if (loadedFromHistoryItem) {
+    // If loaded from clicking on a history item, don't highlight any button
+    newConversationBtn.classList.remove('active');
+    pastSessionsBtn.classList.remove('active');
+    // Don't reset the flag here - we'll do it after updateUIState
   } else {
     newConversationBtn.classList.remove('active');
     pastSessionsBtn.classList.add('active');
@@ -559,6 +565,11 @@ function showMainView() {
   
   // Update UI state
   updateUIState();
+  
+  // NOW reset the flag after updateUIState has been called
+  if (loadedFromHistoryItem) {
+    loadedFromHistoryItem = false;
+  }
 }
 
 /**
@@ -593,7 +604,7 @@ function showPastConversationsView() {
  */
 function showSettingsView() {
   // Remember the previous view state (main or past conversations)
-  wasInConversationsView = pastConversationsView.classList.contains('active');
+  wasInConversationsView = !pastConversationsView.classList.contains('hidden');
   
   // Hide all content areas
   mainContent.classList.add('hidden');
@@ -604,6 +615,12 @@ function showSettingsView() {
   newConversationBtn.classList.remove('active');
   pastSessionsBtn.classList.remove('active');
   settingsBtn.classList.add('active');
+  
+  // Hide the active topic name when in settings view
+  const conversationInfo = document.getElementById('currentConversationInfo');
+  if (conversationInfo) {
+    conversationInfo.classList.add('hidden-topic-name');
+  }
 }
 
 /**
@@ -614,6 +631,12 @@ function updateUIState() {
   newConversationBtn.classList.remove('active');
   pastSessionsBtn.classList.remove('active');
   settingsBtn.classList.remove('active');
+  
+  // If we're showing a conversation from a history item click, don't highlight any buttons
+  if (loadedFromHistoryItem) {
+    console.log('Loaded from history item - not highlighting any buttons');
+    return;
+  }
   
   if (mainContent.classList.contains('hidden') && pastConversationsView.classList.contains('hidden')) {
     // Settings view
@@ -945,17 +968,22 @@ async function addMessageToChat(role, content) {
     headerContent.textContent = 'System';
   }
   
-  // Add timestamp to header
-  const timeDisplay = document.createElement('span');
-  timeDisplay.classList.add('message-timestamp');
-  
-  // Format the timestamp
-  const messageDate = new Date(timestamp);
-  timeDisplay.textContent = messageDate.toLocaleString();
-  
-  // Add the elements to header
-  header.appendChild(headerContent);
-  header.appendChild(timeDisplay);
+  // Add timestamp to header if available
+  if (timestamp) {
+    const timeDisplay = document.createElement('span');
+    timeDisplay.classList.add('message-timestamp');
+    
+    // Format the timestamp
+    const messageDate = new Date(timestamp);
+    timeDisplay.textContent = messageDate.toLocaleString();
+    
+    // Add the timestamp to header
+    header.appendChild(headerContent);
+    header.appendChild(timeDisplay);
+  } else {
+    // If no timestamp, just add the header content
+    header.appendChild(headerContent);
+  }
   
   const messageContent = document.createElement('div');
   messageContent.classList.add('message-content');
@@ -1484,14 +1512,30 @@ async function loadAndShowPastSessions() {
             // Set current page load ID before loading
             currentPageLoadId = session.pageLoadId;
             
-            // Load and display the selected chat session
-            await loadAndDisplayChatSession(session.pageLoadId, session);
+            // Load and display the selected chat session with fromHistoryClick=true
+            await loadAndDisplayChatSession(session.pageLoadId, session, true);
             
             // Make sure we're not marked as a new conversation
             isInNewConversation = false;
             
-            // Show the main view after loading
-            showMainView();
+            // DIRECT APPROACH: Show the main view without highlighting any buttons
+            // Hide all content areas except main content
+            mainContent.classList.remove('hidden');
+            pastConversationsView.classList.add('hidden');
+            settingsContent.classList.add('hidden');
+            
+            // Explicitly clear all active states
+            newConversationBtn.classList.remove('active');
+            pastSessionsBtn.classList.remove('active');
+            settingsBtn.classList.remove('active');
+            
+            // Show the conversation info
+            const conversationInfo = document.getElementById('currentConversationInfo');
+            if (conversationInfo) {
+              conversationInfo.classList.remove('hidden-topic-name');
+            }
+            
+            console.log('Loaded history item - explicitly not highlighting any buttons');
           } catch (error) {
             console.error('Error switching to conversation:', error);
             showError('Failed to load conversation. Please try again.');
@@ -1536,8 +1580,9 @@ async function loadChatSessions() {
  * Load and display a chat session
  * @param {string} pageLoadId - The page load ID of the session to load
  * @param {Object} sessionInfo - Session metadata
+ * @param {boolean} fromHistoryClick - Flag to indicate if this was called directly from a history item click
  */
-async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
+async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null, fromHistoryClick = false) {
     try {
         console.log('Starting to load chat session:', pageLoadId);
         
@@ -1624,8 +1669,12 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null) {
             }, 100);
         }
         
-        // Show the main view
-        showMainView();
+        // Only call showMainView() if NOT called from a history item click
+        // When called from history item clicks, the view switching is handled in the click handler
+        if (!fromHistoryClick) {
+            showMainView();
+        }
+        
         console.log('Successfully loaded and displayed chat session');
         
     } catch (error) {

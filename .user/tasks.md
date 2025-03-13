@@ -15,6 +15,23 @@ Format for recording tasks:
 - [ ] Another task with details or acceptance criteria
 -->
 
+## Documentation Maintenance
+
+### Context File Cleanup
+- [x] Fixed incorrect categorization in context.md where bug fixes were mistakenly moved to the implemented features section
+- [x] Moved "Script Initialization Duplication" and "Web Search Follow-up Failure" items back to the Resolved Bugs section
+- [x] Maintained consistent structure and formatting across all sections of context.md
+- [x] Updated queries.md with the context.md correction request
+- [x] Updated tasks.md with the correction details
+
+## UI Improvements
+
+### Interface Visibility and Focus States
+- [x] Hide the chat title window (conversation info) on the settings page for cleaner UI
+- [x] Fixed history button focus issue when clicking on history items to view chats
+- [x] Implemented direct UI management in history item click handlers to prevent button highlighting
+- [x] Added fromHistoryClick parameter to loadAndDisplayChatSession to control UI state properly
+
 ## Bug Fixes
 
 ### API Response Handling

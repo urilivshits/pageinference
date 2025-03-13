@@ -29,6 +29,16 @@ User: This is an example of a user query. It shows how queries should be formatt
 
 "on response it throws "window.markdownit is not a function""
 
+"on the settings page lets hide the chat title window that contains chat name, date and etc"
+
+"still when im inside the histroy list and i click on one of the items in the history (and this opens the chat from history) i can still see the "history" button as focused"
+
+"still the same, please dont forget to follow the @rules.mdc"
+
+"cool, now check the @rules.mdc please"
+
+"recheck @context.md  and see why you moved some bugfixes to implemented features?"
+
 "follow the @rules.mdc and:
 1. allow setting the llm response temperature in extension's settings (make sure its named in a way so that non-technical people would understand)
 2. minimum should be 0, maximum should be 1, default should be 0"
