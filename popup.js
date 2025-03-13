@@ -30,6 +30,8 @@ let isInNewConversation = true;
 let wasInConversationsView = false; // Track last view before going to settings
 let isProcessing = false; // Add this flag near the other global variables at the top
 let currentTheme;
+let temperatureSlider;
+let temperatureValueDisplay;
 
 // DOM elements - will be populated in DOMContentLoaded
 
@@ -60,6 +62,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sessionsContainer = document.getElementById('sessionsContainer');
   currentConversationTitle = document.getElementById('currentConversationTitle');
   currentConversationTimestamp = document.getElementById('currentConversationTimestamp');
+  temperatureSlider = document.getElementById('temperatureSlider');
+  temperatureValueDisplay = document.getElementById('temperatureValue');
 
   // Ensure we start with the main view
   showMainView();
@@ -136,6 +140,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Load saved temperature preference
+  chrome.storage.sync.get('temperaturePreference', (data) => {
+    if (data.temperaturePreference !== undefined) {
+      const temperatureValue = parseFloat(data.temperaturePreference);
+      // Set slider value (0-100 range)
+      temperatureSlider.value = temperatureValue * 100;
+      // Update display value
+      temperatureValueDisplay.textContent = temperatureValue.toFixed(1);
+    } else {
+      // Default to 0 if no preference is set
+      temperatureSlider.value = 0;
+      temperatureValueDisplay.textContent = '0.0';
+      // Save the default preference
+      chrome.storage.sync.set({ temperaturePreference: 0 });
+    }
+    // Update the slider gradient to match the current value
+    updateSliderGradient(temperatureSlider);
+  });
+
   // Listen for system theme changes
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     if (currentTheme === 'system') {
@@ -156,6 +179,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   modelSelect.addEventListener('change', async () => {
     await chrome.storage.sync.set({ model: modelSelect.value });
+  });
+  
+  // Temperature slider change handler
+  temperatureSlider.addEventListener('input', () => {
+    // Convert the 0-100 slider value to 0-1 range for temperature
+    const temperatureValue = parseFloat(temperatureSlider.value) / 100;
+    // Display with one decimal place
+    temperatureValueDisplay.textContent = temperatureValue.toFixed(1);
+    // Save temperature preference
+    chrome.storage.sync.set({ temperaturePreference: temperatureValue });
+    // Update slider gradient
+    updateSliderGradient(temperatureSlider);
   });
   
   // Theme radio button change handler
@@ -1843,4 +1878,15 @@ function basicMarkdownRender(text) {
   html = html.replace(/<\/(h[1-6]|ul|ol|pre|blockquote)><br>/g, '</$1>');
   
   return html;
+}
+
+/**
+ * Updates a slider's background gradient to represent its current value
+ * @param {HTMLInputElement} slider - The slider input element
+ */
+function updateSliderGradient(slider) {
+  const value = slider.value;
+  const max = slider.max || 100;
+  const percentage = (value / max) * 100;
+  slider.style.background = `linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) ${percentage}%, var(--input-bg) ${percentage}%, var(--input-bg) 100%)`;
 }

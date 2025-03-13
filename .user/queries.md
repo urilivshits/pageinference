@@ -29,6 +29,14 @@ User: This is an example of a user query. It shows how queries should be formatt
 
 "on response it throws "window.markdownit is not a function""
 
+"follow the @rules.mdc and:
+1. allow setting the llm response temperature in extension's settings (make sure its named in a way so that non-technical people would understand)
+2. minimum should be 0, maximum should be 1, default should be 0"
+
+"cool but i dont see the slider's lever - it works but the position of the slider is invisible"
+
+"cool, but its just a bit off vertically"
+
 "no error but i dont see any change. i currently get llm responses rendered like a so:
 
 Based on the information provided about Yura Leonov's profile and the requirements for the Camera HW Design Engineer position at Apple, here's an evaluation of how his experience matches the job: ### Relevant Experience 1. **Technical Background**: - Yura has extensive experience in software development, particularly as a Full Stack Developer and Development Team Lead. However, the job in question focuses on hardware design, specifically in camera hardware engineering, which requires a strong background in electrical engineering and hardware design. - The position requires expertise in electronic design, including schematic creation and knowledge of analog and digital circuits. Yura's experience does not indicate a background in hardware design or electrical engineering, which is critical for this role. 2. **Project Management**: - Yura has experience managing teams and projects, particularly as a Development Team Lead and Co-Founder of GamersPoint. This experience could be beneficial in managing different projects in parallel, as required by the job. 3. **Interpersonal Skills**: - His profile mentions strong collaboration and communication skills, which are essential for interacting with product teams and ensuring good implementation for system integration. ### Missing Qualifications 1. **Educational Background**: - The job requires a BS/MS in Electrical Engineering or equivalent industrial experience. Yura holds an MBA and a Master's in Diplomacy & Conflict Studies, which does not align with the technical requirements of the position. 2. **Specific Hardware Skills**: - The role demands hands-on experience with electronic test equipment and knowledge of layout strategies, EMI minimization, and RF experience. Yura's profile does not indicate any experience in these areas, which are crucial for the Camera HW Design Engineer role. 3. **Experience with Camera Technology**: - The job description mentions a preference for knowledge of CMOS image sensors and image processing. Yura's background does not suggest any experience in camera hardware or related technologies. ### Conclusion Overall, Yura Leonov's experience does not align well with the Camera HW Design Engineer position at Apple. While he has strong software development and project management skills, he lacks the necessary hardware design experience, educational background in electrical engineering, and specific knowledge related to camera technology. **Rating**: **2/10** - Limited relevance to the position, primarily due to the lack of hardware engineering experience and educational qualifications in the required field.
@@ -270,3 +278,30 @@ Getting API key
 2. make sure that the user query is joined before the scrapped page content (userQuery+scrappedContent)"
 
 "cool, but please make sure to follow @rules.mdc."
+
+"lets make sure that the only search-enabled model is gpt 4 mini. Lets make sure on every search request it asks for this model and not automatically allow for the openai to choose"
+
+"1. error on search:
+
+Making initial API request to get response or tool calls
+13:05:53.554 background.js:710 Starting getOpenAiInference
+13:05:53.554 background.js:716 Have API key, content length: 23027
+13:05:53.555 background.js:729 Using temperature: 0.5
+13:05:53.555 background.js:741 Detected website type: linkedin
+13:05:53.555 background.js:756 Model supports browsing: true
+13:05:53.555 background.js:971 OpenAI API Error: ReferenceError: requestId is not defined
+    at getOpenAiInference (background.js:784:32)
+    at async background.js:601:24
+getOpenAiInference @ background.js:971
+await in getOpenAiInference
+(anonymous) @ background.js:601Understand this errorAI
+13:05:53.555 background.js:972 Error stack: ReferenceError: requestId is not defined
+    at getOpenAiInference (chrome-extension://edffnhjbeilhboeidajkkiacoeoegphi/background.js:784:32)
+    at async chrome-extension://edffnhjbeilhboeidajkkiacoeoegphi/background.js:601:24
+getOpenAiInference @ background.js:972
+await in getOpenAiInference
+(anonymous) @ background.js:601Understand this errorAI
+13:05:53.555 background.js:627 Storing chat history with key: 281323503_linkedin.com_pageload_1741863938308_nt55gxk
+13:05:53.558 background.js:161 MESSAGE: Received message: undefined
+
+2. do we still need BROWSING_CAPABLE_MODELS and modelSupportsBrowsing?"

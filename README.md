@@ -45,7 +45,8 @@ Before installing, make sure to:
    - GPT-4 (High quality, slower)
    - GPT-4o (Highest quality, with browsing capabilities)
 6. Choose your preferred theme (system, light, or dark)
-7. Click "Save Settings"
+7. Adjust the Response Variety slider to control how creative or precise the AI responses are
+8. Click "Save Settings"
 
 ## Usage
 
@@ -65,6 +66,12 @@ Choose between:
 - **System**: Automatically matches your browser's theme
 - **Light**: Bright theme for daytime use
 - **Dark**: Dark theme for reduced eye strain
+
+### Response Variety
+Control the creativity level of AI responses:
+- **Precise** (0.0): More focused, consistent answers
+- **Creative** (1.0): More varied, creative responses
+- Default setting is Precise (0.0)
 
 ### Enhanced Browsing Support
 Advanced models like GPT-4o and GPT-4-turbo include web browsing capabilities to provide more accurate and up-to-date responses.

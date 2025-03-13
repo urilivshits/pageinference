@@ -23,18 +23,11 @@ const contentScriptStatus = {};
 
 // Default model name
 const DEFAULT_MODEL = 'gpt-4o-mini';
+const SEARCH_MODEL = DEFAULT_MODEL; // Only this model supports search functionality
 
 // Models that support web browsing/search capabilities
 const BROWSING_CAPABLE_MODELS = [
-  'gpt-4-turbo',
-  'gpt-4o',
-  'gpt-4-vision-preview',
-  'gpt-4-1106-preview',
-  'gpt-4o-mini',
-  'gpt-4-0125-preview',  // Adding newer model versions
-  'gpt-4-turbo-preview',
-  'gpt-4-0613',
-  'gpt-4-32k-0613'
+  'gpt-4o-mini'
 ];
 
 // Website type patterns for detection
@@ -160,7 +153,8 @@ function detectWebsiteType(content, url) {
  * @returns {boolean} - Whether the model supports browsing
  */
 function modelSupportsBrowsing(model) {
-  return BROWSING_CAPABLE_MODELS.includes(model);
+  // Only allow gpt-4o-mini for browsing
+  return model === 'gpt-4o-mini';
 }
 
 // Listen for messages from the content script or popup
@@ -722,11 +716,21 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
   
   console.log('Have API key, content length:', pageContent ? pageContent.length : 0);
   
+  // Generate a unique request ID for logging purposes
+  const requestId = 'req_' + Math.random().toString(36).substring(2, 12);
+  
   // Ensure all parameters have valid defaults and are properly sanitized
   const safePageContent = (pageContent || '').toString();
   const safeQuestion = (question || 'What is on this page?').toString();
   const safeUrl = (url || '').toString();
   const safeModel = (model || DEFAULT_MODEL).toString();
+  
+  // Get temperature preference
+  const temperatureData = await chrome.storage.sync.get('temperaturePreference');
+  const temperature = temperatureData.temperaturePreference !== undefined ? 
+    parseFloat(temperatureData.temperaturePreference) : 0;
+  
+  console.log('Using temperature:', temperature);
   
   // Trim long content
   const MAX_CONTENT_LENGTH = 100000;
@@ -747,14 +751,21 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
     };
   }
   
-  // Check if the model supports web browsing capability
-  const supportsBrowsing = safeModel.includes('gpt-4') || safeModel.includes('gpt-4-turbo');
+  // Check if the model supports web browsing capability (only gpt-4o-mini)
+  const supportsBrowsing = safeModel === SEARCH_MODEL;
+  
+  // If model is not our search model but user requested search, force it to be the search model
+  const safeModelToUse = supportsBrowsing ? safeModel : SEARCH_MODEL;
+  
   console.log('Model supports browsing:', supportsBrowsing);
+  if (!supportsBrowsing) {
+    console.log(`Forcing model to ${SEARCH_MODEL} for search capability`);
+  }
   
   try {
     // Prepare request body
     const requestBody = {
-      model: safeModel,
+      model: safeModelToUse,
       messages: [
         {
           role: 'system',
@@ -765,24 +776,27 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
           content: `${safeQuestion}\n\nHere is the content of a webpage (URL: ${safeUrl}) to help answer your question:\n\n${trimmedContent}`
         }
       ],
-      temperature: 0.7,
-      max_tokens: 1000
+      temperature: temperature,
+      max_tokens: 2000
     };
     
-    // If the model supports browsing, add the tools
-    if (supportsBrowsing) {
+    // Only include web search tools if using the search-enabled model
+    if (safeModelToUse !== SEARCH_MODEL) {
+      console.log(`API CALL [${requestId}]: Model is not ${SEARCH_MODEL}, web search tools will not be available`);
+    } else {
+      console.log(`API CALL [${requestId}]: Adding web search tools for ${SEARCH_MODEL}`);
       requestBody.tools = [
         {
           type: 'function',
           function: {
             name: 'web_search',
-            description: 'Search the web for current information.',
+            description: 'Search the web for real-time information',
             parameters: {
               type: 'object',
               properties: {
                 query: {
                   type: 'string',
-                  description: 'The search query to use.'
+                  description: 'The search query'
                 }
               },
               required: ['query']
@@ -792,7 +806,7 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
       ];
     }
     
-    console.log('Making API request to OpenAI...');
+    console.log(`API CALL [${requestId}]: Making fetch request to OpenAI API`);
     
     // Make the API request
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1625,7 +1639,7 @@ async function handleSequentialApiCalls(apiKey, messages, toolCalls) {
     console.log(`SEQ CALL [${seqId}]: Making follow-up API call`);
     let followUpResponse;
     try {
-      followUpResponse = await callOpenAI(apiKey, followUpMessages, '', 'gpt-4');
+      followUpResponse = await callOpenAI(apiKey, followUpMessages, '', SEARCH_MODEL);
       
       if (!followUpResponse) {
         console.error(`SEQ CALL [${seqId}]: Empty response from follow-up API call`);
@@ -1741,10 +1755,10 @@ async function processOpenAIResponse(apiKey, response, model, messages) {
  * @param {string} apiKey - The OpenAI API key
  * @param {Array} messages - Array of message objects with role and content
  * @param {string} systemPrompt - Optional system prompt to prepend
- * @param {string} model - Optional model override (defaults to gpt-4)
+ * @param {string} model - Optional model override (defaults to SEARCH_MODEL)
  * @returns {Promise<string>} - The model's response as a string
  */
-async function callOpenAI(apiKey, messages, systemPrompt = '', model = 'gpt-4') {
+async function callOpenAI(apiKey, messages, systemPrompt = '', model = SEARCH_MODEL) {
   console.log('API CALL: Starting OpenAI API call');
   console.log('API CALL: Message count:', messages ? messages.length : 0);
   
@@ -1756,6 +1770,13 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = 'gpt-4') 
     console.error(`API CALL [${requestId}]: Missing API key`);
     throw new Error('API key is required');
   }
+  
+  // Get temperature preference
+  const temperatureData = await chrome.storage.sync.get('temperaturePreference');
+  const temperature = temperatureData.temperaturePreference !== undefined ? 
+    parseFloat(temperatureData.temperaturePreference) : 0;
+  
+  console.log(`API CALL [${requestId}]: Using temperature:`, temperature);
   
   if (!Array.isArray(messages)) {
     console.error(`API CALL [${requestId}]: Messages is not an array, type:`, typeof messages);
@@ -1834,9 +1855,16 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = 'gpt-4') 
     const requestBody = {
       model: model,
       messages: messagesWithSystem,
-      temperature: 0.3,
-      max_tokens: 1500,
-      tools: [
+      temperature: temperature,
+      max_tokens: 2000
+    };
+    
+    // Only include web search tools if using the search-enabled model
+    if (model !== SEARCH_MODEL) {
+      console.log(`API CALL [${requestId}]: Model is not ${SEARCH_MODEL}, web search tools will not be available`);
+    } else {
+      console.log(`API CALL [${requestId}]: Adding web search tools for ${SEARCH_MODEL}`);
+      requestBody.tools = [
         {
           type: 'function',
           function: {
@@ -1854,17 +1882,17 @@ async function callOpenAI(apiKey, messages, systemPrompt = '', model = 'gpt-4') 
             }
           }
         }
-      ]
-    };
+      ];
+    }
     
     console.log(`API CALL [${requestId}]: Making fetch request to OpenAI API`);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
       body: JSON.stringify(requestBody)
     });
     

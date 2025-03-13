@@ -70,12 +70,25 @@
       <div class="settings-group">
         <label for="modelSelect">OpenAI Model</label>
         <select id="modelSelect">
-          <option value="gpt-4o-mini">GPT-4o mini (Default)</option>
+          <option value="gpt-4o-mini">GPT-4o mini (Default, Search-enabled)</option>
           <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
           <option value="gpt-4">GPT-4</option>
           <option value="gpt-4o">GPT-4o</option>
         </select>
-        <small>Note: Some models may require additional API access permissions.</small>
+        <small>Note: Only GPT-4o mini supports web search functionality. Other models may require additional API access permissions.</small>
+      </div>
+      
+      <div class="settings-group">
+        <label for="temperatureSlider">Response Variety</label>
+        <div class="slider-container">
+          <input type="range" id="temperatureSlider" min="0" max="100" value="0" class="slider">
+          <div class="slider-labels">
+            <span>Precise</span>
+            <span id="temperatureValue">0.0</span>
+            <span>Creative</span>
+          </div>
+        </div>
+        <small>Lower values produce more consistent and accurate responses. Higher values allow more creativity and variety.</small>
       </div>
 
       <div class="settings-group">

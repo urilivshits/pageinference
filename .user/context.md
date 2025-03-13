@@ -33,6 +33,8 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Prompt Configuration]** Custom system prompts based on website type detection to provide more relevant answers.
 - **[Permissive Response System]** Enhanced system prompts to allow reasonable assumptions when page content lacks information, while clearly distinguishing between content-derived information and assumptions.
 - **[Query-Content Ordering]** Optimized user query and scraped content ordering to present the user query first, improving context understanding and response relevance.
+- **[Web Search Model Restriction]** Implemented a strict model enforcement policy that only allows GPT-4o mini to perform web searches, forcing all search requests to use this specific model regardless of user selection to ensure consistent search behavior and prevent automatic model selection by OpenAI.
+- **[Search Model Code Simplification]** Refactored search model handling to use a dedicated SEARCH_MODEL constant, improving code clarity and making it easier to maintain by eliminating duplicate hardcoded values and using consistent variable references throughout the codebase.
 
 ## Implemented Features
 <!-- Track all completed features (no timestamps) -->
@@ -40,31 +42,21 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 <!--
 DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 
-- **[Feature Name]** Implemented [feature description] ([relevant-file.js], [another-file.js])
-- **[Feature Name]** Added [feature description] with support for [capability] ([relevant-files])
+- **[Feature Name]** Developed functionality for [purpose] that enables users to [capability].
+- **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
 -->
 
-- **[Content Extraction]** Implemented page content extraction in content.js.
-- **[Question Answering]** Added capability to answer questions about web pages using OpenAI's GPT models (popup.js, background.js).
-- **[Settings Management]** Implemented secure API key storage and model selection (popup.js, background.js).
-- **[UI Components]** Created modern user interface with conversation history and settings panel (popup.html, styles.css).
-- **[History Management]** Added conversation history management for previous sessions (popup.js).
-- **[Website Type Detection]** Implemented automatic detection of website types for specialized system prompts (background.js).
-- **[Theme Customization]** Added theme selection with system, light, and dark modes (popup.js, styles.css).
-- **[Advanced Model Support]** Added support for web browsing capabilities in certain models like gpt-4o and gpt-4-turbo (background.js).
-- **[Loading Indicators]** Enhanced loading indicators with proper animation, responsive behavior, and perfect centering (styles.css, popup.js, popup.html).
-- **[Markdown Formatting]** Added support for rich formatting of LLM responses using markdown-it, including headings, lists, code blocks with syntax highlighting, blockquotes, and more (popup.js, styles.css).
-- **[Fallback Markdown Parser]** Implemented custom lightweight markdown parser as a fallback when external libraries are unavailable, ensuring core formatting capabilities are always available (popup.js).
-- **[Local Library Management]** Added local copies of markdown-it and highlight.js libraries rather than loading from CDNs, ensuring extension functionality despite Content Security Policy restrictions (lib/).
-- **[Improved Chat Title Layout]** Enhanced chat and history title display to show both webpage title and last user message in a 50/50 split layout with proper overflow handling (styles.css, popup.js).
-- **[LinkedIn Scraping Enhancement]** Added specialized handling for LinkedIn pages which have stricter content security policies. Implemented dedicated LinkedIn profile scraping function with targeted extraction of profile sections, improved initialization timing specifically for LinkedIn pages, and added fallback content extraction in case direct scraping fails.
-- **[Content Script Tracking]** Implemented persistent tracking of content script initialization status across page loads to reduce reinjection attempts and improve communication reliability. Added automated status reporting from content scripts to background script, timeout-based validation of previously initialized scripts, and URL change detection to ensure scripts are always fresh and available.
-- **[LinkedIn Fallback Content]** Implemented enhanced fallback content generation for LinkedIn profiles that cannot be directly scraped. Created structured fallback content with formatted profile information based on available tab data, including title parsing to extract profile names and improved formatting for better user experience.
-- **[Web Search Simulation]** Enhanced the web search functionality with mock search result generation for common queries. Implemented context-aware search results based on query content, with timestamp information and formatting appropriate for follow-up API processing. Added pattern matching to provide relevant simulated search results when available.
-- **[Advanced Web Search Functionality]** Completely restructured the API call system for web search with streamlined callOpenAI function, robust processOpenAIResponse function, and dedicated handleSequentialApiCalls function for two-stage API requests.
-- **[Enhanced Mock Search Results]** Expanded search result templates with more detailed content, implemented smarter query matching with category detection, added specialized responses for different query types, and improved formatting of search results.
-- **[Website Presets Enhancement]** Updated all website-specific system message presets to provide more permissive responses while maintaining transparency about information sources.
-- **[Query Positioning Improvement]** Modified API call format to present user query before scraped content, improving context understanding and response quality.
+- **[Smart Content Extraction]** Page content extraction that intelligently adapts to the page structure.
+- **[Website Type Detection]** Automatic detection of different website types for context-aware responses.
+- **[Multi-Model Support]** Support for multiple OpenAI models with different capabilities and cost profiles.
+- **[Theme System]** Comprehensive theme system with light, dark, and system-detected modes.
+- **[API Key Management]** Secure API key storage with visibility toggle.
+- **[Conversation History]** Persistent conversation history organized by domain and browsing session.
+- **[Past Conversations]** Ability to view, reload, and continue past conversations.
+- **[Markdown Rendering]** Comprehensive markdown rendering for LLM responses with support for code blocks, lists, tables, and more.
+- **[Code Syntax Highlighting]** Automatic syntax highlighting for code blocks in AI responses.
+- **[Web Search Tool]** Integrated web search capability allowing the AI to search the web for answers.
+- **[Response Variety Setting]** Added user-friendly "Response Variety" slider (temperature setting) allowing users to control how creative or precise AI responses are, ranging from 0.0 (precise) to 1.0 (creative).
 
 ## Resolved Bugs
 <!-- Document fixed issues (no timestamps) -->
@@ -98,6 +90,7 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[Tab Communication Resilience]** Fixed "Receiving end does not exist" error by implementing a robust retry mechanism for tab communication. Added better error handling for content script injection, longer initialization delays, and progressive timeouts between retries to ensure successful communication with the active tab even under slow loading conditions.
 - **[Critical Sequential API Call Fix]** Fixed an issue with the sequential API call structure by ensuring proper message structure implementation complying with OpenAI API requirements, implementing tool call ID matching, enhancing error diagnostics, and ensuring proper conversation flow.
 - **[Search Query Matching Fix]** Resolved a critical issue where web search queries were mismatched with actual user questions by improving topic extraction logic, implementing search topic prioritization, adding specialized content handlers, and enhancing context clarification in follow-up messages.
+- **[Slider Thumb Visibility Enhancement]** Fixed invisible temperature slider thumb by adding missing `--accent-color` CSS variable and enhancing slider styling with improved visibility properties. Implemented a dynamic gradient track that visually represents the current value, improved cross-browser compatibility with Firefox-specific styles, and added visual enhancements including borders and shadows for better contrast in both light and dark themes. Corrected vertical alignment issues with precise margin adjustments and added hover effects for improved user interaction.
 
 ## Documentation Status
 - **[README Review]** README.md accurately describes the extension functionality, installation process, and troubleshooting steps. The model options listed in the README (GPT-3.5 Turbo and GPT-4) are available in the actual implementation, which also includes the newer gpt-4o-mini (default) and gpt-4o models.
