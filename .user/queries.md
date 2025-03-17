@@ -495,3 +495,7 @@ MESSAGE: Received message action: getApiKey
 3. change the new chat button's icon ("+") to be an actual icon of "+" and not just a text"
 
 as you can see on attached pic the new chat button is still bigger than the elements to its right when unhovered
+
+"lets continue, reindex the repo, rebuild the artifacts and lets continue with tasks further. Make sure to follow the project rules"
+
+"lets focus on something else, please mark as complete the tasks you just added."
