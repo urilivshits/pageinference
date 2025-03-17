@@ -17,6 +17,13 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
 -->
 
+- **[Page Scraping Toggle]** Implemented functionality for the "Search Page" button that enables users to toggle between page scraping and direct query modes. This feature:
+  - Provides visual feedback with button highlighting when active
+  - Persists user preference between sessions
+  - Uses a generic system message when page scraping is disabled
+  - Maintains the default state as "on" for new installations
+  - References: popup.js, background.js, styles.css
+
 ## Resolved Bugs
 <!--
 FORMAT GUIDE - DO NOT DELETE
@@ -25,6 +32,8 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
 
+- **[System Prompt Enhancement]** Updated GENERIC_SYSTEM_PROMPT to be model-agnostic instead of Claude-specific to support various AI models in background.js
+- **[Chat History Fix]** Fixed "currentHistory.push is not a function" error by correctly retrieving and passing the chat history array to saveChatSession in the non-scraping mode in popup.js
 - **[UI Border Fix]** Fixed input-buttons border visibility in dark mode by explicitly applying border and box-shadow styles to ensure consistent appearance across themes in styles.css
 - **[Tooltip Alignment]** Corrected button tooltip positioning to properly center labels below buttons by adding text-align, width:max-content, and position:relative properties in styles.css
 - **[Dark Mode Border Enhancement]** Improved border visibility in dark mode by using input-border color and stronger box-shadow for better contrast in styles.css

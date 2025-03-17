@@ -82,6 +82,9 @@ const WEBSITE_PATTERNS = [
 // Default system prompt
 const DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant that answers questions based on the provided webpage content. Give concise and accurate answers primarily based on the information in the content provided. If the answer cannot be found completely in the content, you may make reasonable assumptions based on your knowledge, but clearly distinguish between information from the webpage and your own assumptions or additional knowledge.';
 
+// Generic system prompt (used when page scraping is disabled)
+const GENERIC_SYSTEM_PROMPT = 'You are a helpful, accurate, and friendly AI assistant. Answer questions helpfully and truthfully. If you do not know the answer to a question, admit it. If the question is ambiguous, ask for clarification. Always be respectful and polite in your answers.';
+
 // Handle installation and updates
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
@@ -497,141 +500,57 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const model = request.model || DEFAULT_MODEL;
         console.log('Using model:', model);
         
+        // Check if page content should be skipped (page scraping disabled)
+        const skipPageContent = request.skipPageContent === true;
+        console.log('Skip page content:', skipPageContent);
+        
         // First, make the initial API call
-        console.log('Making initial API request to get response or tool calls');
-        const result = await getOpenAiInference(
-          data.openAiApiKey,
-          request.content,
-          request.question,
-          model,
-          url
-        );
+        const pageContent = request.content || '';
+        const question = request.question || 'What is on this page?';
+        const tabId = request.tabId;
+        const pageLoadId = request.pageLoadId;
         
-        // Track if we need to do a follow-up call
-        let finalResult = result;
-        let didFollowUp = false;
-        
-        // If the result contains the web search indicator, we should make a follow-up request
-        if (result && typeof result === 'string' && result.includes('Searching the web for:')) {
-          console.log('Web search indicator detected in response, should trigger follow-up');
-          
-          try {
-            // Extract the original API response and tool calls
-            const searchMatch = result.match(/Searching the web for: "([^"]+)"/);
-            const searchQuery = searchMatch ? searchMatch[1] : "";
-            
-            if (searchQuery) {
-              console.log('Extracted search query:', searchQuery);
-              
-              // Construct a minimal messages array with the original question
-              const messages = [
-                {
-                  role: 'system',
-                  content: 'You are a helpful assistant.'
-                },
-                {
-                  role: 'user',
-                  content: request.question
-                }
-              ];
-              
-              // Generate a unique ID for easier debugging
-              const callId = 'call_' + Math.random().toString(36).substring(2, 12);
-              console.log(`Web search follow-up: Generated tool call ID: ${callId}`);
-              
-              // Construct a tool call for the web search
-              const toolCalls = [{
-                id: callId,
-                type: 'function',
-                function: {
-                  name: 'web_search',
-                  arguments: JSON.stringify({ query: searchQuery })
-                }
-              }];
-              
-              console.log('Web search follow-up: Tool calls structure:', JSON.stringify(toolCalls));
-              
-              // Make the sequential API calls
-              console.log('Making sequential API calls for web search at:', new Date().toISOString());
-              
-              try {
-                const followUpResult = await handleSequentialApiCalls(
-                  data.openAiApiKey,
-                  messages,
-                  toolCalls
-                );
-                
-                if (followUpResult) {
-                  console.log('Received follow-up result from web search at:', new Date().toISOString());
-                  console.log('Follow-up result length:', followUpResult.length);
-                  finalResult = followUpResult;
-                  didFollowUp = true;
-                } else {
-                  console.warn('Follow-up call returned null or empty');
-                  // Don't modify finalResult, keep the original "Searching..." message
-                }
-              } catch (seqError) {
-                console.error('Error in sequential API calls process:', seqError);
-                finalResult += `\n\nNote: I attempted to search the web for "${searchQuery}" but encountered an error: ${seqError.message}`;
-              }
-            } else {
-              console.error('Could not extract search query from result');
-              finalResult += '\n\nNote: I attempted to search the web but could not determine the search query.';
-            }
-          } catch (followUpError) {
-            console.error('Error in follow-up process:', followUpError);
-            finalResult += '\n\nNote: I encountered an error when attempting to search the web. ' + followUpError.message;
-            // Fallback to original result if follow-up fails
-          }
-        }
-        
-        // Store in chat history
-        if (request.tabId && request.url && request.pageLoadId) {
-          // Use a more reliable key format based on domain
-          const baseDomain = getBaseDomain(request.url);
-          const historyKey = `${request.tabId}_${baseDomain}_${request.pageLoadId}`;
-          
-          console.log(`Storing chat history with key: ${historyKey}`);
-          
-          if (!chatHistories[historyKey]) {
-            chatHistories[historyKey] = [];
+        // Get the inference answer
+        try {
+          let answer;
+          if (skipPageContent) {
+            // Use generic system prompt when page scraping is disabled
+            answer = await getOpenAiInference(
+              data.openAiApiKey,
+              '', // Empty content
+              question,
+              model,
+              url,
+              true // skipPageContent flag
+            );
+          } else {
+            // Use default system prompt with page content
+            answer = await getOpenAiInference(
+              data.openAiApiKey,
+              pageContent,
+              question,
+              model,
+              url,
+              false // skipPageContent flag
+            );
           }
           
-          chatHistories[historyKey].push({
-            role: 'user',
-            content: request.question,
-            timestamp: new Date().toISOString(),
-            pageTitle: pageTitle || new URL(url).hostname
-          });
-          
-          chatHistories[historyKey].push({
-            role: 'assistant',
-            content: finalResult,
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          console.warn('Missing data for chat history:', {
-            tabId: request.tabId,
-            url: request.url,
-            pageLoadId: request.pageLoadId
-          });
+          if (typeof answer === 'string' && answer.startsWith('Error:')) {
+            sendResponse({ error: answer });
+          } else {
+            sendResponse({ answer });
+          }
+        } catch (inferenceError) {
+          console.error('Inference error:', inferenceError);
+          sendResponse({ error: inferenceError.message || 'Failed to get inference result.' });
         }
-        
-        sendResponse({ answer: finalResult });
       } catch (error) {
-        console.error('Error during inference:', error);
-        
-        // Check for specific model-related errors
-        if (error.message && error.message.includes('does not exist or you do not have access to it')) {
-          sendResponse({ 
-            error: `Model ${request.model || DEFAULT_MODEL} is not available. Please select a different model in settings.`,
-            modelError: true
-          });
-        } else {
-          sendResponse({ error: error.message || 'Error getting inference from OpenAI API' });
-        }
+        console.error('Error processing inference request:', error);
+        sendResponse({ error: error.message || 'An error occurred while processing your request.' });
       }
     });
+    
+    // Return true to indicate we'll respond asynchronously
     return true;
   }
   
@@ -664,16 +583,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 /**
- * Sends a request to the OpenAI API for inference
- * @param {string} apiKey - The OpenAI API key
- * @param {string|null} pageContent - The scraped page content
- * @param {string|null} question - The user's question
- * @param {string|null} model - The model to use (default: gpt-4o-mini)
- * @param {string|null} url - The URL of the page (for context detection)
- * @returns {Promise<string>} - The inference result
- * @throws {Error} - If API request fails or parameters are invalid
+ * Get inference from OpenAI API based on content and question
+ * @param {string} apiKey - OpenAI API key
+ * @param {string} pageContent - Content of the page
+ * @param {string} question - User question
+ * @param {string} model - Model to use (default: DEFAULT_MODEL)
+ * @param {string} url - URL of the page (for website type detection)
+ * @param {boolean} skipPageContent - Whether to skip page content and use generic system prompt
+ * @returns {Promise<string>} - Answer or error message
  */
-async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT_MODEL, url = '') {
+async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT_MODEL, url = '', skipPageContent = false) {
   console.log('Starting getOpenAiInference');
   // Ensure we have an API key
   if (!apiKey || typeof apiKey !== 'string' || (apiKey = apiKey.trim()).length === 0) {
@@ -681,6 +600,7 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
   }
   
   console.log('Have API key, content length:', pageContent ? pageContent.length : 0);
+  console.log('Skip page content:', skipPageContent);
   
   // Generate a unique request ID for logging purposes
   const requestId = 'req_' + Math.random().toString(36).substring(2, 12);
@@ -707,14 +627,15 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
   // Detect website type with error handling
   let websiteType;
   try {
-    websiteType = detectWebsiteType(trimmedContent, safeUrl);
+    websiteType = skipPageContent ? 
+      { type: 'generic', systemPrompt: GENERIC_SYSTEM_PROMPT } : 
+      detectWebsiteType(trimmedContent, safeUrl);
     console.log(`Detected website type: ${websiteType.type}`);
   } catch (typeError) {
     console.error('Website type detection failed:', typeError);
-    websiteType = {
-      type: 'general',
-      systemPrompt: DEFAULT_SYSTEM_PROMPT
-    };
+    websiteType = skipPageContent ? 
+      { type: 'generic', systemPrompt: GENERIC_SYSTEM_PROMPT } : 
+      { type: 'general', systemPrompt: DEFAULT_SYSTEM_PROMPT };
   }
   
   // Check if the model supports web browsing capability (only gpt-4o-mini)
@@ -739,7 +660,9 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
         },
         {
           role: 'user',
-          content: `${safeQuestion}\n\nHere is the content of a webpage (URL: ${safeUrl}) to help answer your question:\n\n${trimmedContent}`
+          content: skipPageContent ? 
+            safeQuestion : 
+            `${safeQuestion}\n\nHere is the content of a webpage (URL: ${safeUrl}) to help answer your question:\n\n${trimmedContent}`
         }
       ],
       temperature: temperature,
@@ -785,7 +708,7 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
       body: JSON.stringify(requestBody)
     });
     
-    console.log(`API CALL [${requestId}]: Received API response, status: ${response.status} ${response.statusText}`);
+    console.log(`API CALL [${requestId}]: Response received, status: ${response.status} ${response.statusText}`);
     
     // Handle non-200 responses
     if (!response.ok) {

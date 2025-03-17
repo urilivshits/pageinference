@@ -67,6 +67,7 @@ let temperatureSlider;
 let temperatureValueDisplay;
 let isSubmitInProgress = false; // Add a flag to track if submit operation is in progress
 let lastSubmittedQuestion = ''; // Track the last submitted question to prevent duplicates
+let isPageScrapingEnabled = true; // New state variable for page scraping toggle
 
 // Function to update the current tab information
 async function updateCurrentTabInfo() {
@@ -344,7 +345,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Add event listeners for new buttons (but without functionality yet)
   searchPageBtn.addEventListener('click', () => {
-    console.log('Search page button clicked - functionality not implemented yet');
+    isPageScrapingEnabled = !isPageScrapingEnabled;
+    searchPageBtn.classList.toggle('active', isPageScrapingEnabled);
+    console.log('Search page scraping ' + (isPageScrapingEnabled ? 'enabled' : 'disabled'));
+    
+    // Save the setting to storage
+    chrome.storage.sync.set({ isPageScrapingEnabled });
   });
   
   searchBtn.addEventListener('click', () => {
@@ -357,6 +363,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ENTER key handling is already managed in the auto-resize event listener
 
+  // Set initial state for search page button
+  searchPageBtn.classList.toggle('active', isPageScrapingEnabled);
+  
   // Load chat history
   await loadChatHistory();
   await loadSavedInputText();
@@ -493,59 +502,132 @@ document.addEventListener('DOMContentLoaded', async () => {
         await addMessageToChat('user', question);
         console.log('DONE ADDING USER MESSAGE TO CHAT UI');
         
-        // First, get the page content by scraping the current page
-        console.log('Sending scrapeCurrentPage message');
-        const scraperResponse = await chrome.runtime.sendMessage({
-          action: 'scrapeCurrentPage'
-        });
-        console.log('Scraper response:', scraperResponse);
-        
-        if (scraperResponse.error) {
-          if (scraperResponse.error.includes('No active tab found')) {
-            // Try once more to update tab information before giving up
-            console.log('Tab may have lost focus, trying to update tab information again...');
-            const retryTabInfo = await updateCurrentTabInfo();
-            
-            if (retryTabInfo) {
-              // Try the scrape request one more time
-              console.log('Tab info updated, retrying scrape request...');
-              const retryResponse = await chrome.runtime.sendMessage({
-                action: 'scrapeCurrentPage'
-              });
+        if (isPageScrapingEnabled) {
+          // Page scraping is enabled, proceed with the original flow
+          console.log('Page scraping is enabled, scraping current page');
+          // First, get the page content by scraping the current page
+          console.log('Sending scrapeCurrentPage message');
+          const scraperResponse = await chrome.runtime.sendMessage({
+            action: 'scrapeCurrentPage'
+          });
+          console.log('Scraper response:', scraperResponse);
+          
+          if (scraperResponse.error) {
+            if (scraperResponse.error.includes('No active tab found')) {
+              // Try once more to update tab information before giving up
+              console.log('Tab may have lost focus, trying to update tab information again...');
+              const retryTabInfo = await updateCurrentTabInfo();
               
-              if (retryResponse.error) {
-                showError(retryResponse.error);
-                isProcessing = false; // Reset processing flag
-                lastSubmittedQuestion = ''; // Reset last submitted question
+              if (retryTabInfo) {
+                // Try the scrape request one more time
+                console.log('Tab info updated, retrying scrape request...');
+                const retryResponse = await chrome.runtime.sendMessage({
+                  action: 'scrapeCurrentPage'
+                });
+                
+                if (retryResponse.error) {
+                  showError(retryResponse.error);
+                  isProcessing = false; // Reset processing flag
+                  lastSubmittedQuestion = ''; // Reset last submitted question
+                } else {
+                  // Continue with the successful retry response
+                  await continueWithScrapeResponse(retryResponse, question);
+                  return;
+                }
               } else {
-                // Continue with the successful retry response
-                await continueWithScrapeResponse(retryResponse, question);
-                return;
+                showError('Unable to find an active browser tab. Please click on a browser tab first.');
               }
             } else {
-              showError('Unable to find an active browser tab. Please click on a browser tab first.');
+              showError(scraperResponse.error);
             }
-          } else {
-            showError(scraperResponse.error);
+            
+            // Hide loading button state
+            submitBtn.classList.remove('button-loading');
+            const spinner = submitBtn.querySelector('.spinner');
+            if (spinner) {
+              spinner.style.display = 'none';
+              
+              // Make button text visible again
+              const buttonText = submitBtn.querySelector('.button-text');
+              if (buttonText) {
+                buttonText.style.visibility = 'visible';
+              }
+            }
+            isProcessing = false; // Reset processing flag
+            return;
           }
           
-          // Hide loading button state
-          submitBtn.classList.remove('button-loading');
-          const spinner = submitBtn.querySelector('.spinner');
-          if (spinner) {
-            spinner.style.display = 'none';
+          await continueWithScrapeResponse(scraperResponse, question);
+        } else {
+          // Page scraping is disabled, send only the question for inference
+          console.log('Page scraping is disabled, sending only the question for inference');
+          try {
+            const response = await chrome.runtime.sendMessage({
+              action: 'getInference',
+              question,
+              content: '', // Empty content as we're not scraping the page
+              url: currentUrl,
+              tabId: currentTabId,
+              pageLoadId: currentPageLoadId,
+              pageTitle: currentPageTitle,
+              skipPageContent: true // Signal to use generic system message
+            });
             
-            // Make button text visible again
-            const buttonText = submitBtn.querySelector('.button-text');
-            if (buttonText) {
-              buttonText.style.visibility = 'visible';
+            console.log('Inference response received:', response);
+            
+            // Hide loading state in button
+            submitBtn.classList.remove('button-loading');
+            const spinner = submitBtn.querySelector('.spinner');
+            if (spinner) {
+              spinner.style.display = 'none';
+              
+              // Make button text visible again
+              const buttonText = submitBtn.querySelector('.button-text');
+              if (buttonText) {
+                buttonText.style.visibility = 'visible';
+              }
             }
+            
+            if (!response) {
+              showError('No response received from the inference API. Please try again.');
+              isProcessing = false; // Reset processing flag
+              return;
+            }
+            
+            if (response.error) {
+              showError(response.error);
+              isProcessing = false; // Reset processing flag
+              return;
+            }
+            
+            if (!response.answer) {
+              showError('The API response did not contain an answer. Please try again.');
+              isProcessing = false; // Reset processing flag
+              return;
+            }
+            
+            // Add AI response to chat
+            await addMessageToChat('assistant', response.answer);
+            
+            // Stay in main view
+            showMainView();
+            
+            // Reset processing flag
+            isProcessing = false;
+            console.log('Reset processing flag to false');
+            
+            // Get the chat history array from storage for saving
+            const chatHistoryKey = getChatHistoryKey();
+            const { [chatHistoryKey]: currentChatHistory = [] } = await chrome.storage.local.get(chatHistoryKey);
+            
+            // Save the chat session with the correct history array
+            await saveChatSession(currentTabId, currentUrl, currentPageLoadId, currentChatHistory, question);
+          } catch (error) {
+            console.error('Error processing inference request:', error);
+            showError(error.message || 'An error occurred');
+            isProcessing = false; // Reset processing flag
           }
-          isProcessing = false; // Reset processing flag
-          return;
         }
-        
-        await continueWithScrapeResponse(scraperResponse, question);
       } catch (error) {
         console.error('Error processing request:', error);
         showError(error.message || 'An error occurred');
@@ -2189,3 +2271,14 @@ function preventDuplicateSubmission() {
   
   return false; // Submission can proceed
 }
+
+// Load settings from storage
+chrome.storage.sync.get(['model', 'isPageScrapingEnabled'], (data) => {
+  if (data.model) {
+    modelSelect.value = data.model;
+  }
+  
+  // Load page scraping setting (default to true if not set)
+  isPageScrapingEnabled = data.isPageScrapingEnabled !== undefined ? data.isPageScrapingEnabled : true;
+  searchPageBtn.classList.toggle('active', isPageScrapingEnabled);
+});

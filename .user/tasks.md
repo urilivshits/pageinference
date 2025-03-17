@@ -124,3 +124,25 @@ Notes:
   - [x] Ensure identical margins for both elements
   - [x] Remove any differences in border or padding that affect rendered width
   - [x] Test appearance in both light and dark themes
+
+## User Query: "lets start again, reindex the repo, update the artifacts and first of all check the project rules at @rules.mdc  and make sure you following them and then lets do the following: 1. lets connect a logic to "search page" button where once clicked the state of page scrap may be turned on and off 2. if its on then upon "ask" scrap the page and send it for inference as today 3. if its off then upon "ask" dont scrap the page and send for inference only the user query instead. Make sure to use a generic system message for that. 4. default state should be "on""
+
+- Task: Implement page scraping toggle functionality
+  - [x] Add state variable to track page scraping status
+  - [x] Connect toggle logic to "Search Page" button
+  - [x] Add visual indicator for active/inactive state
+  - [x] Persist toggle state between sessions
+  - [x] Update submit handler to check page scraping state
+  - [x] Implement non-scraping inference path
+  - [x] Add generic system message for non-scraping mode
+  - [x] Ensure default state is "on"
+  - [x] Test both modes of operation
+  - [x] Update tasks.md and context.md with changes
+
+## User Query: "it generally works but: 1. lets update the GENERIC_SYSTEM_PROMPT to be more generic, it will use lots of different models in the future 2. after the second message with GENERIC_SYSTEM_PROMPT i get this message currentHistory.push is not a function"
+
+- Task: Fix issues with page scraping toggle functionality
+  - [x] Update GENERIC_SYSTEM_PROMPT to be model-agnostic
+  - [x] Fix "currentHistory.push is not a function" error in non-scraping mode
+  - [x] Ensure correct chat history array is passed to saveChatSession
+  - [x] Update tasks.md and context.md with changes

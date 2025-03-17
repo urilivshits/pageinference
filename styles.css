@@ -1607,4 +1607,9 @@ textarea#questionInput::-webkit-scrollbar {
 [data-theme="dark"] .icon-button {
   border: 1px solid var(--input-border); /* Use input-border color for better visibility */
   box-shadow: 0 0 0 1px var(--input-border); /* Add persistent border effect with improved visibility */
+}
+
+.icon-button.active {
+  background-color: rgba(70, 140, 255, 0.15);
+  color: #468cff;
 } 
