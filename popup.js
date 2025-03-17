@@ -112,14 +112,43 @@ async function updateCurrentTabInfo() {
 // Event listeners for all document elements
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOMContentLoaded fired');
-  console.log('Initializing DOM elements...');
   
   // Get DOM elements
+  const questionInput = document.getElementById('questionInput');
+  console.log('questionInput element:', questionInput);
   const submitBtn = document.getElementById('submitBtn');
   console.log('submitBtn element:', submitBtn);
   
-  const questionInput = document.getElementById('questionInput');
-  console.log('questionInput element:', questionInput);
+  // Auto-resize the textarea as content changes
+  function autoResizeTextarea() {
+    // Reset height to auto so we can calculate the actual scrollHeight
+    questionInput.style.height = 'auto';
+    // Set the height to match content (with a max height enforced by CSS)
+    questionInput.style.height = Math.min(questionInput.scrollHeight, 200) + 'px';
+  }
+  
+  // Add input and keydown event listeners for auto-resizing
+  questionInput.addEventListener('input', autoResizeTextarea);
+  questionInput.addEventListener('keydown', (e) => {
+    // Auto-resize on special keys
+    if (['Backspace', 'Delete'].includes(e.key)) {
+      // Use setTimeout to ensure resizing happens after content changes
+      setTimeout(autoResizeTextarea, 0);
+    }
+    
+    // Handle Enter key for submission
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent newline in textarea
+      submitBtn.click();
+    } else if (e.key === 'Enter' && e.shiftKey) {
+      // Allow shift+enter for newlines and resize
+      setTimeout(autoResizeTextarea, 0);
+    }
+  });
+
+  // Initial resize
+  setTimeout(autoResizeTextarea, 0);
+  
   errorMessage = document.getElementById('errorMessage');
   console.log('Error message element:', errorMessage);
   const apiKeyInput = document.getElementById('apiKeyInput');
@@ -316,13 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Reason button clicked - functionality not implemented yet');
   });
 
-  // Handle ENTER key for message submission
-  questionInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      submitBtn.click();
-    }
-  });
+  // ENTER key handling is already managed in the auto-resize event listener
 
   // Load chat history
   await loadChatHistory();
@@ -859,13 +882,7 @@ pastSessionsBtn.addEventListener('click', async () => {
 // Add event listeners for new conversation button
 newConversationBtn.addEventListener('click', startNewConversation);
 
-// Add Enter key support for message submission
-questionInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault(); // Prevent newline in textarea
-    submitBtn.click();
-  }
-});
+// Enter key handling is now managed in the auto-resize event listener
 
 // Helper functions
 function showError(message) {

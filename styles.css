@@ -326,39 +326,37 @@ h2 {
   display: flex;
   flex-direction: column;
   min-height: 50px;
-  margin-bottom: 8px; /* Add margin to prevent buttons from overlapping */
 }
 
 /* Specific textarea styling */
 textarea#questionInput {
   width: 100%;
-  min-height: 50px;
+  min-height: 24px;
   max-height: 200px;
   resize: none;
   font-family: inherit;
-  padding: 14px;
-  padding-bottom: 44px; /* Reduced padding to prevent overlap */
+  padding: 12px;
+  padding-bottom: 12px;
   line-height: 24px;
   border: none;
   background-color: transparent;
   outline: none;
   box-shadow: none;
+  flex-grow: 1;
 }
 
 .input-buttons {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px; /* Reduced padding */
+  padding: 4px 8px;
   background-color: var(--input-bg);
-  border-top: 1px solid var(--border-color);
-  height: 36px; /* Reduced from 44px */
+  border-top: 1px solid var(--border-color-light);
+  height: 36px; /* Fixed height for buttons area */
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
+  margin-top: auto; /* Push to bottom of container */
 }
 
 .input-buttons-left {
@@ -1530,22 +1528,14 @@ select {
   visibility: visible;
 }
 
-/* Ensure all elements in question container have consistent dimensions */
-.question-container textarea,
-.question-container button {
-  height: 36px; /* Reduced from 50px */
-  box-sizing: border-box;
-}
-
 /* Adjust the input field height */
 textarea#questionInput {
-  height: 36px; /* Reduced from 50px */
-  min-height: 36px; /* Reduced from 50px */
-  padding-top: 8px; /* Adjusted for better text alignment */
+  height: auto; /* Allow height to adjust based on content */
+  min-height: 24px;
+  padding-top: 8px;
   padding-bottom: 8px;
-  line-height: 20px; /* Adjusted for new height */
+  line-height: 20px;
   box-sizing: border-box;
-  flex: 2;
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
