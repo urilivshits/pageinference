@@ -127,6 +127,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   modelSelect = document.getElementById('modelSelect');
   const themeOptions = document.querySelectorAll('input[name="theme"]');
   const newConversationBtn = document.getElementById('newConversationBtn');
+  const searchBtn = document.getElementById('searchBtn'); // New search button
+  const reasonBtn = document.getElementById('reasonBtn'); // New reason button
   const pastSessionsBtn = document.getElementById('pastSessionsBtn');
   const settingsBtn = document.getElementById('settingsBtn');
   chatHistory = document.getElementById('chatHistory');
@@ -304,6 +306,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   newConversationBtn.addEventListener('click', startNewConversation);
   pastSessionsBtn.addEventListener('click', showPastConversationsView);
   settingsBtn.addEventListener('click', showSettingsView);
+  
+  // Add event listeners for new buttons (but without functionality yet)
+  searchBtn.addEventListener('click', () => {
+    console.log('Search button clicked - functionality not implemented yet');
+  });
+  
+  reasonBtn.addEventListener('click', () => {
+    console.log('Reason button clicked - functionality not implemented yet');
+  });
 
   // Handle ENTER key for message submission
   questionInput.addEventListener('keydown', (e) => {

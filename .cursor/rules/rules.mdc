@@ -35,8 +35,8 @@ This document serves as a guide for AI coding assistance.
 ## Task Management
 
 ### Process
-1. Convert high-level tasks and user queries to detailed step-by-step instructions
-2. Create detailed markdown numbered list of tasks in `projectRootFolder/.user/tasks.md`
+1. ALWAYS Convert ALL user queries into detailed step-by-step instructions in `projectRootFolder/.user/tasks.md`
+2. For that create a detailed markdown numbered list of tasks in `projectRootFolder/.user/tasks.md`
 3. Include checkboxes for each substep (default unchecked)
 4. Parse every user query to automatically generate tasks and subtasks
 5. Record all updates, changes, and tasks in `projectRootFolder/.user/tasks.md`

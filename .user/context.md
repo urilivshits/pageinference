@@ -6,7 +6,7 @@ This document tracks the evolution of the project, documenting technical decisio
 <!-- Document all significant technical choices and architectural decisions (no timestamps) -->
 
 <!--
-DO NOT DELETE THESE EXAMPLES - They serve as a format guide
+DO NOT DELETE OR MODIFY THESE EXAMPLES - They serve as a format guide
 
 - **[Architecture Pattern]** Implemented [pattern name] for [purpose] to enhance [benefit].
 - **[Framework Selection]** Adopted [Framework Name] for [component] to improve [benefit].
@@ -51,13 +51,13 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[UI View Management]** Enhanced UI state handling for view transitions with direct approach for more reliable button focus states, preventing unintended navigation indicators.
 
 ## Implemented Features
-<!-- Document all features implemented (no timestamps) -->
+<!-- Document all completed features (no timestamps) -->
 
 <!--
-DO NOT DELETE THESE EXAMPLES - They serve as a format guide
+DO NOT DELETE OR MODIFY THESE EXAMPLES - They serve as a format guide
 
-- **[Feature Name]** Added [feature description] to enable users to [capability].
-- **[Feature Enhancement]** Extended [existing feature] with [new functionality] for [purpose].
+- **[Feature Name]** Implemented [description] to enable [functionality].
+- **[UI Enhancement]** Added [element] to improve [aspect of user experience].
 -->
 
 - **[Smart Content Extraction]** Page content extraction that intelligently adapts to the page structure.
@@ -75,12 +75,13 @@ DO NOT DELETE THESE EXAMPLES - They serve as a format guide
 - **[UI Size Consistency]** Improved the visual consistency of UI elements by ensuring all buttons and input fields in the question container have exactly the same dimensions. Fixed an issue where the new chat button appeared larger than adjacent elements by applying explicit width constraints, adding overflow control, precisely sizing the SVG icon, and ensuring all elements have the same box model calculation with box-sizing: border-box. This creates a more cohesive and visually balanced interface with professional alignment.
 - **[Settings Interface]** Improved settings page UI by hiding chat title window for cleaner, more focused settings experience.
 - **[History Navigation]** Enhanced history item click handling to prevent the history button from remaining highlighted when viewing chat sessions from history list.
+- **[ChatGPT-Style UI]** Updated input area and buttons to follow the ChatGPT interface design with unified rounded input field containing multiple action buttons.
 
 ## Resolved Bugs
 <!-- Document fixed issues (no timestamps) -->
 
 <!--
-DO NOT DELETE THESE EXAMPLES - They serve as a format guide
+DO NOT DELETE OR MODIFY THESE EXAMPLES - They serve as a format guide
 
 - **[Bug ID/Description]** Fixed [issue description] in [file-name.js]
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]

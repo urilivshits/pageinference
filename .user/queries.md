@@ -499,3 +499,7 @@ as you can see on attached pic the new chat button is still bigger than the elem
 "lets continue, reindex the repo, rebuild the artifacts and lets continue with tasks further. Make sure to follow the project rules"
 
 "lets focus on something else, please mark as complete the tasks you just added."
+
+"follow the rules and lets update the UI of the ask, user input, new functionality so that it follows the chatgpt UI (attached screenshot), namely:
+1. input says "Ask anything" and occupies most of the popup's width and has rounded corners
+2. inside the input in the bottom there are the "new", "search", "reason", "ask" buttons. For now add all these buttons but dont handle "search" and "reason" buttons."

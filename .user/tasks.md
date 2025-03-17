@@ -606,3 +606,30 @@ Format for recording tasks:
 
 ### Documentation Update
 - [x] Update context.md with information about the web search functionality and testing results
+
+## ChatGPT-Style UI Update
+
+### Analysis Phase
+- [x] Review the current UI implementation in popup.html
+- [x] Analyze the ChatGPT UI structure from screenshot
+- [x] Identify key components to update (input field, buttons)
+- [x] Plan the CSS changes needed for the new UI design
+
+### Implementation
+- [x] Update HTML structure to match the ChatGPT UI layout
+- [x] Update input field to show "Ask anything" placeholder
+- [x] Add rounded corners and improved styling to the input container
+- [x] Implement bottom-positioned buttons within the input
+- [x] Add Search and Reason buttons with appropriate SVG icons
+- [x] Update submit button to use an icon instead of text
+- [x] Add tooltips to buttons to display labels on hover
+- [x] Register event listeners for new buttons
+- [x] Update CSS styles to match the ChatGPT look and feel
+
+### Testing
+- [ ] Verify the UI matches the ChatGPT style
+- [ ] Test that existing functionality still works
+- [ ] Confirm new buttons appear correctly with proper tooltips
+- [ ] Test input field behavior (expanding, scrolling)
+- [ ] Verify all buttons respond to hover states correctly
+- [ ] Ensure compatibility across different themes

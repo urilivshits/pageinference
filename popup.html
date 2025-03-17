@@ -32,23 +32,46 @@
       <div id="errorMessage" class="error-message hidden"></div>
       
       <div class="question-container">
-        <button id="newConversationBtn" class="primary-button new-chat-custom" title="New Chat">
-          <span class="button-text">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </span>
-          <span class="button-text-hover">New</span>
-        </button>
-        <textarea id="questionInput" placeholder="What would you like to know about this page?"></textarea>
-        <button id="submitBtn" class="primary-button">
-          <span class="button-text">✨</span>
-          <span class="button-text-hover">Ask</span>
-          <span class="spinner-container">
-            <div class="spinner" style="display: none;"></div>
-          </span>
-        </button>
+        <div class="input-wrapper">
+          <textarea id="questionInput" placeholder="Ask anything"></textarea>
+          <div class="input-buttons">
+            <div class="input-buttons-left">
+              <button id="newConversationBtn" class="icon-button" title="New Chat">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span class="button-tooltip">New</span>
+              </button>
+              <button id="searchBtn" class="icon-button" title="Search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span class="button-tooltip">Search</span>
+              </button>
+              <button id="reasonBtn" class="icon-button" title="Reason">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6L6 18"></path>
+                  <path d="M6 6L18 18"></path>
+                </svg>
+                <span class="button-tooltip">Reason</span>
+              </button>
+            </div>
+            <div class="input-buttons-right">
+              <button id="submitBtn" class="icon-button submit-button" title="Ask">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 2L11 13"></path>
+                  <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                </svg>
+                <span class="spinner-container">
+                  <div class="spinner" style="display: none;"></div>
+                </span>
+                <span class="button-tooltip">Ask</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div id="answerContainer" class="answer-container hidden">
