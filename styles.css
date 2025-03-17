@@ -23,8 +23,8 @@
   --icon-button-hover: #f3f4f6;
   --info-text: #6b7280;
   --input-text: #1f2937;
-  --scrollbar-track: #f1f1f1;
-  --scrollbar-thumb: #c1c1c1;
+  --scrollbar-track: rgba(0, 0, 0, 0.1);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.3);
   --scrollbar-thumb-hover: #a1a1a1;
   --copy-button-bg: rgba(255, 255, 255, 0.7);
   --copy-button-color: #4b5563;
@@ -90,8 +90,8 @@
   --icon-button-hover: #374151;
   --info-text: #9ca3af;
   --input-text: #e5e7eb;
-  --scrollbar-track: #2d3748;
-  --scrollbar-thumb: #4a5568;
+  --scrollbar-track: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.3);
   --scrollbar-thumb-hover: #718096;
   --copy-button-bg: rgba(55, 65, 81, 0.7);
   --copy-button-color: #d1d5db;
@@ -152,14 +152,14 @@ html {
 
 .container {
   width: 480px;
-  height: auto; /* Let content determine height */
-  min-height: 400px; /* Minimum height for the container */
+  height: 600px;
+  min-height: 400px;
   padding: 1rem;
-  /* Ensure the container respects the body's border radius */
   border-radius: var(--border-radius-medium);
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Prevent container scrolling */
+  overflow: hidden;
+  position: relative; /* Position context for absolute elements */
 }
 
 /* Header styles */
@@ -258,29 +258,72 @@ h2 {
   background: none;
   border: 1px solid var(--border-color);
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: 16px;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-color);
   height: 32px;
-  width: 32px;
   min-width: 32px;
-  position: relative; /* Add position relative to establish positioning context for tooltip */
+  position: relative;
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
-.icon-button:hover {
-  background-color: var(--icon-button-hover);
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 1px var(--primary-color); /* Update border on hover */
+/* Special styling for New and Ask buttons */
+#newConversationBtn,
+#submitBtn {
+  border-radius: 12px; /* Match input-wrapper border radius */
+}
+
+/* Hide tooltips for specific buttons */
+#searchBtn .button-tooltip,
+#reasonBtn .button-tooltip {
+  display: none;
+}
+
+/* Adjust width for text-based buttons */
+#searchPageBtn,
+#searchBtn,
+#reasonBtn {
+  width: auto;
+  padding: 6px 12px;
+  min-width: fit-content;
+  font-size: 0.75rem;
+}
+
+/* Ensure consistent spacing between buttons */
+.input-buttons-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Ensure SVG icons are properly sized */
+.icon-button svg {
+  width: 14px;
+  height: 14px;
+  margin-right: 0;
+}
+
+/* Style text-only buttons */
+.icon-button:not(:has(svg)) {
+  padding: 6px 12px;
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+[data-theme="dark"] .icon-button {
+  border: 1px solid var(--input-border);
+  box-shadow: 0 0 0 1px var(--input-border);
 }
 
 .icon-button:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 1px var(--primary-color), 0 0 0 3px var(--input-focus-shadow);
+  box-shadow: 0 0 0 1px var(--input-focus-shadow);
 }
 
 .icon-button.small {
@@ -289,13 +332,14 @@ h2 {
 
 /* Content area styles */
 .content-area {
-  padding: 1rem 0 0.25rem 0; /* Reduced bottom padding from 0.5rem to 0.25rem */
-  flex: 1; /* Allow content area to flex and take available space */
+  padding: 1rem 0 0.25rem 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Hide outer scrollbar */
-  min-height: 300px; /* Ensure minimum height for content */
-  position: relative; /* Create positioning context for sticky elements */
+  overflow: hidden;
+  min-height: 300px;
+  position: relative;
+  padding-right: 8px; /* Added padding to ensure scrollbar visibility */
 }
 
 .info-message {
@@ -303,22 +347,29 @@ h2 {
   margin-bottom: 1rem;
 }
 
-/* Update question container to match ChatGPT UI */
+/* Update question container to stay fixed at bottom with proper width */
 .question-container {
   display: flex;
-  margin-bottom: 0.5rem;
-  margin-top: auto;
-  padding: 10px;
-  position: sticky;
+  margin-bottom: 0;
+  padding: 0;
+  position: absolute;
   bottom: 0;
+  left: 0;
+  right: 0;
   background-color: var(--background-color);
   z-index: 10;
-  border-top: 1px solid var(--border-color-light);
+  border-top: none;
+  box-shadow: 0 -4px 10px -1px rgba(0, 0, 0, 0.1);
+  width: 100%; /* Full width container */
+  justify-content: center; /* Center the input wrapper */
+  align-items: center;
 }
 
+/* Match input wrapper width exactly to conversation info */
 .input-wrapper {
   position: relative;
-  width: 100%;
+  width: 100%; /* Match exactly with conversation info */
+  margin: 8px auto; /* Center like conversation info */
   border: 1px solid var(--input-border);
   border-radius: 12px;
   background-color: var(--input-bg);
@@ -326,6 +377,8 @@ h2 {
   display: flex;
   flex-direction: column;
   min-height: 50px;
+  box-sizing: border-box; /* Include border in width calculation */
+  max-width: calc(100% - 16px); /* Same as conversation info */
 }
 
 /* Specific textarea styling */
@@ -359,52 +412,15 @@ textarea#questionInput {
   margin-top: auto; /* Push to bottom of container */
 }
 
-.input-buttons-left {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
 .input-buttons-right {
   display: flex;
   align-items: center;
 }
 
-.icon-button {
-  background: none;
-  border: 1px solid var(--border-color);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-color);
-  height: 32px;
-  width: 32px;
-  min-width: 32px;
-}
-
-.icon-button svg {
-  width: 16px;
-  height: 16px;
-}
-
-.icon-button:hover {
-  background-color: var(--icon-button-hover);
-  border-color: var(--primary-color);
-}
-
-.icon-button:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px var(--input-focus-shadow);
-}
-
 .submit-button {
   color: var(--primary-color);
   border-color: var(--primary-color);
+  border-radius: 16px;
 }
 
 .submit-button:hover {
@@ -651,25 +667,49 @@ select {
   margin-top: 2rem;
 }
 
-/* Chat history styles */
+/* Chat history styles - with fixed height and proper scrollbar positioning */
 .chat-history {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 350px;
-  min-height: 200px; /* Minimum height for chat history */
-  overflow-y: auto; /* Only inner scroll for chat history */
-  padding-right: 0.25rem;
-  margin-bottom: 0.125rem; /* Reduced from 0.5rem to match other elements */
+  overflow-y: auto;
+  margin-bottom: 0.125rem;
   scroll-behavior: smooth;
-  flex: 1; /* Allow chat history to flex within content area */
+  flex: 1;
+  /* Fixed height calculation to ensure scrollbar ends above input area */
+  height: calc(100% - 70px); /* Adjust based on input area height */
+  max-height: calc(100% - 70px); /* Ensure it doesn't overflow */
+  padding-right: 8px; /* Increased for better scrollbar visibility */
+  padding-bottom: 10px; /* Small padding at bottom for visual breathing room */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  position: relative;
+  margin-top: 0;
+}
+
+/* Ensure scrollbar is visible in WebKit browsers and positioned correctly */
+.chat-history::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  position: absolute;
+  right: 2px;
+}
+
+.chat-history::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 4px;
+}
+
+.chat-history::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 4px;
 }
 
 .message {
   position: relative;
   padding: 0.75rem 1rem;
-  padding-bottom: calc(0.75rem + 20px); /* Increased padding to better accommodate copy button */
-  margin-bottom: 0.75rem;
+  padding-bottom: calc(0.75rem + 20px);
+  margin-bottom: 0; /* Removed margin-bottom since we're using gap */
   border-radius: var(--border-radius-medium);
   min-width: 200px;
   max-width: 100%;
@@ -1084,6 +1124,10 @@ select {
   flex-direction: column;
   font-size: 0.875rem;
   border: 1px solid var(--border-color);
+  width: 100%; /* Full width */
+  margin: 0 auto; /* Center the element */
+  box-sizing: border-box; /* Include border in width calculation */
+  max-width: calc(100% - 16px); /* Account for container padding */
 }
 
 #currentConversationTitle {
@@ -1134,21 +1178,29 @@ select {
 /* Chat sessions styles */
 .chat-sessions-container {
   width: 100%;
-  max-height: none;
-  overflow-y: auto; /* Only inner scroll for session container */
+  overflow-y: auto;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-medium);
-  margin-bottom: 0.125rem; /* Reduced from 1rem to match question-container */
   background-color: var(--sessions-bg);
   box-shadow: var(--shadow-sm);
-  flex: 1; /* Allow session container to flex */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#pastConversationsView {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
 }
 
 #pastConversationsView .chat-sessions-container {
-  max-height: 400px;
-  min-height: 250px; /* Minimum height for past conversations */
-  margin-top: 0;
-  flex: 1; /* Allow to flex within the content area */
+  margin: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  flex: 1;
 }
 
 .chat-session-item {
@@ -1319,7 +1371,6 @@ select {
 /* Active icon button */
 .icon-button.active {
   background-color: var(--active-icon-bg);
-  transform: scale(1.1);
 }
 
 /* Added class to hide the chat name in history view */
