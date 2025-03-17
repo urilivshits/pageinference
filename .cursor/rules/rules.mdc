@@ -1,10 +1,10 @@
 ---
-description: Guidelines for every query.
+description: Comprehensive coding standards and workflow guidelines to be applied to all interactions.
 globs: 
 alwaysApply: true
 ---
 # Cursor AI Guidelines
-<!-- Guidelines for every query. -->
+<!-- Comprehensive coding standards and workflow guidelines to be applied to all interactions. -->
 This document serves as a guide for AI coding assistance.
 
 ## Naming Conventions
@@ -30,20 +30,24 @@ This document serves as a guide for AI coding assistance.
 - Impact assessment: Always consider what other methods and areas of code might be affected by changes
 - Fix approach: Exhaust existing implementation options before introducing new patterns or technology
 - Environment awareness: Code should account for different environments: dev, test, and prod
-- Mocking policy: Use mocking data only for tests, never for dev or prod environments
 - Env file: Never overwrite .env files without explicit permission
 
 ## Task Management
 
 ### Process
 1. Convert high-level tasks and user queries to detailed step-by-step instructions
-2. Create detailed markdown numbered list of tasks in `rootFolder/.user/tasks.md`
+2. Create detailed markdown numbered list of tasks in `projectRootFolder/.user/tasks.md`
 3. Include checkboxes for each substep (default unchecked)
 4. Parse every user query to automatically generate tasks and subtasks
-5. Record all updates, changes, and tasks in `rootFolder/.user/tasks.md`
+5. Record all updates, changes, and tasks in `projectRootFolder/.user/tasks.md`
 6. Review tasks at the end of every response and mark completed items
 7. Reopen resolved tasks if bugs are reported later
 8. Check for unmarked tasks at the beginning of every response
+9. **MANDATORY:** Use the tasks and subtasks generated in tasks.md as the EXACT step-by-step execution plan
+10. **MANDATORY:** Follow tasks strictly in the order they are listed in tasks.md
+11. **MANDATORY:** Do not deviate from the execution plan in tasks.md unless explicitly instructed by the user
+12. **MANDATORY:** Refer back to tasks.md throughout the implementation process to ensure alignment with the planned approach
+13. **MANDATORY:** If implementation reveals the need for plan modification, first update tasks.md with the revised approach before proceeding
 
 ### Focus and Scope
 - Focus only on areas of code relevant to the task
@@ -53,9 +57,9 @@ This document serves as a guide for AI coding assistance.
 ## File Maintenance
 
 ### CRITICAL: Required Updates for EVERY Response
-- **MANDATORY:** Review and update `rootFolder/.user/tasks.md` and `rootFolder/.user/queries.md` at the beginning of EVERY user query (these files already exist)
-- **MANDATORY:** Update `rootFolder/.user/queries.md` IMMEDIATELY when receiving ANY user query, without exception
-- **MANDATORY:** Update `rootFolder/.user/tasks.md` TWICE during each interaction:
+- **MANDATORY:** Review and update `projectRootFolder/.user/tasks.md` and `projectRootFolder/.user/queries.md` at the beginning of EVERY user query (these files already exist)
+- **MANDATORY:** Update `projectRootFolder/.user/queries.md` IMMEDIATELY when receiving ANY user query, without exception
+- **MANDATORY:** Update `projectRootFolder/.user/tasks.md` TWICE during each interaction:
   1. At the BEGINNING: Add new tasks derived from user's query
   2. At the END: Mark completed tasks and review progress
 - Consider EVERY user query, no matter how small, as a task that requires tracking
@@ -74,20 +78,20 @@ This document serves as a guide for AI coding assistance.
 - Any modifications to the structure or format of these files must be explicitly approved by the user
 
 ### Update Content Requirements
-- `rootFolder/.user/tasks.md`: 
+- `projectRootFolder/.user/tasks.md`: 
   - **MANDATORY:** All new tasks must include detailed substeps with checkboxes
   - **MANDATORY:** All completed steps must be marked with [x] at the end of the response
   - Categorize tasks logically with clear headings
   - Maintain chronological order of tasks
   
-- `rootFolder/.user/queries.md`:
+- `projectRootFolder/.user/queries.md`:
   - **MANDATORY:** Record the exact user query text in quotes
   - Maintain chronological order of queries
 
 ## Project Progress Report
 
 ### CRITICAL: Required for EVERY Response
-- **MANDATORY:** Review `rootFolder/.user/context.md` (Project Progress Report) at the beginning of EVERY user query (this file already exists)
+- **MANDATORY:** Review `projectRootFolder/.user/context.md` (Project Progress Report) at the beginning of EVERY user query (this file already exists)
 - The Project Progress Report contains critical information about the project's evolution
 - Use this report to understand what has been built, what technical approaches have been taken, and what issues have been resolved
 - This report helps maintain continuity across different sessions and interactions
@@ -151,48 +155,45 @@ This document serves as a guide for AI coding assistance.
 ### Test Creation
 - **Unit Tests**: 
   - Create for all new functions, methods, and components
+  - Create for all bug fixes to prevent regression
   - Focus on testing one piece of functionality in isolation
   - Mock dependencies to ensure isolation
   - Aim for high code coverage (minimum 80%)
   - Name tests descriptively using format: `describe('function/component name', () => it('should do something specific', () => {...}))`
+  - Save all test-related files (test functions, mock data, etc.) under `projectRootFolder/.user/tests/` folder
 
 - **Integration Tests**:
-  - Create for all critical business flows and user journeys
-  - Test interaction between multiple components or services
-  - Minimize mocking to test real interactions
-  - Focus on data flow and state changes across components
+  - Create for critical business flows and user journeys
+  - Test how components work together
+  - Focus on data flow between components
 
 - **UI Tests**:
-  - Create for all user-facing components and pages
-  - Test rendering, user interactions, and responsive design
-  - Include accessibility testing
-  - Verify visual consistency and user experience
+  - Test basic rendering and user interactions
+  - Verify core functionality works as expected
 
 ### Test Execution
 - **When to Run Tests**:
   - Run relevant unit tests after any code change
+  - Run tests after fixing any bug to verify the fix
   - Run integration tests before committing code that affects multiple components
   - Run UI tests when making changes to user interfaces
-  - Run full test suite before merging feature branches
-  - Run tests in CI/CD pipeline for all pull requests
 
 - **Test Commands**:
   - Use project-specific test commands (e.g., `npm test`, `yarn test`)
-  - For focused testing, use pattern matching to run specific tests
-  - Document all custom test commands in README.md
+  - Document test commands in README.md
 
 ### Test Maintenance
-- Keep tests up-to-date with code changes
-- Refactor tests when refactoring code
+- Keep tests simple and focused
+- Update tests when changing code
 - Fix failing tests before adding new features
-- Document test coverage gaps and edge cases not covered
-- Review and update test data regularly
 
 ### AI Agent Testing Responsibilities
 - Proactively identify when tests are needed for new or modified code
+- Create and run unit tests for all bug fixes to prevent regression
 - Suggest test cases based on implementation details and requirements
 - Create appropriate tests for each type of functionality
 - Execute relevant tests after implementing changes
 - Report test results and fix any test failures
 - Maintain existing tests when refactoring code
+- Ensure all test-related files are saved in the `projectRootFolder/.user/tests/` folder
 - Recommend test improvements to increase coverage and quality
