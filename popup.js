@@ -246,6 +246,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Default to system theme
       currentTheme = 'system';
       applyTheme('system');
+      // Save the default preference
+      chrome.storage.sync.set({ themePreference: 'system' });
     }
   });
 
@@ -310,11 +312,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       // Save theme preference
       chrome.storage.sync.set({ themePreference: currentTheme });
+      console.log('Saved theme preference:', currentTheme);
     });
   });
 
-  // Initialize UI state
-  chrome.storage.sync.get(['apiKey', 'model', 'theme'], (data) => {
+  // Initialize UI state - This is loading using 'theme' key, but we're saving as 'themePreference'
+  // Let's modify this to use the correct key
+  chrome.storage.sync.get(['apiKey', 'model', 'themePreference'], (data) => {
     if (data.apiKey) {
       apiKeyInput.value = data.apiKey;
     }
@@ -323,8 +327,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       modelSelect.value = data.model;
     }
     
-    // Apply theme
-    const savedTheme = data.theme || 'system';
+    // Apply theme - use themePreference instead of theme
+    const savedTheme = data.themePreference || 'system';
+    currentTheme = savedTheme; // Make sure we update currentTheme
     applyTheme(savedTheme);
     
     // Check the corresponding radio button
@@ -912,6 +917,11 @@ function applyTheme(theme) {
     root.setAttribute('data-theme', isDark ? 'dark' : 'light');
   } else {
     root.setAttribute('data-theme', theme);
+  }
+  
+  // Save the theme preference whenever we apply it
+  if (theme) {
+    chrome.storage.sync.set({ themePreference: theme });
   }
 }
 
