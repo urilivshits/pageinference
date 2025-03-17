@@ -5,7 +5,6 @@ alwaysApply: true
 ---
 # Cursor AI Guidelines
 <!-- Comprehensive coding standards and workflow guidelines to be applied to all interactions. -->
-This document serves as a guide for AI coding assistance.
 
 ## Naming Conventions
 - Variables: camelCase
@@ -32,168 +31,110 @@ This document serves as a guide for AI coding assistance.
 - Environment awareness: Code should account for different environments: dev, test, and prod
 - Env file: Never overwrite .env files without explicit permission
 
-## Task Management
-
-### Process
-1. ALWAYS Convert ALL user queries into detailed step-by-step instructions in `projectRootFolder/.user/tasks.md`
-2. For that create a detailed markdown numbered list of tasks in `projectRootFolder/.user/tasks.md`
-3. Include checkboxes for each substep (default unchecked)
-4. Parse every user query to automatically generate tasks and subtasks
-5. Record all updates, changes, and tasks in `projectRootFolder/.user/tasks.md`
-6. Review tasks at the end of every response and mark completed items
-7. Reopen resolved tasks if bugs are reported later
-8. Check for unmarked tasks at the beginning of every response
-9. **MANDATORY:** Use the tasks and subtasks generated in tasks.md as the EXACT step-by-step execution plan
-10. **MANDATORY:** Follow tasks strictly in the order they are listed in tasks.md
-11. **MANDATORY:** Do not deviate from the execution plan in tasks.md unless explicitly instructed by the user
-12. **MANDATORY:** Refer back to tasks.md throughout the implementation process to ensure alignment with the planned approach
-13. **MANDATORY:** If implementation reveals the need for plan modification, first update tasks.md with the revised approach before proceeding
-
-### Focus and Scope
-- Focus only on areas of code relevant to the task
-- Do not touch code that is unrelated to the task
-- Avoid making major changes to patterns and architecture unless explicitly instructed
-
 ## File Maintenance
 
-### CRITICAL: Required Updates for EVERY Response
-- **MANDATORY:** Review and update `projectRootFolder/.user/tasks.md` and `projectRootFolder/.user/queries.md` at the beginning of EVERY user query (these files already exist)
-- **MANDATORY:** Update `projectRootFolder/.user/queries.md` IMMEDIATELY when receiving ANY user query, without exception
-- **MANDATORY:** Update `projectRootFolder/.user/tasks.md` TWICE during each interaction:
-  1. At the BEGINNING: Add new tasks derived from user's query
-  2. At the END: Mark completed tasks and review progress
-- Consider EVERY user query, no matter how small, as a task that requires tracking
-- Even questions without code changes must be logged in both files
-- Never skip these updates for ANY reason - they are highest priority
-- Apply all other rules to code changes and new files
-- NEVER include `` tags in any of the following files: `temp-rules.md`, `context.md`, `queries.md`, or `tasks.md`
-
-### File Artifacts Management
-- `temp-rules.md`, `context.md`, `queries.md`, and `tasks.md` are critical system artifacts that must be preserved
-- These files should be treated as persistent artifacts across sessions
-- Always maintain the integrity and format of these files
-- When any changes are made to these files, ensure they are properly saved as artifacts
-- If a change is made to any one of these files, review the others to ensure consistency across all artifacts
-- **MANDATORY:** When updating any content in `context.md`, `queries.md`, or `tasks.md`, validate that references to related content in the other files remain accurate
+### Critical System Files
+- `projectRootFolder/.cursor/rules/rules.mdc` is the primary source of truth for all guidelines and must NEVER be updated or modified
+- All guidelines in `rules.mdc` take precedence over any other documentation
+- `projectRootFolder/.user/tasks.md` and `projectRootFolder/.user/context.md` are critical system artifacts
+- These files must be preserved and maintained across sessions
+- Maintain the integrity and format of these files at all times
+- When changes are made to any file, ensure proper synchronization between files
 - Any modifications to the structure or format of these files must be explicitly approved by the user
 
-### Update Content Requirements
-- `projectRootFolder/.user/tasks.md`: 
-  - **MANDATORY:** All new tasks must include detailed substeps with checkboxes
-  - **MANDATORY:** All completed steps must be marked with [x] at the end of the response
-  - Categorize tasks logically with clear headings
-  - Maintain chronological order of tasks
-  
-- `projectRootFolder/.user/queries.md`:
-  - **MANDATORY:** Record the exact user query text in quotes
-  - Maintain chronological order of queries
+## Task Management and Tracking
+
+### Task Tracking Process
+1. Convert high-level user queries to detailed step-by-step tasks and subtasks
+2. Record all user queries and corresponding tasks in `projectRootFolder/.user/tasks.md`
+3. Include checkboxes for each subtask (default unchecked)
+4. Review tasks at the end of every response and mark completed subtasks
+5. Reopen resolved tasks if bugs are reported later
+6. Check for unmarked tasks at the beginning of every response
+7. **MANDATORY:** Use the tasks and subtasks in `tasks.md` as the EXACT step-by-step execution plan
+8. **MANDATORY:** Follow tasks strictly in the order they are listed in `tasks.md`
+9. **MANDATORY:** Do not deviate from the execution plan unless explicitly instructed by the user
+10. **MANDATORY:** Refer back to `tasks.md` throughout the implementation process
+11. **MANDATORY:** If implementation reveals the need for plan modification, first update `tasks.md` with the revised approach before proceeding
+
+### Task Format and Structure
+- **MANDATORY:** `tasks.md` serves as the single source of truth for all user interactions and task progress
+- **MANDATORY:** Update `tasks.md` TWICE during each interaction:
+  1. At the BEGINNING: Add the user query and new tasks
+  2. At the END: Mark completed subtasks and review progress
+- **MANDATORY:** All tasks must include detailed subtasks with checkboxes
+- **MANDATORY:** All incomplete subtasks must be marked with [ ]
+- **MANDATORY:** All completed subtasks must be marked with [x] at the end of the response
+- **MANDATORY:** Only subtasks should have checkboxes (not main tasks)
+- **MANDATORY:** A task is considered complete when all its subtasks are marked complete
+- **MANDATORY:** For each user query, a section must be added to `tasks.md` that includes:
+  1. The exact user query text in quotes as a single continuous string with all line breaks removed
+  2. Tasks derived from that query
+  3. Detailed subtasks for each task
+- **MANDATORY:** When recording user queries that contain multiple lines, convert them to a single line by removing all line breaks
+- **TASK FORMAT:** Use the following format:
+  ```
+  ## User Query: "[Exact query text as a single string with all line breaks removed]"
+  - Task: [Brief task description]
+    - [ ] [Detailed subtask]
+    - [ ] [Detailed subtask]
+  - Task: [Brief task description]
+    - [ ] [Detailed subtask]
+    - [ ] [Detailed subtask]
+  ```
+- Organize tasks chronologically by user query
+- Categorize tasks logically with clear headings when appropriate
+- Treat EVERY user query, no matter how small, as a task that requires tracking
 
 ## Project Progress Report
 
-### CRITICAL: Required for EVERY Response
-- **MANDATORY:** Review `projectRootFolder/.user/context.md` (Project Progress Report) at the beginning of EVERY user query (this file already exists)
-- The Project Progress Report contains critical information about the project's evolution
-- Use this report to understand what has been built, what technical approaches have been taken, and what issues have been resolved
-- This report helps maintain continuity across different sessions and interactions
+### Purpose and Structure
+- The Project Progress Report (`context.md`) tracks the project's evolution
+- Use this report to understand the project's architectural approaches, features, and resolved issues
 - **MANDATORY:** Update the Project Progress Report whenever:
-  1. New technical approaches or architectural decisions are made
+  1. New architectural decisions are made
   2. New features are implemented
-  3. Bugs are resolved
-  4. Any significant changes are made to `queries.md` or `tasks.md` that affect project understanding
-- Keep the Project Progress Report organized in exactly three sections:
+  3. Any bug fixes are implemented (all bug fixes must be recorded, regardless of size or significance)
+  4. Any changes affect project understanding
+- Organize the Progress Report in exactly three sections:
   1. Technical approaches and architectural decisions
   2. Implemented features
   3. Resolved bugs
-- For each new entry in the Project Progress Report:
-  - Add a descriptive identifier or short title
-  - Provide a clear, concise description of the change or addition
-  - Include references to relevant code areas or files
-- **MANDATORY:** Summarize any updates made to the Project Progress Report at the end of your response
-- If a user query has implications for the project that should be tracked, always update the report
-- Never remove information from the Project Progress Report unless explicitly instructed
-- Never remove the commented example entries in the Project Progress Report
+- For each entry, include:
+  - A descriptive identifier or short title
+  - A clear, concise description
+  - References to relevant code areas or files
+- **MANDATORY:** Summarize any updates to the Progress Report at the end of your response
+- Never remove information from the Progress Report unless explicitly instructed
 - Prioritize solutions that align with previously documented technical approaches
-- Ensure all artifact files (`context.md`, `queries.md`, and `tasks.md`) remain synchronized with respect to project state
 
-## Tool Usage
-- Code modifications: `edit_file`
-- Code exploration: `codebase_search`, `read_file`, `list_dir`, `grep_search`, `file_search`
-- Run commands: `run_terminal_cmd`
-- Web information: `web_search`
-- Change history: `diff_history`
+### Example Format for Project Progress Report
+```
+## Architectural Decisions
+
+- **[Architecture Pattern]** Implemented [pattern name] for [purpose] to enhance [benefit].
+- **[Framework Selection]** Adopted [Framework Name] for [component] to improve [benefit].
+
+## Implemented Features
+
+- **[Feature Name]** Developed functionality for [purpose] that enables users to [capability].
+- **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
+
+## Resolved Bugs
+
+- **[Bug ID/Description]** Fixed [issue description] in [file-name.js]
+- **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
+```
 
 ## Token Limit Handling
 - Monitor token usage throughout long responses
 - If approaching token limits during a complex task:
-  1. Save current progress in relevant artifact files (`context.md`, `queries.md`, `tasks.md`)
+  1. Save current progress in relevant artifact files (`context.md` and `tasks.md`)
   2. Summarize what has been accomplished so far
   3. Outline what remains to be done
-  4. End with a specific, clear question: "I'm approaching the token limit. Would you like me to continue with the remaining tasks in the next response?"
-  5. Explicitly state: "Please note that the token limit has been reached for this response."
+  4. End with a clear question about continuing
 - When continuing from a previous token-limited response:
-  1. Briefly summarize what was accomplished in the previous response
+  1. Briefly summarize what was accomplished
   2. Continue where the previous response left off
   3. Follow the same token limit protocol if needed again
-- Prioritize completing critical or atomic tasks before reaching token limits
-- Ensure all work is properly saved before ending a token-limited response
-
-## Commit Guidelines
-- Format: `type(scope): description`
-- Types:
-  - feat
-  - fix
-  - docs
-  - style
-  - refactor
-  - test
-  - chore
-- Length: Keep commits semantic and concise
-- Command: `git add . && git commit -m "..."` (do not push)
-- Only commit if user explicitly asks for
-
-## Testing
-### Test Creation
-- **Unit Tests**: 
-  - Create for all new functions, methods, and components
-  - Create for all bug fixes to prevent regression
-  - Focus on testing one piece of functionality in isolation
-  - Mock dependencies to ensure isolation
-  - Aim for high code coverage (minimum 80%)
-  - Name tests descriptively using format: `describe('function/component name', () => it('should do something specific', () => {...}))`
-  - Save all test-related files (test functions, mock data, etc.) under `projectRootFolder/.user/tests/` folder
-
-- **Integration Tests**:
-  - Create for critical business flows and user journeys
-  - Test how components work together
-  - Focus on data flow between components
-
-- **UI Tests**:
-  - Test basic rendering and user interactions
-  - Verify core functionality works as expected
-
-### Test Execution
-- **When to Run Tests**:
-  - Run relevant unit tests after any code change
-  - Run tests after fixing any bug to verify the fix
-  - Run integration tests before committing code that affects multiple components
-  - Run UI tests when making changes to user interfaces
-
-- **Test Commands**:
-  - Use project-specific test commands (e.g., `npm test`, `yarn test`)
-  - Document test commands in README.md
-
-### Test Maintenance
-- Keep tests simple and focused
-- Update tests when changing code
-- Fix failing tests before adding new features
-
-### AI Agent Testing Responsibilities
-- Proactively identify when tests are needed for new or modified code
-- Create and run unit tests for all bug fixes to prevent regression
-- Suggest test cases based on implementation details and requirements
-- Create appropriate tests for each type of functionality
-- Execute relevant tests after implementing changes
-- Report test results and fix any test failures
-- Maintain existing tests when refactoring code
-- Ensure all test-related files are saved in the `projectRootFolder/.user/tests/` folder
-- Recommend test improvements to increase coverage and quality
+- Prioritize completing critical tasks before reaching token limits

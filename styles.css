@@ -256,24 +256,31 @@ h2 {
 
 .icon-button {
   background: none;
-  border: none;
+  border: 1px solid var(--border-color);
   cursor: pointer;
-  padding: 0.25rem;
-  border-radius: var(--border-radius-small);
+  padding: 6px;
+  border-radius: 6px;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-color);
+  height: 32px;
+  width: 32px;
+  min-width: 32px;
+  box-shadow: 0 0 0 1px var(--border-color); /* Add persistent border effect */
 }
 
 .icon-button:hover {
   background-color: var(--icon-button-hover);
-  transform: scale(1.05);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color); /* Update border on hover */
 }
 
 .icon-button:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--input-focus-shadow);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color), 0 0 0 3px var(--input-focus-shadow);
 }
 
 .icon-button.small {
@@ -319,6 +326,7 @@ h2 {
   display: flex;
   flex-direction: column;
   min-height: 50px;
+  margin-bottom: 8px; /* Add margin to prevent buttons from overlapping */
 }
 
 /* Specific textarea styling */
@@ -329,7 +337,7 @@ textarea#questionInput {
   resize: none;
   font-family: inherit;
   padding: 14px;
-  padding-bottom: 54px; /* Space for buttons */
+  padding-bottom: 44px; /* Reduced padding to prevent overlap */
   line-height: 24px;
   border: none;
   background-color: transparent;
@@ -345,10 +353,10 @@ textarea#questionInput {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 4px 8px; /* Reduced padding */
   background-color: var(--input-bg);
   border-top: 1px solid var(--border-color);
-  height: 44px;
+  height: 36px; /* Reduced from 44px */
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
 }
@@ -1525,17 +1533,17 @@ select {
 /* Ensure all elements in question container have consistent dimensions */
 .question-container textarea,
 .question-container button {
-  height: 50px; /* Increased from 42px */
+  height: 36px; /* Reduced from 50px */
   box-sizing: border-box;
 }
 
 /* Adjust the input field height */
 textarea#questionInput {
-  height: 50px; /* Increased from 42px */
-  min-height: 50px; /* Increased from 42px */
-  padding-top: 12px; /* Adjusted for better text alignment */
-  padding-bottom: 12px;
-  line-height: 24px; /* Increased for better readability */
+  height: 36px; /* Reduced from 50px */
+  min-height: 36px; /* Reduced from 50px */
+  padding-top: 8px; /* Adjusted for better text alignment */
+  padding-bottom: 8px;
+  line-height: 20px; /* Adjusted for new height */
   box-sizing: border-box;
   flex: 2;
   overflow-y: auto;

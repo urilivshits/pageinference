@@ -1,118 +1,26 @@
 # Project Progress Report
-<!-- Project Progress Report to check and update for every query. -->
-This document tracks the evolution of the project, documenting technical decisions, feature implementations, and bug resolutions.
+This document tracks the evolution of the project, documenting architectural decisions, feature implementations, and bug resolutions.
 
 ## Architectural Decisions
-<!-- Document all significant technical choices and architectural decisions (no timestamps) -->
-
 <!--
-DO NOT DELETE OR MODIFY THESE EXAMPLES - They serve as a format guide
+FORMAT GUIDE - DO NOT DELETE
 
 - **[Architecture Pattern]** Implemented [pattern name] for [purpose] to enhance [benefit].
 - **[Framework Selection]** Adopted [Framework Name] for [component] to improve [benefit].
 -->
 
-- **[Browser Extension Architecture]** Chrome extension using Manifest V3 for improved security and performance.
-- **[Communication Pattern]** Background service worker for API communication with content scripts for page interaction.
-- **[UI Framework]** Vanilla JavaScript with custom CSS for a lightweight and responsive UI.
-- **[Data Storage]** Chrome's Storage API for secure storage of API keys and configuration.
-- **[API Integration]** OpenAI API for content processing and question answering capabilities.
-- **[Model Selection]** Default model set to gpt-4o-mini with options for gpt-3.5-turbo, gpt-4, and gpt-4o.
-- **[Theme Management]** Support for system, light, and dark themes with automatic detection of system preferences.
-- **[Event Handling]** DOM-scoped event handlers to maintain proper variable access and prevent reference errors.
-- **[CSS Box Model]** Explicit box-sizing and transform-origin properties for UI animations and styled components.
-- **[Flexbox Layout]** Applied flexbox display properties to buttons and containers for proper element centering and alignment.
-- **[Container-Based Positioning]** Implemented dedicated flex containers for UI elements requiring precise positioning, improving layout reliability across different screen sizes.
-- **[Markdown Rendering]** Implemented markdown-it for rendering LLM responses with proper formatting, supporting code blocks with syntax highlighting through highlight.js.
-- **[Error Handling]** Added robust error handling for external libraries with graceful fallbacks to maintain functionality even when dependencies fail.
-- **[Progressive Enhancement]** Applied layered approach to markdown rendering with multiple fallback mechanisms, ensuring content is always properly formatted regardless of library availability.
-- **[Content Security Policy Compliance]** Implemented local hosting of external libraries (markdown-it and highlight.js) to comply with Chrome extension Manifest V3 CSP requirements, preventing external script loading issues.
-- **[Defensive Programming]** Applied comprehensive null and undefined value checks throughout the codebase, especially in network and tab communication functions, to prevent "Cannot read properties of undefined" errors and improve extension stability.
-- **[Sequential API Call Pattern]** Implemented two-stage API request system for web search functionality, with dedicated handlers for tool calls, search execution, and follow-up responses.
-- **[Tool Result Processing]** Developed a robust approach for handling web search tool results, including clear separation of original content from search results and improved context maintenance.
-- **[Prompt Configuration]** Custom system prompts based on website type detection to provide more relevant answers.
-- **[Permissive Response System]** Enhanced system prompts to allow reasonable assumptions when page content lacks information, while clearly distinguishing between content-derived information and assumptions.
-- **[Query-Content Ordering]** Optimized user query and scraped content ordering to present the user query first, improving context understanding and response relevance.
-- **[Web Search Model Restriction]** Implemented a strict model enforcement policy that only allows GPT-4o mini to perform web searches, forcing all search requests to use this specific model regardless of user selection to ensure consistent search behavior and prevent automatic model selection by OpenAI.
-- **[Search Model Code Simplification]** Refactored search model handling to use a dedicated SEARCH_MODEL constant, improving code clarity and making it easier to maintain by eliminating duplicate hardcoded values and using consistent variable references throughout the codebase.
-- **[Query Rendering Architecture]** Investigating the UI rendering approach for user queries to ensure each submission is displayed only once in the chat interface, preventing visual duplication that affects user experience.
-- **[Duplicate Detection System]** Implemented a multi-layered approach to prevent duplicate user queries from being displayed in the chat interface. Added checks in both the addMessageToChat function and the submit handler to detect and prevent duplicates at both the visual rendering and submission levels.
-- **[Message Flow Optimization]** Restructured the message submission flow to eliminate the root cause of message duplication. Fixed the issue by reordering the submission process to update tab information first, then add the user message to chat after the correct context is established, preventing the double-rendering caused by history reloading.
-- **[Duplicate Message Handling Refinement]** Improved the duplicate message detection approach to focus exclusively on preventing unintentional duplication during submission, while allowing users to deliberately send identical messages when needed. Removed overly aggressive content filtering that was preventing legitimate duplicate messages, improving the natural flow of conversation.
-- **[Time-Based Duplicate Prevention]** Implemented a sophisticated time-based approach to duplicate message detection, replacing simplistic content matching. Now only prevents rapid duplicate submissions within a 1-second window, while allowing intentional resubmission of the same message after a brief delay. Uses local storage to track submission timestamps independently for each conversation.
-- **[Focus-Based Duplication Fix]** Resolved an issue where window focus events were triggering duplicate message displays and API calls. Replaced the generic tab info update handler with a targeted version that refreshes necessary tab data without reloading the chat history, preventing message duplication when the popup window regains focus.
-- **[Script Duplication Detection]** Implemented robust script initialization tracking to prevent potential duplicate loading of popup.js. Added global initialization flag, script execution tracking, and DOM mutation observation to identify and prevent multiple instances of the same script from executing simultaneously, addressing a deep-rooted cause of duplicate API calls and message submissions.
-- **[Advanced Submission Protection]** Added comprehensive safeguards against duplicate form submissions with an isSubmitInProgress flag, automatic timeouts for safety resets, and proper error handling to ensure the system recovers gracefully from any state. Implemented both preventative checks at submission time and cleanup mechanisms to prevent the UI from getting stuck.
-- **[Enhanced Web Search Workflow]** Implemented a robust sequential API call system that reliably executes follow-up API calls after web search requests. Added precise message structure validation, automatic correction of incorrectly formatted messages, and consistent correlation between tool calls and tool results using unique IDs to ensure the API properly processes search results.
-- **[Button Placement Optimization]** Repositioned the "New Chat" button from the header to the user input area for better UX flow, following modern chat application design principles. Updated the button's visual design with clean, intuitive iconography (changing from sparkle ✨ to plus sign +), larger font size, and improved touch targets. Enhanced with consistent height alignment between all input area elements for visual harmony. Refined through iterative size increases (38px → 46px → 50px) to provide optimal proportions and maximum usability across all input elements. Animation effects were also adjusted to be less intrusive while maintaining proper visual feedback.
-- **[Button Interaction Enhancement]** Improved button interaction patterns with specialized hover effects for both the "Ask" and "New Chat" buttons. Added subtle glow effect to the "Ask" button for enhanced visibility, removed zoom effect from the new chat button's unfocused state to create a cleaner visual experience, and implemented hover text functionality showing "Ask" and "New" labels on hover for clearer button purpose indication.
-- **[Button Styling Refinement]** Enhanced button styling for improved consistency and usability. Fixed position jumping on hover transitions by replacing absolute positioning with flex layouts, standardized font sizes across all action buttons, and replaced text-based "+" character with an SVG icon for the New Chat button to improve visual clarity and scaling. These changes create a more polished and professional user interface with smoother interactions.
-- **[UI Size Consistency]** Improved the visual consistency of UI elements by ensuring all buttons and input fields in the question container have exactly the same dimensions. Fixed an issue where the new chat button appeared larger than adjacent elements by applying explicit width constraints, adding overflow control, precisely sizing the SVG icon, and ensuring all elements have the same box model calculation with box-sizing: border-box. This creates a more cohesive and visually balanced interface with professional alignment.
-- **[UI View Management]** Enhanced UI state handling for view transitions with direct approach for more reliable button focus states, preventing unintended navigation indicators.
-
 ## Implemented Features
-<!-- Document all completed features (no timestamps) -->
-
 <!--
-DO NOT DELETE OR MODIFY THESE EXAMPLES - They serve as a format guide
+FORMAT GUIDE - DO NOT DELETE
 
-- **[Feature Name]** Implemented [description] to enable [functionality].
-- **[UI Enhancement]** Added [element] to improve [aspect of user experience].
+- **[Feature Name]** Developed functionality for [purpose] that enables users to [capability].
+- **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
 -->
 
-- **[Smart Content Extraction]** Page content extraction that intelligently adapts to the page structure.
-- **[Website Type Detection]** Automatic detection of different website types for context-aware responses.
-- **[Multi-Model Support]** Support for multiple OpenAI models with different capabilities and cost profiles.
-- **[Theme System]** Comprehensive theme system with light, dark, and system-detected modes.
-- **[API Key Management]** Secure API key storage with visibility toggle.
-- **[Conversation History]** Persistent conversation history organized by domain and browsing session.
-- **[Past Conversations]** Ability to view, reload, and continue past conversations.
-- **[Markdown Rendering]** Comprehensive markdown rendering for LLM responses with support for code blocks, lists, tables, and more.
-- **[Code Syntax Highlighting]** Automatic syntax highlighting for code blocks in AI responses.
-- **[Web Search Tool]** Integrated web search capability allowing the AI to search the web for answers.
-- **[Response Variety Setting]** Added user-friendly "Response Variety" slider (temperature setting) allowing users to control how creative or precise AI responses are, ranging from 0.0 (precise) to 1.0 (creative).
-- **[Button Styling Refinement]** Enhanced button styling for improved consistency and usability. Fixed position jumping on hover transitions by replacing absolute positioning with flex layouts, standardized font sizes across all action buttons, and replaced text-based "+" character with an SVG icon for the New Chat button to improve visual clarity and scaling. These changes create a more polished and professional user interface with smoother interactions.
-- **[UI Size Consistency]** Improved the visual consistency of UI elements by ensuring all buttons and input fields in the question container have exactly the same dimensions. Fixed an issue where the new chat button appeared larger than adjacent elements by applying explicit width constraints, adding overflow control, precisely sizing the SVG icon, and ensuring all elements have the same box model calculation with box-sizing: border-box. This creates a more cohesive and visually balanced interface with professional alignment.
-- **[Settings Interface]** Improved settings page UI by hiding chat title window for cleaner, more focused settings experience.
-- **[History Navigation]** Enhanced history item click handling to prevent the history button from remaining highlighted when viewing chat sessions from history list.
-- **[ChatGPT-Style UI]** Updated input area and buttons to follow the ChatGPT interface design with unified rounded input field containing multiple action buttons.
-
 ## Resolved Bugs
-<!-- Document fixed issues (no timestamps) -->
-
 <!--
-DO NOT DELETE OR MODIFY THESE EXAMPLES - They serve as a format guide
+FORMAT GUIDE - DO NOT DELETE
 
 - **[Bug ID/Description]** Fixed [issue description] in [file-name.js]
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
-
-- **[Reference Error]** Fixed "themeOptions is not defined" error in popup.js by removing a theme handler in global scope and consolidating theme-related code inside the DOMContentLoaded event handler, ensuring proper variable scoping.
-- **[UI Animation]** Fixed loading spinner not displaying as a proper circle by adding box-sizing, transform-origin properties, and proper container structure. Enhanced spinner styles to prevent clipping and ensure consistent circular animation. Added flexbox display properties to perfectly center the spinner in its container.
-- **[Spinner Positioning]** Resolved issue with spinner appearing in bottom right of button by replacing transform-based positioning with dedicated flex container, ensuring perfect centering regardless of button dimensions.
-- **[Markdown Rendering Error]** Fixed "window.markdownit is not a function" error by correcting the library access method to use the global `markdownit` function instead of `window.markdownit`. Added robust error handling with fallback to plain text rendering if the library is unavailable.
-- **[Script Initialization Duplication]** Fixed a fundamental issue where duplicate script initialization could cause multiple simultaneous event handlers to fire for the same user action. Implemented script initialization tracking, DOM mutation observation, and explicit flag-based protection to prevent the same code from executing multiple times, eliminating duplicate API calls and message submissions at their source.
-- **[Web Search Follow-up Failure]** Fixed an issue where web search functionality was detecting the need for search correctly but failing to execute the follow-up API call. Implemented proper message structure for sequential API calls, added comprehensive logging, robust error handling with graceful recovery, and automatic correction of message format issues to ensure proper API interaction.
-- **[Markdown Parsing Issue]** Resolved issue where markdown was being loaded but not properly rendered in LLM responses. Implemented multi-layered approach for accessing the markdown-it library and added a custom fallback parser to ensure markdown formatting is always applied correctly.
-- **[Content Security Policy Error]** Fixed Content Security Policy (CSP) errors that prevented loading external libraries from CDNs by including local copies of markdown-it and highlight.js, and updating the manifest.json with appropriate CSP settings and web_accessible_resources configurations.
-- **[Undefined Property Error]** Resolved "Cannot read properties of undefined (reading 'startsWith')" error in background.js by implementing comprehensive null and undefined checks in tab communications, the detectWebsiteType function, and the getBaseDomain function, ensuring the extension handles missing URL data gracefully.
-- **[OpenAI API Error]** Fixed "Missing required parameter: 'tools[0].function'" error in the getOpenAiInference function by correctly configuring the tools parameter for browsing-capable models, adding the required function property with proper name, description and parameters fields as per OpenAI's API requirements.
-- **[UI Error Message Display]** Improved error message visibility by repositioning the error message container above the question input, adding z-index and overflow properties, implementing automatic scrolling to ensure errors are always visible, and adding an auto-hide timeout for better user experience.
-- **[Persistent OpenAI API Error]** Resolved persistent "Missing required parameter: 'tools[0].function'" error by completely restructuring the tools configuration to follow the latest OpenAI API requirements. Changed the tool type from 'web_search' to 'function' and properly formatted all nested properties to ensure API compatibility.
-- **[API Response Null Content Error]** Fixed "Cannot read properties of null (reading 'trim')" error by implementing robust response handling for different OpenAI API response structures. Added explicit handling for cases where the model uses tool_calls (resulting in null content), extracting meaningful information from tool_calls, and providing user-friendly messages about web search operations.
-- **[Enhanced API Response Handling]** Implemented comprehensive defensive programming for API response processing with extensive null checks at every level of the response object hierarchy. Added detailed logging for debugging, explicit type checking before operations, and multiple fallback messages for different error conditions. This ensures the extension remains stable regardless of unexpected API response structures or content values.
-- **[API Response Format Fix]** Resolved persistent "Cannot read properties of null (reading 'trim')" error by completely rewriting the API response handling to specifically target the exact format received from the OpenAI API for gpt-4o-mini-2024-07-18. Simplified the code structure with targeted handling for each response case, improved error handling, and added more detailed logging to facilitate debugging of response formats.
-- **[Web Search Implementation]** Implemented robust web search capabilities for supported models through a sequential API call pattern that handles tool calls with null content, executes the search, and returns comprehensive answers in a follow-up API call. Added detailed documentation in README.md about the technical implementation and user-facing experience.
-- **[Web Search Testing Completion]** Verified the web search functionality with diverse query types and confirmed successful operation of the sequential API call system. Tested error handling mechanisms under various conditions and confirmed consistent behavior across different search topics. The implementation demonstrated robust handling of both successful searches and error scenarios.
-- **[Null Content Trim Fix]** Comprehensively resolved all instances of the "Cannot read properties of null (reading 'trim')" error by reorganizing content handling logic to explicitly check for null values before any string operations. Improved the structure of response processing to handle various edge cases in both main inference and sequential API calls.
-- **[Enhanced Error Handling Architecture]** Implemented a defense-in-depth approach to handling API responses by restructuring the entire response processing flow to prioritize null content checks above all other operations. Added comprehensive error handling with detailed logs and user-friendly messages for every potential edge case, ensuring the extension remains stable even with unexpected API responses.
-- **[Error Text Validation Fix]** Fixed "Cannot read properties of null (reading 'trim')" error by adding proper null and type checks before calling trim() on errorText in the error handling section of the getOpenAiInference function, ensuring robust handling of API error responses.
-- **[Advanced Debugging Implementation]** Enhanced error handling with comprehensive debugging logs throughout the API response processing flow. Added detailed structure validation, explicit null/undefined checks, and step-by-step tracing of content handling to identify and prevent "Cannot read properties of null (reading 'trim')" errors.
-- **[Tool Calls Processing Fix]** Resolved "Cannot read properties of null (reading 'trim')" error by implementing proper handling of OpenAI API responses where content is null but tool_calls are present. Added specialized processing for web_search function calls that extracts the search query and provides a user-friendly message about the search operation being performed.
-- **[Tab Communication Resilience]** Fixed "Receiving end does not exist" error by implementing a robust retry mechanism for tab communication. Added better error handling for content script injection, longer initialization delays, and progressive timeouts between retries to ensure successful communication with the active tab even under slow loading conditions.
-- **[Critical Sequential API Call Fix]** Fixed an issue with the sequential API call structure by ensuring proper message structure implementation complying with OpenAI API requirements, implementing tool call ID matching, enhancing error diagnostics, and ensuring proper conversation flow.
-- **[Search Query Matching Fix]** Resolved a critical issue where web search queries were mismatched with actual user questions by improving topic extraction logic, implementing search topic prioritization, adding specialized content handlers, and enhancing context clarification in follow-up messages.
-- **[Slider Thumb Visibility Enhancement]** Fixed invisible temperature slider thumb by adding missing `--accent-color` CSS variable and enhancing slider styling with improved visibility properties. Implemented a dynamic gradient track that visually represents the current value, improved cross-browser compatibility with Firefox-specific styles, and added visual enhancements including borders and shadows for better contrast in both light and dark themes. Corrected vertical alignment issues with precise margin adjustments and added hover effects for improved user interaction.
-- **[User Query Duplication Fix]** Resolved an issue where user queries were appearing twice in the chat interface by identifying and fixing the root cause in the message submission flow. Restructured the submit button handler to update tab information first, then add user messages to chat after the correct context is established, preventing the duplication caused by history reloading. Added additional safeguards in the chat history loading process to prevent re-displaying messages that are already in the UI.
-- **[Refined Duplicate Handling]** Fixed an issue where legitimate duplicate messages were being filtered out, preventing users from intentionally sending the same message twice. Removed overly aggressive content matching that was suppressing desired duplicate messages, focusing instead on preventing unintentional duplication at the submission source while preserving message integrity.
-- **[Window Focus Duplication Fix]** Resolved a critical issue where user messages and API calls were being duplicated due to window focus events. Fixed by implementing a specialized focus event handler that updates essential tab information without triggering a full chat history reload, preventing the cascade of duplicate operations that occurred when the popup window regained focus.
