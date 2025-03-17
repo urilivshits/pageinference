@@ -178,3 +178,42 @@ Notes:
   - [x] Fix dark mode styling inconsistencies
   - [x] Clean up CSS syntax errors
   - [x] Update tasks.md with changes
+
+## User Query: "cool, lets also add appropriate effects on each button on hover. for example when hovering the "search page" button in the unselected state i do see some bg changing to reflect the howvering but i dont see any efferct when hovering over the same button in the selected state. lets make sure the every button is reflecting the hover in any state. this applies also to "new" and "ask" buttons as well as to "chat" and "settings""
+
+- Task: Enhance button hover effects across all states
+  - [x] Add hover effects for active state buttons (Search Page, Search Web, Reason)
+  - [x] Add hover effects for inactive state buttons (already present)
+  - [x] Add hover effects for New and Ask buttons
+  - [x] Add hover effects for Chat and Settings header buttons
+  - [x] Ensure consistent hover behavior in both light and dark themes
+  - [x] Maintain visual distinction between active and inactive states on hover
+  - [x] Update tasks.md with changes
+
+## User Query: "cool, now lets decrease the horizontal padding of both currentConversationInfo and input-wrapper so that they look wider inside the popup (see how they currently look in attached pic)"
+
+- Task: Increase visual width of UI elements
+  - [x] Reduce horizontal padding of conversation-info element
+  - [x] Increase max-width of conversation-info by reducing margin space
+  - [x] Increase max-width of input-wrapper to match conversation-info
+  - [x] Ensure consistent spacing between elements
+  - [x] Update tasks.md with changes
+
+## User Query: "attached is the border radius of the "ask" button on chatgpt and the border radius of the input container. lets do the same effect here, so that the first button ("new") and the last button ("ask") used the same border radius as the input container (or at least visually would fit perfectly one next to the other (button and corner of the input container that is)"
+
+- Task: Match button border radius with input container
+  - [x] Update "new" button to use matching border radius with input container
+  - [x] Update "ask" button to use matching border radius with input container
+  - [x] Modify button positions to integrate visually with input container
+  - [x] Update question container layout for better overall appearance
+  - [x] Restyle input wrapper to fit between buttons
+  - [x] Update tasks.md with changes
+
+## User Query: "1. better but the border radius horizontal should also be applied on the other side of each of the two buttons 2. and the whole line with buttons should be positioned a bit up please see the pic for how it looks now attached"
+
+- Task: Refine button styling and positioning
+  - [x] Fix border radius of newConversationBtn to apply on all sides
+  - [x] Fix border radius of submitBtn to apply on all sides
+  - [x] Move the entire question container up from the bottom
+  - [x] Adjust chat-history container spacing to accommodate the new position
+  - [x] Update tasks.md with changes

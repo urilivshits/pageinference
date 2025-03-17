@@ -273,12 +273,24 @@ h2 {
 }
 
 /* Special styling for New and Ask buttons */
-#newConversationBtn,
-#submitBtn {
-  border-radius: 8px;
+#newConversationBtn {
+  border-radius: 12px; /* Apply border radius to all corners */
   background-color: transparent;
   width: 32px;
   height: 32px;
+  border-right: none;
+  position: relative;
+  z-index: 2;
+}
+
+#submitBtn {
+  border-radius: 12px; /* Apply border radius to all corners */
+  background-color: transparent;
+  width: 32px;
+  height: 32px;
+  border-left: none;
+  position: relative;
+  z-index: 2;
 }
 
 /* Hide tooltips for specific buttons */
@@ -314,10 +326,26 @@ h2 {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
+/* Add hover effects for active state buttons */
+#searchPageBtn.active:hover,
+#searchBtn.active:hover,
+#reasonBtn.active:hover {
+  background-color: rgba(70, 140, 255, 0.25); /* Slightly darker than active state */
+  color: #468cff;
+}
+
 [data-theme="dark"] #searchPageBtn:hover,
 [data-theme="dark"] #searchBtn:hover,
 [data-theme="dark"] #reasonBtn:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Add hover effects for active state buttons in dark mode */
+[data-theme="dark"] #searchPageBtn.active:hover,
+[data-theme="dark"] #searchBtn.active:hover,
+[data-theme="dark"] #reasonBtn.active:hover {
+  background-color: rgba(70, 140, 255, 0.3); /* Slightly darker than active state */
+  color: #78aeff;
 }
 
 /* Style for active button state */
@@ -337,12 +365,43 @@ h2 {
   border-color: #78aeff;
 }
 
+/* Add hover effects for New and Ask buttons */
+#newConversationBtn:hover,
+#submitBtn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] #newConversationBtn:hover,
+[data-theme="dark"] #submitBtn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Add hover effects for header buttons (Chat and Settings) */
+#pastSessionsBtn:hover,
+#settingsBtn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] #pastSessionsBtn:hover,
+[data-theme="dark"] #settingsBtn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Default hover effect for any icon button not covered by specific rules */
+.icon-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 /* Position buttons relative to input field */
 .input-buttons-left {
   display: flex;
   gap: 4px;
   align-items: center;
-  margin-left: 4px;
+  margin-left: 0; /* Remove margin to align with input wrapper */
 }
 
 /* Ensure SVG icons are properly sized */
@@ -401,13 +460,13 @@ h2 {
   margin-bottom: 1rem;
 }
 
-/* Update question container to stay fixed at bottom with proper width */
+/* Update question container to create a cohesive layout and position it higher */
 .question-container {
   display: flex;
   margin-bottom: 0;
-  padding: 0;
+  padding: 0 4px;
   position: absolute;
-  bottom: 0;
+  bottom: 8px; /* Move up by 8px from the bottom */
   left: 0;
   right: 0;
   background-color: var(--background-color);
@@ -415,15 +474,14 @@ h2 {
   border-top: none;
   box-shadow: 0 -4px 10px -1px rgba(0, 0, 0, 0.1);
   width: 100%; /* Full width container */
-  justify-content: center; /* Center the input wrapper */
   align-items: center;
 }
 
-/* Match input wrapper width exactly to conversation info */
+/* Update input wrapper to integrate with buttons */
 .input-wrapper {
   position: relative;
-  width: 100%; /* Match exactly with conversation info */
-  margin: 8px auto; /* Center like conversation info */
+  flex: 1; /* Take up available space between buttons */
+  margin: 8px 0; /* Remove horizontal margins */
   border: 1px solid var(--input-border);
   border-radius: 12px;
   background-color: var(--input-bg);
@@ -432,7 +490,13 @@ h2 {
   flex-direction: column;
   min-height: 50px;
   box-sizing: border-box; /* Include border in width calculation */
-  max-width: calc(100% - 16px); /* Same as conversation info */
+}
+
+/* Create button grouping */
+.input-buttons-left,
+.input-buttons-right {
+  display: flex;
+  align-items: center;
 }
 
 /* Specific textarea styling */
@@ -452,6 +516,7 @@ textarea#questionInput {
   flex-grow: 1;
 }
 
+/* Adjust the input buttons layout */
 .input-buttons {
   position: relative;
   display: flex;
@@ -459,7 +524,6 @@ textarea#questionInput {
   justify-content: space-between;
   padding: 4px 8px;
   background-color: var(--input-bg);
-  /* border-top: 1px solid var(--border-color); */
   height: 36px; /* Fixed height for buttons area */
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
@@ -469,6 +533,7 @@ textarea#questionInput {
 .input-buttons-right {
   display: flex;
   align-items: center;
+  margin-right: 0; /* Remove margin to align with input wrapper */
 }
 
 .submit-button {
@@ -731,10 +796,10 @@ select {
   scroll-behavior: smooth;
   flex: 1;
   /* Fixed height calculation to ensure scrollbar ends above input area */
-  height: calc(100% - 70px); /* Adjust based on input area height */
-  max-height: calc(100% - 70px); /* Ensure it doesn't overflow */
+  height: calc(100% - 78px); /* Adjusted to account for raised question container */
+  max-height: calc(100% - 78px); /* Ensure it doesn't overflow */
   padding-right: 8px; /* Increased for better scrollbar visibility */
-  padding-bottom: 10px; /* Small padding at bottom for visual breathing room */
+  padding-bottom: 18px; /* Increased to provide more space before the input container */
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   position: relative;
@@ -1171,7 +1236,7 @@ select {
 /* Conversation info styles */
 .conversation-info {
   margin-bottom: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.5rem; /* Reduced horizontal padding from 1rem to 0.5rem */
   border-radius: var(--border-radius-medium);
   background-color: var(--sessions-bg);
   display: flex;
@@ -1181,7 +1246,7 @@ select {
   width: 100%; /* Full width */
   margin: 0 auto; /* Center the element */
   box-sizing: border-box; /* Include border in width calculation */
-  max-width: calc(100% - 16px); /* Account for container padding */
+  max-width: calc(100% - 8px); /* Increased from 16px to 8px to make wider */
 }
 
 #currentConversationTitle {
