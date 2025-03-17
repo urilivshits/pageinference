@@ -146,3 +146,35 @@ Notes:
   - [x] Fix "currentHistory.push is not a function" error in non-scraping mode
   - [x] Ensure correct chat history array is passed to saveChatSession
   - [x] Update tasks.md and context.md with changes
+
+## User Query: "cool, now lets improve ui of the "search page", "search web" and "reason" buttons. See attached an example how this same ui is on chatgpt website"
+
+- Task: Improve button UI to match ChatGPT style
+  - [x] Update button styling to a cleaner, outlined appearance
+  - [x] Standardize button sizing and padding for consistency
+  - [x] Implement better hover and active states
+  - [x] Ensure proper styling in both light and dark themes
+  - [x] Fix button layout and spacing
+  - [x] Update the active state styling for the Search Page toggle
+  - [x] Remove conflicting style rules
+  - [x] Update tasks.md and context.md with changes
+
+## User Query: "now im unable to toggle the "search web" into the "on" state (at least visually)"
+
+- Task: Fix Search Web button toggle functionality
+  - [x] Add isWebSearchEnabled state variable to track web search toggle status
+  - [x] Update Search Web button click handler to toggle state
+  - [x] Add visual active state indication when enabled
+  - [x] Persist toggle state between sessions using Chrome storage
+  - [x] Set default state to "on"
+  - [x] Update tasks.md with changes
+
+## User Query: "still cant, i see in extension storage that isPageScrapingEnabled is getting updated on click, but i dont see any difference in how button looks on click"
+
+- Task: Fix visual feedback for Search Web button
+  - [x] Fix CSS selector specificity for button active states
+  - [x] Remove duplicate and conflicting active button styles
+  - [x] Create more specific selectors for each button type (#searchBtn.active)
+  - [x] Fix dark mode styling inconsistencies
+  - [x] Clean up CSS syntax errors
+  - [x] Update tasks.md with changes

@@ -68,6 +68,7 @@ let temperatureValueDisplay;
 let isSubmitInProgress = false; // Add a flag to track if submit operation is in progress
 let lastSubmittedQuestion = ''; // Track the last submitted question to prevent duplicates
 let isPageScrapingEnabled = true; // New state variable for page scraping toggle
+let isWebSearchEnabled = true; // New state variable for web search toggle
 
 // Function to update the current tab information
 async function updateCurrentTabInfo() {
@@ -354,7 +355,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   
   searchBtn.addEventListener('click', () => {
-    console.log('Search button clicked - functionality not implemented yet');
+    isWebSearchEnabled = !isWebSearchEnabled;
+    searchBtn.classList.toggle('active', isWebSearchEnabled);
+    console.log('Web search ' + (isWebSearchEnabled ? 'enabled' : 'disabled'));
+    
+    // Save the setting to storage
+    chrome.storage.sync.set({ isWebSearchEnabled });
   });
   
   reasonBtn.addEventListener('click', () => {
@@ -365,6 +371,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Set initial state for search page button
   searchPageBtn.classList.toggle('active', isPageScrapingEnabled);
+  
+  // Set initial state for search web button
+  searchBtn.classList.toggle('active', isWebSearchEnabled);
   
   // Load chat history
   await loadChatHistory();
@@ -2273,7 +2282,7 @@ function preventDuplicateSubmission() {
 }
 
 // Load settings from storage
-chrome.storage.sync.get(['model', 'isPageScrapingEnabled'], (data) => {
+chrome.storage.sync.get(['model', 'isPageScrapingEnabled', 'isWebSearchEnabled'], (data) => {
   if (data.model) {
     modelSelect.value = data.model;
   }
@@ -2281,4 +2290,8 @@ chrome.storage.sync.get(['model', 'isPageScrapingEnabled'], (data) => {
   // Load page scraping setting (default to true if not set)
   isPageScrapingEnabled = data.isPageScrapingEnabled !== undefined ? data.isPageScrapingEnabled : true;
   searchPageBtn.classList.toggle('active', isPageScrapingEnabled);
+  
+  // Load web search setting (default to true if not set)
+  isWebSearchEnabled = data.isWebSearchEnabled !== undefined ? data.isWebSearchEnabled : true;
+  searchBtn.classList.toggle('active', isWebSearchEnabled);
 });

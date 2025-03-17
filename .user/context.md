@@ -17,6 +17,12 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
 -->
 
+- **[Web Search Toggle]** Implemented toggle functionality for the "Search Web" button that enables users to turn web search on and off. This feature:
+  - Provides visual feedback with button highlighting when active
+  - Persists user preference between sessions
+  - Maintains the default state as "on" for new installations
+  - References: popup.js
+
 - **[Page Scraping Toggle]** Implemented functionality for the "Search Page" button that enables users to toggle between page scraping and direct query modes. This feature:
   - Provides visual feedback with button highlighting when active
   - Persists user preference between sessions
@@ -31,6 +37,22 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Bug ID/Description]** Fixed [issue description] in [file-name.js]
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
+
+- **[Button Toggle Fix]** Fixed visual feedback issue with toggle buttons in styles.css:
+  - Improved CSS selector specificity for active button states
+  - Created button-specific selectors for more reliable styling
+  - Removed duplicate and conflicting style definitions
+  - Fixed inconsistent dark mode styling
+  - Ensured proper visual feedback when buttons are toggled
+
+- **[UI Enhancement]** Improved button styling to match modern ChatGPT interface:
+  - Updated Search Page, Search Web, and Reason buttons to use a cleaner outlined style
+  - Standardized button sizing, padding, and border-radius for consistent appearance
+  - Implemented subtle hover effects with background color changes
+  - Enhanced active state styling with appropriate color indicators
+  - Ensured proper appearance in both light and dark themes
+  - Removed conflicting style rules to maintain consistency
+  - References: styles.css
 
 - **[System Prompt Enhancement]** Updated GENERIC_SYSTEM_PROMPT to be model-agnostic instead of Claude-specific to support various AI models in background.js
 - **[Chat History Fix]** Fixed "currentHistory.push is not a function" error by correctly retrieving and passing the chat history array to saveChatSession in the non-scraping mode in popup.js

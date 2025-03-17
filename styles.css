@@ -255,27 +255,30 @@ h2 {
 }
 
 .icon-button {
-  background: none;
-  border: 1px solid var(--border-color);
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 16px;
-  transition: all 0.2s ease;
-  display: flex;
+  background-color: transparent;
+  color: var(--text-color);
+  border: none;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-color);
-  height: 32px;
-  min-width: 32px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
   position: relative;
   font-size: 0.75rem;
   white-space: nowrap;
+  padding: 6px;
 }
 
 /* Special styling for New and Ask buttons */
 #newConversationBtn,
 #submitBtn {
-  border-radius: 12px; /* Match input-wrapper border radius */
+  border-radius: 8px;
+  background-color: transparent;
+  width: 32px;
+  height: 32px;
 }
 
 /* Hide tooltips for specific buttons */
@@ -290,15 +293,56 @@ h2 {
 #reasonBtn {
   width: auto;
   padding: 6px 12px;
-  min-width: fit-content;
+  min-width: 64px;
   font-size: 0.75rem;
+  border-radius: 6px;
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  margin: 0 4px;
+  transition: all 0.2s ease;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
 }
 
-/* Ensure consistent spacing between buttons */
+/* Style for buttons on hover */
+#searchPageBtn:hover,
+#searchBtn:hover,
+#reasonBtn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] #searchPageBtn:hover,
+[data-theme="dark"] #searchBtn:hover,
+[data-theme="dark"] #reasonBtn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Style for active button state */
+#searchPageBtn.active,
+#searchBtn.active,
+#reasonBtn.active {
+  background-color: rgba(70, 140, 255, 0.15);
+  color: #468cff;
+  border-color: #468cff;
+}
+
+[data-theme="dark"] #searchPageBtn.active,
+[data-theme="dark"] #searchBtn.active,
+[data-theme="dark"] #reasonBtn.active {
+  background-color: rgba(70, 140, 255, 0.2);
+  color: #78aeff;
+  border-color: #78aeff;
+}
+
+/* Position buttons relative to input field */
 .input-buttons-left {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
+  margin-left: 4px;
 }
 
 /* Ensure SVG icons are properly sized */
@@ -308,6 +352,21 @@ h2 {
   margin-right: 0;
 }
 
+/* Additional style for buttons with icons */
+.icon-button:has(svg) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Match theme with dark mode */
+[data-theme="dark"] #searchPageBtn,
+[data-theme="dark"] #searchBtn,
+[data-theme="dark"] #reasonBtn {
+  border-color: var(--input-border);
+  color: var(--text-color);
+}
+
 /* Style text-only buttons */
 .icon-button:not(:has(svg)) {
   padding: 6px 12px;
@@ -315,15 +374,10 @@ h2 {
   font-size: 0.75rem;
 }
 
-[data-theme="dark"] .icon-button {
-  border: 1px solid var(--input-border);
-  box-shadow: 0 0 0 1px var(--input-border);
-}
-
+/* Update focus style */
 .icon-button:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 1px var(--input-focus-shadow);
+  box-shadow: 0 0 0 2px rgba(70, 140, 255, 0.5);
 }
 
 .icon-button.small {
@@ -1368,10 +1422,18 @@ select {
   color: var(--info-text);
 }
 
-/* Active icon button */
-.icon-button.active {
-  background-color: var(--active-icon-bg);
-}
+/* Active icon button - Removing duplicate, using more specific selectors above */
+/* .icon-button.active {
+  background-color: rgba(70, 140, 255, 0.15);
+  color: #468cff;
+  border-color: #468cff;
+} */
+
+/* [data-theme="dark"] .icon-button.active {
+  background-color: rgba(70, 140, 255, 0.2);
+  color: #78aeff;
+  border-color: #78aeff;
+} */
 
 /* Added class to hide the chat name in history view */
 .hidden-topic-name {
@@ -1599,17 +1661,29 @@ textarea#questionInput::-webkit-scrollbar {
   display: none;
 }
 
-[data-theme="dark"] .icon-button {
-  border: 1px solid var(--border-color); /* Ensure border is visible in dark mode */
-  box-shadow: 0 0 0 1px var(--border-color); /* Add persistent border effect */
-}
-
+/* Fix conflicting dark mode styles */
 [data-theme="dark"] .icon-button {
   border: 1px solid var(--input-border); /* Use input-border color for better visibility */
   box-shadow: 0 0 0 1px var(--input-border); /* Add persistent border effect with improved visibility */
 }
 
-.icon-button.active {
+/* Fix styles for specific buttons in dark mode */
+[data-theme="dark"] #searchPageBtn,
+[data-theme="dark"] #searchBtn,
+[data-theme="dark"] #reasonBtn {
+  border-color: var(--input-border);
+  color: var(--text-color);
+}
+
+/* Active icon button - Removing duplicate, using more specific selectors above */
+/* .icon-button.active {
   background-color: rgba(70, 140, 255, 0.15);
   color: #468cff;
-} 
+  border-color: #468cff;
+} */
+
+/* [data-theme="dark"] .icon-button.active {
+  background-color: rgba(70, 140, 255, 0.2);
+  color: #78aeff;
+  border-color: #78aeff;
+} */ 
