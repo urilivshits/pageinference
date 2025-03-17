@@ -217,3 +217,77 @@ Notes:
   - [x] Move the entire question container up from the bottom
   - [x] Adjust chat-history container spacing to accommodate the new position
   - [x] Update tasks.md with changes
+
+## User Query: "lets make sure the whole last message in chat box fits above the question container. see on attached pic how it is now"
+
+- Task: Fix message spacing with question container
+  - [x] Increase padding-bottom of chat-history
+  - [x] Adjust height calculation of chat-history
+  - [x] Add margin-bottom to messages for better spacing
+  - [x] Update tasks.md with changes
+
+## User Query: "this is great, but as you can see on my attached pic the scrollbar is visible but the current position of the scrollbar is still beneath the input-buttons container. can we fix that as well so that the current (the starting) position of the scrollbar was at the level of message list"
+
+- Task: Fix scrollbar containment within message list
+  - [x] Implement mask-image gradient to fade out scrollbar at the bottom
+  - [x] Set proper overflow behavior on parent containers
+  - [x] Adjust scrollbar positioning to stay within message area
+  - [x] Prevent scrollbar from extending into input button area
+  - [x] Update tasks.md with changes
+
+## User Query: "still same issue. let me rephrase: bottom padding chatHistory makes the scrollbar of the chat history to extend all the way to the bottom of the element (including the padding part). Lets fix that."
+
+- Task: Fix scrollbar containment in chat history
+  - [x] Replace padding-bottom with a pseudo-element for spacing
+  - [x] Adjust scrollbar styling to ensure it doesn't extend into the padding area
+  - [x] Remove the mask-image gradient approach
+  - [x] Update tasks.md with changes
+
+## User Query: "better but still happens since the chatHistory is partly covered by the question-container"
+
+- Task: Fix chat history scrollbar overlap with question container
+  - [x] Adjust chat-history height calculation to prevent overlap
+  - [x] Remove pseudo-element approach and use container margin instead
+  - [x] Add bottom margin to chat-history to create space
+  - [x] Add padding-bottom to content-area for better spacing
+  - [x] Update tasks.md with changes
+
+## User Query: "cool that worked. now lets also update the scrollbar of the chatHistory to use the same style as the scrollbar of the pastConversationsView"
+
+- Task: Standardize scrollbar styling
+  - [x] Update chat-history scrollbar appearance to match pastConversationsView
+  - [x] Remove absolute positioning from chat-history scrollbar
+  - [x] Add hover effect to chat-history scrollbar
+  - [x] Use consistent border radius values using CSS variables
+  - [x] Update tasks.md with changes
+
+## User Query: "weird but i still see on the chatHistory scrollbar arrows in the top and in the bottom as you can see on the attached pic"
+
+- Task: Hide scrollbar arrows in chat history
+  - [x] Add CSS to hide scrollbar buttons/arrows in chat history using ::-webkit-scrollbar-button
+  - [x] Maintain consistent scrollbar appearance with the rest of the interface
+  - [x] Update tasks.md with changes
+  - [x] Update context.md with changes
+
+## User Query: "still see them and they are clickable still"
+
+- Task: Implement comprehensive scrollbar arrow removal
+  - [x] Apply !important to all CSS properties to override browser defaults
+  - [x] Add pointer-events: none to make buttons non-clickable
+  - [x] Add -webkit-appearance: none to completely reset button appearance
+  - [x] Add visibility: hidden and opacity: 0 for additional hiding methods
+  - [x] Target additional scrollbar button states (hover, active, vertical, horizontal)
+  - [x] Remove borders, margins, and padding to eliminate any remaining space
+  - [x] Update tasks.md with changes
+  - [x] Update context.md with changes
+
+## User Query: "no change, maybe we targetting a wrong class. im talking about the scrollbar that appears in chat when there are more messages that can fit in single chat view. maybe its under the mainContent"
+
+- Task: Implement global scrollbar arrow removal
+  - [x] Apply scrollbar arrow hiding globally to all scrollbars
+  - [x] Target all scrollbar buttons without specific container classes
+  - [x] Use !important flags to ensure styling overrides browser defaults
+  - [x] Target all possible button states and variants
+  - [x] Use comprehensive approach with multiple CSS techniques
+  - [x] Update tasks.md with changes
+  - [x] Update context.md with changes

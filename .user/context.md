@@ -38,6 +38,69 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
 
+- **[Global Scrollbar Arrow Fix]** Removed scrollbar arrows from all interface elements:
+  - Applied universal scrollbar arrow hiding to all containers
+  - Targeted scrollbar buttons without container-specific selectors
+  - Used multiple CSS techniques (!important, pointer-events, visibility, opacity)
+  - Addressed all possible button states (hover, active, vertical, horizontal)
+  - Created consistent scrollbar appearance throughout the entire interface
+  - Ensured compatibility with various browser implementations
+
+- **[Comprehensive Scrollbar Arrow Fix]** Completely eliminated scrollbar arrows in chat history:
+  - Applied !important to all CSS properties to ensure browser defaults are overridden
+  - Added pointer-events: none to make buttons completely non-clickable
+  - Used -webkit-appearance: none to reset default button appearance
+  - Combined multiple hiding techniques (display: none, visibility: hidden, opacity: 0)
+  - Targeted all possible button states (hover, active, vertical, horizontal)
+  - Removed all space allocation with zero borders, margins, and padding
+  - Created a clean, modern scrollbar free from navigation elements
+
+- **[Enhanced Scrollbar Arrow Fix]** Improved scrollbar arrow removal in chat history:
+  - Added multiple CSS properties (height: 0, width: 0, background: transparent) for more comprehensive hiding
+  - Implemented specific selectors targeting start:decrement and end:increment buttons
+  - Created a more robust approach to ensure arrows are hidden across different browser implementations
+  - Maintained consistent scrollbar functionality while eliminating all visual buttons
+
+- **[Scrollbar Arrows Fix]** Removed scrollbar arrows in chat history scrollbar in styles.css:
+  - Added CSS rule to hide the scrollbar buttons using ::-webkit-scrollbar-button selector
+  - Created a cleaner, more modern scrollbar appearance consistent with contemporary UI design
+  - Improved visual aesthetics by removing unnecessary navigation elements
+  - Maintained consistent scrolling functionality while enhancing the interface
+
+- **[Scrollbar Standardization]** Unified scrollbar styling across interface elements in styles.css:
+  - Updated chat-history scrollbar to match the pastConversationsView appearance
+  - Removed absolute positioning that was causing alignment issues
+  - Added hover effect to improve user feedback when interacting with the scrollbar
+  - Implemented consistent border radius using CSS variables
+  - Created a more cohesive visual appearance throughout the interface
+
+- **[Scrollbar Overlap Fix]** Resolved chat history scrollbar overlap with question container in styles.css:
+  - Removed pseudo-element approach in favor of direct container margin
+  - Added appropriate margin-bottom to chat-history container
+  - Further reduced height calculation to prevent overlap
+  - Added padding-bottom to content-area for consistent spacing
+  - Ensured scrollbar remains fully visible throughout the UI
+
+- **[Scrollbar Boundary Fix]** Improved scrollbar containment in chat interface in styles.css:
+  - Replaced padding-bottom with a pseudo-element for spacing
+  - Prevented scrollbar from extending into the padding area
+  - Removed mask-image gradient in favor of a cleaner solution
+  - Created better visual separation between content area and input
+  - Maintained same spacing while fixing scrollbar positioning
+
+- **[Scrollbar Containment Fix]** Fixed scrollbar positioning in the chat interface in styles.css:
+  - Implemented CSS mask-image gradient to fade out scrollbar at the bottom
+  - Prevented scrollbar from extending into the input button area
+  - Adjusted content area overflow behavior for proper containment
+  - Ensured consistent scrollbar behavior across different browsers
+  - Maintained proper scrolling functionality while improving visual appearance
+
+- **[Message Visibility Fix]** Improved last message visibility in styles.css:
+  - Increased padding-bottom of chat-history from 18px to 35px
+  - Adjusted height calculation for chat-history container
+  - Added margin-bottom to messages for better spacing
+  - Ensured last message is fully visible above the question container
+
 - **[Layout Fine-tuning]** Refined input area styling and positioning in styles.css:
   - Fixed border radius of New and Ask buttons to apply properly on all sides
   - Moved the entire input container line up from the bottom for better visual balance
