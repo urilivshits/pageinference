@@ -229,3 +229,9 @@ FORMAT GUIDE - DO NOT DELETE
   - Enhanced loadAndDisplayChatSession() to properly save currentPageLoadId to storage
   - Fixed bug where continuing a past chat would create a new conversation instead
   - Ensured conversations maintain identity while still moving to top of list when updated
+- **[Textarea Resize Bug Fix]** Fixed issue with textarea not returning to original size after submitting multi-line input:
+  - Identified that input value was being cleared but textarea height was not being reset
+  - Added explicit style.height = 'auto' after clearing input value in submit handler
+  - Ensured consistent interface appearance after submission
+  - Prevents the textarea from remaining at expanded height when empty
+  - References: popup.js

@@ -475,6 +475,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Clear input after saving
       questionInput.value = '';
       
+      // Reset textarea height to its initial state
+      questionInput.style.height = 'auto';
+      
       // Show loading state in button
       submitBtn.classList.add('button-loading');
       const spinner = submitBtn.querySelector('.spinner');

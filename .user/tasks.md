@@ -340,3 +340,11 @@ Notes:
   - [x] Update any UI components that depend on web search functionality
   - [ ] Test the new implementation with various search queries
   - [ ] Ensure backward compatibility with existing chat history
+
+## User Query: "very cool, now lets fix the following bug: after query is submitted, in case it occupied a few lines of input, the input element height that grew for the big query remains in a grown state. Lets handle that by removing the user query from input once it was submitted."
+- Task: Fix input textarea resize bug
+  - [x] Analyze current input clearing implementation
+  - [x] Identify why the textarea doesn't return to original size
+  - [x] Implement proper textarea height reset after submission
+  - [ ] Test with various multi-line inputs to ensure consistency
+  - [ ] Update tasks.md with completed subtasks
