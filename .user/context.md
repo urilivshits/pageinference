@@ -213,3 +213,9 @@ FORMAT GUIDE - DO NOT DELETE
   - Reduced container padding to eliminate width discrepancies
   - Optimized element spacing for better visual consistency
   - References: styles.css
+- **[Chat ID Continuity Fix]** Resolved issue with conversation continuity in popup.js:
+  - Modified checkOrCreatePageLoadId() to maintain existing IDs for past conversations
+  - Updated submit button click handler to preserve pageLoadId when continuing conversations
+  - Enhanced loadAndDisplayChatSession() to properly save currentPageLoadId to storage
+  - Fixed bug where continuing a past chat would create a new conversation instead
+  - Ensured conversations maintain identity while still moving to top of list when updated

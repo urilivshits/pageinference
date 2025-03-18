@@ -501,8 +501,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentUrl = tabs[0].url;
         currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
         
+        // Save current pageLoadId before checking or creating one
+        const existingPageLoadId = currentPageLoadId;
+        const wasInNewConversation = isInNewConversation;
+        
         // Check for existing page load ID or create a new one
         await checkOrCreatePageLoadId();
+        
+        // Update the storage key with the preserved pageLoadId to ensure messages are stored in the same chat
+        if (!wasInNewConversation && existingPageLoadId) {
+          const storageKey = `page_load_${currentTabId}_${currentUrl}`;
+          await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+        }
+        
         console.log('Tab info updated:', currentTabId, currentUrl);
         
         // NOW add the user message to chat AFTER tab info is updated
@@ -795,6 +806,13 @@ function updateUIState() {
  * This helps to distinguish between page reloads and tab switches
  */
 async function checkOrCreatePageLoadId() {
+  // If we already have a currentPageLoadId and we're not in a new conversation,
+  // keep using the same ID to continue the conversation in the same chat
+  if (currentPageLoadId && !isInNewConversation) {
+    console.log(`Continuing with existing page load ID: ${currentPageLoadId}`);
+    return;
+  }
+
   const storageKey = `page_load_${currentTabId}_${currentUrl}`;
   const { [storageKey]: existingPageLoadId } = await chrome.storage.local.get(storageKey);
   
@@ -1748,6 +1766,14 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null, fromHis
         // Update current conversation info
         isInNewConversation = false;
         currentPageLoadId = pageLoadId;
+        
+        // Save the currentPageLoadId to storage to ensure it persists
+        // This is essential for continuing the same conversation
+        if (currentTabId && currentUrl) {
+            const storageKey = `page_load_${currentTabId}_${currentUrl}`;
+            await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+            console.log(`Saved currentPageLoadId to storage: ${currentPageLoadId}`);
+        }
         
         // Update UI with session info
         if (!sessionInfo) {

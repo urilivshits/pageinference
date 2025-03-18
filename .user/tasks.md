@@ -303,3 +303,21 @@ Notes:
   - [x] Ensure all settings content is visible without requiring scrolling
   - [x] Update tasks.md with changes
   - [x] Update context.md with changes
+
+## User Query: "lets continue, there's a bug with chat ids. If i open a past chat and continue making the inferences in it it will actually record it as a new chat. as such different past chats on new inference will record into a single new chat for some reason. And this is not what i want - if i continue with a past chat i want the new messages to be recorded in this same past chat, it just needs to pop to the beginning of the chats list whenever its messages are newer than the messages in the other chats."
+- Task: Fix chat ID continuity bug
+  - [x] Modify checkOrCreatePageLoadId() to respect existing IDs for past conversations
+  - [x] Update submit button click handler to preserve pageLoadId for past conversations
+  - [x] Enhance loadAndDisplayChatSession() to properly save currentPageLoadId to storage
+  - [x] Test the fix with multiple past conversations
+  - [x] Update task.md with completed subtasks
+  - [x] Update context.md with bug fix
+
+## User Query: "cool, but please check the rulese and follow them as well @rules.mdc"
+- Task: Review and follow project rules
+  - [x] Read rules.mdc to understand required guidelines
+  - [x] Check current task tracking and formatting
+  - [x] Check context.md for proper documentation
+  - [x] Ensure bug fix documentation follows the required format
+  - [x] Update task.md with completed subtasks
+  - [x] Update context.md with bug fix details if not already done
