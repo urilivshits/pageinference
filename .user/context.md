@@ -38,6 +38,15 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
 
+- **[Settings Layout Optimization]** Fixed settings page layout to fit within popup without scrolling:
+  - Reduced vertical spacing between form elements and sections
+  - Decreased font sizes for labels (0.875rem) and help text (0.7rem)
+  - Reduced input field heights (28px) and padding (0.35rem)
+  - Optimized slider component margins and spacing
+  - Adjusted theme options spacing for more compact layout
+  - Created a clean, accessible settings interface that displays all options without requiring scrolling
+  - References: styles.css
+
 - **[Global Scrollbar Arrow Fix]** Removed scrollbar arrows from all interface elements:
   - Applied universal scrollbar arrow hiding to all containers
   - Targeted scrollbar buttons without container-specific selectors

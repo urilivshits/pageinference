@@ -291,3 +291,15 @@ Notes:
   - [x] Use comprehensive approach with multiple CSS techniques
   - [x] Update tasks.md with changes
   - [x] Update context.md with changes
+
+## User Query: "lets make sure that the content inside the settings page fits the current popup size without any scroll (so that the scroll wont do anything on this popup size)"
+
+- Task: Optimize settings page layout to fit without scrolling
+  - [x] Reduce spacing between settings groups and elements
+  - [x] Decrease font sizes for labels and help text
+  - [x] Reduce input field heights and padding
+  - [x] Adjust slider margins and component sizes
+  - [x] Fix theme options styling
+  - [x] Ensure all settings content is visible without requiring scrolling
+  - [x] Update tasks.md with changes
+  - [x] Update context.md with changes
