@@ -235,3 +235,9 @@ FORMAT GUIDE - DO NOT DELETE
   - Ensured consistent interface appearance after submission
   - Prevents the textarea from remaining at expanded height when empty
   - References: popup.js
+- **[Copy Button Repositioning]** Improved copy button accessibility in messages:
+  - Moved button position from top-right to bottom-right corner of message boxes
+  - Maintained same hover behavior and visual styling
+  - Enhanced usability by placing the button in a more ergonomic position
+  - Ensures consistency across all message types (AI, user, system)
+  - References: styles.css
