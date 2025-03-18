@@ -67,8 +67,9 @@ let temperatureSlider;
 let temperatureValueDisplay;
 let isSubmitInProgress = false; // Add a flag to track if submit operation is in progress
 let lastSubmittedQuestion = ''; // Track the last submitted question to prevent duplicates
-let isPageScrapingEnabled = true; // New state variable for page scraping toggle
-let isWebSearchEnabled = true; // New state variable for web search toggle
+let isPageScrapingEnabled = true; // State variable for page scraping toggle
+let isWebSearchEnabled = true; // State variable for web search toggle
+let isCurrentSiteFilterEnabled = false; // State variable for current site filter toggle
 
 // Function to update the current tab information
 async function updateCurrentTabInfo() {
@@ -172,6 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   currentConversationTimestamp = document.getElementById('currentConversationTimestamp');
   temperatureSlider = document.getElementById('temperatureSlider');
   temperatureValueDisplay = document.getElementById('temperatureValue');
+  const currentSiteFilterToggle = document.getElementById('currentSiteFilterToggle');
 
   // Ensure we start with the main view
   showMainView();
@@ -678,6 +680,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Reset isSubmitInProgress to false');
       }, 1000);
     }
+  });
+
+  // Add event listener for current site filter toggle
+  currentSiteFilterToggle.addEventListener('change', () => {
+    isCurrentSiteFilterEnabled = currentSiteFilterToggle.checked;
+    console.log('Current site filter ' + (isCurrentSiteFilterEnabled ? 'enabled' : 'disabled'));
+    
+    // Save the setting to storage
+    chrome.storage.sync.set({ isCurrentSiteFilterEnabled });
+    
+    // Refresh the sessions list with the new filter
+    loadAndShowPastSessions();
   });
 });
 
@@ -1587,8 +1601,27 @@ async function loadAndShowPastSessions() {
       return;
     }
     
+    // Filter sessions by current domain if the filter is enabled
+    let displayedSessions = sessions;
+    if (isCurrentSiteFilterEnabled && currentUrl) {
+      const currentDomain = getBaseDomain(currentUrl);
+      displayedSessions = sessions.filter(session => {
+        const sessionDomain = getBaseDomain(session.url);
+        return sessionDomain === currentDomain;
+      });
+      
+      // Show empty state if no matching sessions
+      if (displayedSessions.length === 0) {
+        const emptyState = document.createElement('div');
+        emptyState.classList.add('empty-state');
+        emptyState.textContent = 'No conversations found for current site';
+        sessionsContainer.appendChild(emptyState);
+        return;
+      }
+    }
+    
     // Add each session to the container
-    sessions.forEach(session => {
+    displayedSessions.forEach(session => {
       try {
         // Create session item container
         const item = document.createElement('div');
@@ -2311,7 +2344,7 @@ function preventDuplicateSubmission() {
 }
 
 // Load settings from storage
-chrome.storage.sync.get(['model', 'isPageScrapingEnabled', 'isWebSearchEnabled'], (data) => {
+chrome.storage.sync.get(['model', 'isPageScrapingEnabled', 'isWebSearchEnabled', 'isCurrentSiteFilterEnabled'], (data) => {
   if (data.model) {
     modelSelect.value = data.model;
   }
@@ -2323,4 +2356,8 @@ chrome.storage.sync.get(['model', 'isPageScrapingEnabled', 'isWebSearchEnabled']
   // Load web search setting (default to true if not set)
   isWebSearchEnabled = data.isWebSearchEnabled !== undefined ? data.isWebSearchEnabled : true;
   searchBtn.classList.toggle('active', isWebSearchEnabled);
+  
+  // Load current site filter setting (default to false if not set)
+  isCurrentSiteFilterEnabled = data.isCurrentSiteFilterEnabled !== undefined ? data.isCurrentSiteFilterEnabled : false;
+  currentSiteFilterToggle.checked = isCurrentSiteFilterEnabled;
 });

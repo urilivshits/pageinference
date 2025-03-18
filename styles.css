@@ -1847,4 +1847,28 @@ textarea#questionInput::-webkit-scrollbar {
   border: none !important;
   margin: 0 !important;
   padding: 0 !important;
+}
+
+/* Filter container styles */
+.filter-container {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--sessions-bg);
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-toggle input[type="checkbox"] {
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+.filter-label {
+  font-size: 0.875rem;
+  color: var(--text-color);
 } 

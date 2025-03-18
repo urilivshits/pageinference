@@ -47,6 +47,14 @@ FORMAT GUIDE - DO NOT DELETE
   - Ensures clear attribution of information sources in responses
   - References: background.js
 
+- **[Chat History Domain Filter]** Implemented website-specific filtering for chat history:
+  - Added a "Show current site only" toggle in the history view
+  - Created filtering logic based on website domain matching
+  - Persists user preference between sessions
+  - Dynamically updates the chat list when filter is toggled
+  - Shows appropriate empty states when no matching chats are found
+  - References: popup.js, popup.html, styles.css
+
 ## Resolved Bugs
 <!--
 FORMAT GUIDE - DO NOT DELETE

@@ -363,3 +363,13 @@ Notes:
   - [x] Modify the website type detection logic to handle the combined case
   - [x] Ensure the model understands to use page content first, then search when needed
   - [x] Update tasks.md with completed subtasks
+
+## User Query: "great, now lets make it so in history chats may be filtered by chats belonging to the current website (by base url most likely?) vs all chats. make it a toggle."
+- Task: Implement chat history filtering by current website
+  - [x] Add toggle UI to filter chats by current website domain
+  - [x] Create filter toggle styles to match existing UI
+  - [x] Add state variable to track filter status
+  - [x] Implement filtering logic using getBaseDomain function
+  - [x] Persist filter preference in chrome.storage
+  - [x] Show empty state when no matching chats are found 
+  - [x] Update tasks.md with completed subtasks
