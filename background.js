@@ -85,6 +85,9 @@ const DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant that answers question
 // Generic system prompt (used when page scraping is disabled)
 const GENERIC_SYSTEM_PROMPT = 'You are a helpful, accurate, and friendly AI assistant. Answer questions helpfully and truthfully. If you do not know the answer to a question, admit it. If the question is ambiguous, ask for clarification. Always be respectful and polite in your answers.';
 
+// System prompt when both page scraping and web search are enabled
+const COMBINED_SYSTEM_PROMPT = 'You are a helpful, accurate, and friendly AI assistant. You have access to both the current webpage content and the ability to search the web for information. First use the provided webpage content to answer questions about the page. If the question requires information beyond what is available in the page content, or asks for external information, use your web search capability to find the most relevant and up-to-date information. Always be clear about which source of information (page content or web search) you are using in your answers. If you do not know the answer to a question, admit it. If the question is ambiguous, ask for clarification. Always be respectful and polite in your answers.';
+
 // Handle installation and updates
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
@@ -635,15 +638,26 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
   // Detect website type with error handling
   let websiteType;
   try {
-    websiteType = skipPageContent ? 
-      { type: 'generic', systemPrompt: GENERIC_SYSTEM_PROMPT } : 
-      detectWebsiteType(trimmedContent, safeUrl);
+    if (skipPageContent) {
+      // Use generic system prompt when page scraping is disabled
+      websiteType = { type: 'generic', systemPrompt: GENERIC_SYSTEM_PROMPT };
+    } else if (!skipPageContent && useWebSearch) {
+      // When both page content and web search are enabled
+      websiteType = { type: 'combined', systemPrompt: COMBINED_SYSTEM_PROMPT };
+    } else {
+      // Default website detection
+      websiteType = detectWebsiteType(trimmedContent, safeUrl);
+    }
     console.log(`Detected website type: ${websiteType.type}`);
   } catch (typeError) {
     console.error('Website type detection failed:', typeError);
-    websiteType = skipPageContent ? 
-      { type: 'generic', systemPrompt: GENERIC_SYSTEM_PROMPT } : 
-      { type: 'general', systemPrompt: DEFAULT_SYSTEM_PROMPT };
+    if (skipPageContent) {
+      websiteType = { type: 'generic', systemPrompt: GENERIC_SYSTEM_PROMPT };
+    } else if (!skipPageContent && useWebSearch) {
+      websiteType = { type: 'combined', systemPrompt: COMBINED_SYSTEM_PROMPT };
+    } else {
+      websiteType = { type: 'general', systemPrompt: DEFAULT_SYSTEM_PROMPT };
+    }
   }
   
   // Check if web search is enabled and should use Responses API

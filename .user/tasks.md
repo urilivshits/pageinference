@@ -355,3 +355,11 @@ Notes:
   - [x] Change position from top-right to bottom-right
   - [x] Update tasks.md with completed subtasks
   - [x] Ensure consistent positioning across all message types
+
+## User Query: "there is an option to toggle both "Search Page" and "Search Web" at the same time and it is great. But we need to adjust the system messages so that if they are both toggled and hence we pass both the page content and the user query for the inference the model needs to know that it should account for the page content and also then search as requested in the user query."
+- Task: Implement combined system message for Search Page and Search Web
+  - [x] Add COMBINED_SYSTEM_PROMPT for when both features are enabled
+  - [x] Update the getOpenAiInference function to detect when both features are active
+  - [x] Modify the website type detection logic to handle the combined case
+  - [x] Ensure the model understands to use page content first, then search when needed
+  - [x] Update tasks.md with completed subtasks

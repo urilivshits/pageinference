@@ -40,6 +40,13 @@ FORMAT GUIDE - DO NOT DELETE
   - Maintains the default state as "on" for new installations
   - References: popup.js, background.js, styles.css
 
+- **[Combined Mode System Message]** Enhanced the system messaging to support simultaneous use of "Search Page" and "Search Web" features:
+  - Added specialized COMBINED_SYSTEM_PROMPT for the dual-feature scenario
+  - Modified getOpenAiInference to detect and handle the combined mode
+  - Instructs the model to first use page content then search web as needed
+  - Ensures clear attribution of information sources in responses
+  - References: background.js
+
 ## Resolved Bugs
 <!--
 FORMAT GUIDE - DO NOT DELETE
