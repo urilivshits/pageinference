@@ -330,3 +330,13 @@ Notes:
   - [x] Compare API features, performance, and cost implications
   - [x] Recommend the most suitable API with justification
   - [x] Outline implementation approach if migration is recommended
+
+## User Query: "lets switch with our search functionality to the openai's "responses" then."
+- Task: Implement switch to OpenAI Responses API for web search
+  - [x] Locate and analyze current web search implementation in the codebase
+  - [x] Update API endpoint from completions to responses in relevant files
+  - [x] Implement the web_search_preview tool in the Responses API requests
+  - [x] Adjust response handling to accommodate the new API structure
+  - [x] Update any UI components that depend on web search functionality
+  - [ ] Test the new implementation with various search queries
+  - [ ] Ensure backward compatibility with existing chat history

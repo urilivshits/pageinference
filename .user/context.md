@@ -19,6 +19,14 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
 -->
 
+- **[OpenAI Responses API Integration]** Implemented web search functionality using the OpenAI Responses API instead of the Chat Completions API. This enhancement:
+  - Provides native web search capabilities through the web_search_preview tool
+  - Displays sources with results for better information attribution
+  - Eliminates the need for custom search function implementation
+  - Offers better search quality through OpenAI's optimized search infrastructure
+  - Preserves the existing UI toggle experience for web search functionality
+  - References: background.js
+
 - **[Web Search Toggle]** Implemented toggle functionality for the "Search Web" button that enables users to turn web search on and off. This feature:
   - Provides visual feedback with button highlighting when active
   - Persists user preference between sessions
