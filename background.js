@@ -767,64 +767,64 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
     console.log(`API CALL [${requestId}]: Using Chat Completions API`);
     try {
       // Prepare request body for Chat Completions
-      const requestBody = {
+    const requestBody = {
         model: safeModel,
-        messages: [
-          {
-            role: 'system',
-            content: websiteType.systemPrompt
-          },
-          {
-            role: 'user',
-            content: skipPageContent ? 
-              safeQuestion : 
-              `${safeQuestion}\n\nHere is the content of a webpage (URL: ${safeUrl}) to help answer your question:\n\n${trimmedContent}`
-          }
-        ],
-        temperature: temperature,
-        max_tokens: 2000
-      };
-      
+      messages: [
+        {
+          role: 'system',
+          content: websiteType.systemPrompt
+        },
+        {
+          role: 'user',
+          content: skipPageContent ? 
+            safeQuestion : 
+            `${safeQuestion}\n\nHere is the content of a webpage (URL: ${safeUrl}) to help answer your question:\n\n${trimmedContent}`
+        }
+      ],
+      temperature: temperature,
+      max_tokens: 2000
+    };
+    
       // Only include web search tools if using the search-enabled model and web search feature is on
       if (safeModel === SEARCH_MODEL && useWebSearch) {
-        console.log(`API CALL [${requestId}]: Adding web search tools for ${SEARCH_MODEL}`);
-        requestBody.tools = [
-          {
-            type: 'function',
-            function: {
-              name: 'web_search',
-              description: 'Search the web for real-time information',
-              parameters: {
-                type: 'object',
-                properties: {
-                  query: {
-                    type: 'string',
-                    description: 'The search query'
-                  }
-                },
-                required: ['query']
-              }
+      console.log(`API CALL [${requestId}]: Adding web search tools for ${SEARCH_MODEL}`);
+      requestBody.tools = [
+        {
+          type: 'function',
+          function: {
+            name: 'web_search',
+            description: 'Search the web for real-time information',
+            parameters: {
+              type: 'object',
+              properties: {
+                query: {
+                  type: 'string',
+                  description: 'The search query'
+                }
+              },
+              required: ['query']
             }
           }
-        ];
-      }
-      
+        }
+      ];
+    }
+    
       console.log(`API CALL [${requestId}]: Making fetch request to OpenAI Chat Completions API with model ${safeModel}`);
       console.log('Request body (completions):', JSON.stringify(requestBody, null, 2).substring(0, 500) + '...');
-      
+    
       // Make the API request to Chat Completions
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      console.log(`API CALL [${requestId}]: Response received, status: ${response.status} ${response.statusText}`);
-      
-      if (!response.ok) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    console.log(`API CALL [${requestId}]: Response received, status: ${response.status} ${response.statusText}`);
+    
+    if (!response.ok) {
         const errorText = await response.text();
         console.error(`API CALL [${requestId}]: Error response:`, errorText);
         let errorMessage = `Error (${response.status}): `;
@@ -833,61 +833,61 @@ async function getOpenAiInference(apiKey, pageContent, question, model = DEFAULT
           const errorData = JSON.parse(errorText);
           errorMessage += errorData.error && errorData.error.message ? 
             errorData.error.message : 'Unknown error from OpenAI API';
-        } catch (e) {
+      } catch (e) {
           errorMessage += errorText.substring(0, 100) + (errorText.length > 100 ? '...' : '');
-        }
-        
+      }
+      
         return errorMessage;
-      }
+    }
+    
+    const responseText = await response.text();
+    let data;
       
-      const responseText = await response.text();
-      let data;
+    try {
+      data = JSON.parse(responseText);
+      console.log(`API CALL [${requestId}]: Successfully parsed JSON response`);
+    } catch (error) {
+      console.error(`API CALL [${requestId}]: Error parsing response as JSON:`, error);
+      return `Error: The API returned an invalid JSON response: ${responseText.substring(0, 100)}...`;
+    }
+    
+    // Check for errors in the parsed response
+    if (data.error) {
+      console.error(`API CALL [${requestId}]: Error in parsed response:`, data.error);
+      return `Error: ${data.error.message || 'Unknown API error'}`;
+    }
+    
+    // Handle tool calls in the response
+    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.tool_calls) {
+      console.log(`API CALL [${requestId}]: Response contains tool calls`);
+      const toolCalls = data.choices[0].message.tool_calls;
       
-      try {
-        data = JSON.parse(responseText);
-        console.log(`API CALL [${requestId}]: Successfully parsed JSON response`);
-      } catch (error) {
-        console.error(`API CALL [${requestId}]: Error parsing response as JSON:`, error);
-        return `Error: The API returned an invalid JSON response: ${responseText.substring(0, 100)}...`;
-      }
-      
-      // Check for errors in the parsed response
-      if (data.error) {
-        console.error(`API CALL [${requestId}]: Error in parsed response:`, data.error);
-        return `Error: ${data.error.message || 'Unknown API error'}`;
-      }
-      
-      // Handle tool calls in the response
-      if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.tool_calls) {
-        console.log(`API CALL [${requestId}]: Response contains tool calls`);
-        const toolCalls = data.choices[0].message.tool_calls;
+      // Handle web search tool call
+      if (toolCalls.some(call => call.function && call.function.name === 'web_search')) {
+        const searchCall = toolCalls.find(call => call.function && call.function.name === 'web_search');
         
-        // Handle web search tool call
-        if (toolCalls.some(call => call.function && call.function.name === 'web_search')) {
-          const searchCall = toolCalls.find(call => call.function && call.function.name === 'web_search');
+        try {
+          const searchArgs = JSON.parse(searchCall.function.arguments);
+          const searchQuery = searchArgs.query;
           
-          try {
-            const searchArgs = JSON.parse(searchCall.function.arguments);
-            const searchQuery = searchArgs.query;
-            
-            console.log(`API CALL [${requestId}]: Web search requested for query: "${searchQuery}"`);
-            return `Searching the web for: "${searchQuery}"...\n\nPlease wait a moment for search results.`;
-          } catch (error) {
-            console.error(`API CALL [${requestId}]: Error parsing web search arguments:`, error);
-            return 'Error: Failed to parse web search query from API response.';
-          }
+          console.log(`API CALL [${requestId}]: Web search requested for query: "${searchQuery}"`);
+          return `Searching the web for: "${searchQuery}"...\n\nPlease wait a moment for search results.`;
+        } catch (error) {
+          console.error(`API CALL [${requestId}]: Error parsing web search arguments:`, error);
+          return 'Error: Failed to parse web search query from API response.';
         }
       }
-      
+    }
+    
       // Get the response text from the data
       if (data.choices && data.choices[0] && data.choices[0].message) {
         console.log(`API CALL [${requestId}]: Response message found in data`);
         return data.choices[0].message.content || 'No content in response';
-      } else {
+    } else {
         console.error(`API CALL [${requestId}]: Unable to find response message in data`);
         return 'Error: No response found in API data';
-      }
-    } catch (error) {
+    }
+  } catch (error) {
       console.error(`API CALL [${requestId}]: Error:`, error);
       return `Error: ${error.message || 'Unknown error occurred'}`;
     }
