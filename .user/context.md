@@ -9,6 +9,8 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Framework Selection]** Adopted [Framework Name] for [component] to improve [benefit].
 -->
 
+- **[API Selection]** Evaluated OpenAI Completions API versus Responses API for web search functionality, determining that Responses API offers superior built-in web search capabilities, simplified integration, and enhanced tools. Completions API requires custom function implementation for web search while Responses API provides a native `web_search_preview` tool that directly connects to OpenAI's search infrastructure without requiring custom implementation.
+
 ## Implemented Features
 <!--
 FORMAT GUIDE - DO NOT DELETE

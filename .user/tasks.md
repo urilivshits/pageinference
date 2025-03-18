@@ -321,3 +321,12 @@ Notes:
   - [x] Ensure bug fix documentation follows the required format
   - [x] Update task.md with completed subtasks
   - [x] Update context.md with bug fix details if not already done
+
+## User Query: "now lets check whether for the search web functionality its better to use openai completions or their new api "responses"?"
+- Task: Evaluate OpenAI APIs for web search functionality
+  - [x] Research differences between OpenAI completions and responses APIs
+  - [x] Analyze current implementation of web search functionality
+  - [x] Determine key requirements for web search in this application
+  - [x] Compare API features, performance, and cost implications
+  - [x] Recommend the most suitable API with justification
+  - [x] Outline implementation approach if migration is recommended
