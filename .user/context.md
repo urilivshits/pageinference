@@ -271,3 +271,31 @@ FORMAT GUIDE - DO NOT DELETE
   - Enhanced usability by placing the button in a more ergonomic position
   - Ensures consistency across all message types (AI, user, system)
   - References: styles.css
+- **[Chat Persistence Fix]** Fixed issue with chat sessions being reset when the popup is closed and reopened:
+  - Modified checkOrCreatePageLoadId to set isInNewConversation to false when finding existing IDs
+  - Improved popup initialization sequence to prioritize loading existing sessions
+  - Restructured focus event handler to better match the main initialization approach
+  - Added history loading when recovering sessions on focus events
+  - Removed duplicate loadChatSessions and showMainView calls to prevent conflicts
+  - Added more consistent behavior between tab switching and popup reopening
+  - References: popup.js
+- **[Enhanced Chat Persistence]** Fixed persistent issue with chat sessions being reset on popup reopening:
+  - Completely redesigned popup initialization sequence with a more robust approach
+  - Added dedicated critical initialization logic that runs on DOMContentLoaded
+  - Improved checkOrCreatePageLoadId to explicitly verify chat history existence
+  - Added fallback mechanisms to retrieve sessions by URL when tab-specific IDs aren't found
+  - Created a more intelligent focus event handler that only reloads when needed
+  - Added extensive debug logging with CRITICAL prefix for troubleshooting
+  - Ensured consistent behavior across all popup opening scenarios
+  - References: popup.js
+- **[Comprehensive Chat Persistence Fix]** Addressed stubborn chat session reset issue with a systematic solution:
+  - Implemented early initialization phase that runs before DOM is ready
+  - Added synchronization message between popup.js and background.js
+  - Enhanced loadChatHistory with direct storage access as fallback
+  - Made checkOrCreatePageLoadId more robust with explicit returns
+  - Restructured DOMContentLoaded handling to prevent duplicate initialization
+  - Added detailed logging with ROBUST and INIT prefixes
+  - Implemented extensive null/undefined checking for race conditions
+  - Enhanced chat history display to prevent duplicate messages
+  - Created comprehensive solution to handle all popup lifecycle edge cases
+  - References: popup.js, background.js

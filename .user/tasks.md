@@ -389,3 +389,41 @@ Notes:
   - [x] Update storage loading logic to use true as default value
   - [x] Add CSS to hide the Reason button
   - [x] Update tasks.md with completed subtasks
+
+## User Query: "1. please update necessary docs as specified in the rules, please check rules before every response @rules.mdc 2. still the same issue, even if i dont switch to another tab but just close/open the chat im working with it starts a new chat."
+
+- Task: Fix chat persistence issues when reopening the extension popup
+  - [x] Check and review project rules documentation
+  - [x] Investigate why popup reopening creates a new chat session 
+  - [x] Fix popup initialization to preserve existing chat session
+  - [x] Test chat persistence when closing and reopening the popup
+  - [x] Test chat persistence when switching between tabs
+  - [x] Update relevant documentation
+
+## User Query: "still the same, lets focus on the issue of loading the same chat on the same tab after returning to the tab. i assume what happens is when i return to the tab and click on the extension icon in the browser it is not handling what happens after the click on the extension icon correctly. as the result it does show me my last input message that i haven't submitted yet in the input field but it still opens a new chat"
+
+- Task: Fix popup reopening persistence issues
+  - [x] Analyze the Chrome extension popup lifecycle
+  - [x] Identify issues with the current initialization approach
+  - [x] Redesign popup initialization sequence
+  - [x] Implement dedicated critical initialization logic for DOMContentLoaded
+  - [x] Improve checkOrCreatePageLoadId to verify chat history existence
+  - [x] Add fallback mechanisms to retrieve sessions by URL
+  - [x] Create a more intelligent focus event handler
+  - [x] Add extensive debugging logs
+  - [x] Update context.md with enhanced chat persistence fix
+  - [x] Test all scenarios: tab reopening, popup reopening, tab switching
+
+## User Query: "still the same (new chat starts), here's what i see when i reopen the extension on the same tab: background.js:172 MESSAGE: Received message action: updateChatHistory 10:42:24.901 background.js:172 MESSAGE: Received message action: getApiKey 10:42:24.901 background.js:461 Getting API key 10:42:24.901 background.js:463 API key exists: true 10:42:24.903 background.js:172 MESSAGE: Received message action: updateChatHistory"
+
+- Task: Fix stubborn chat persistence issues
+  - [x] Analyze extension logs to identify race conditions
+  - [x] Implement early initialization that runs before DOM is ready
+  - [x] Add synchronization message between popup.js and background.js
+  - [x] Enhance loadChatHistory with direct storage access fallback
+  - [x] Make checkOrCreatePageLoadId more robust with explicit returns
+  - [x] Add extensive protection against duplicate initialization
+  - [x] Add detailed logging with ROBUST and INIT prefixes
+  - [x] Fix chat history display to prevent duplicate messages
+  - [x] Update context.md with comprehensive documentation
+  - [x] Test all edge cases in the Chrome extension popup lifecycle

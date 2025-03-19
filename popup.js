@@ -72,6 +72,41 @@ let isPageScrapingEnabled = true; // State variable for page scraping toggle
 let isWebSearchEnabled = true; // State variable for web search toggle
 let isCurrentSiteFilterEnabled = true; // State variable for current site filter toggle - default to true
 
+// Add a global initialization flag for debugging
+let popupInitialized = false;
+
+// This is a self-executing function that runs immediately to set up persistent state
+// before any DOMContentLoaded events occur
+(async function setupPersistentState() {
+  console.log('INIT: Early initialization running before DOM is ready');
+  try {
+    // Get current tab (this will work even before DOM is loaded)
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs && tabs[0]) {
+      // Get basic tab information
+      const tabId = tabs[0].id;
+      const url = tabs[0].url;
+      const tabStorageKey = `page_load_${tabId}_${url}`;
+      
+      console.log('INIT: Early tab detection:', tabId, url);
+      
+      // Check for existing page load ID - we just want to ensure it exists
+      // but won't process it yet (that happens in DOMContentLoaded)
+      const { [tabStorageKey]: existingTabPageLoadId } = await chrome.storage.local.get(tabStorageKey);
+      
+      if (existingTabPageLoadId) {
+        console.log('INIT: Found existing page load ID early:', existingTabPageLoadId);
+      } else {
+        console.log('INIT: No existing page load ID found during early initialization');
+      }
+    } else {
+      console.warn('INIT: No active tab found during early initialization');
+    }
+  } catch (error) {
+    console.error('INIT: Error during early initialization:', error);
+  }
+})();
+
 // Function to update the current tab information
 async function updateCurrentTabInfo() {
   console.log('Updating current tab information');
@@ -82,8 +117,39 @@ async function updateCurrentTabInfo() {
       currentUrl = tabs[0].url;
       currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
       
-      // Check for existing page load ID or create a new one
-      await checkOrCreatePageLoadId();
+      // First check for existing page load ID for this tab/URL combo
+      const storageKey = `page_load_${currentTabId}_${currentUrl}`;
+      const { [storageKey]: existingPageLoadId } = await chrome.storage.local.get(storageKey);
+      
+      if (existingPageLoadId) {
+        // Use existing page load ID
+        console.log(`Found existing page load ID: ${existingPageLoadId}`);
+        currentPageLoadId = existingPageLoadId;
+        isInNewConversation = false;
+      } else {
+        // If no session for this specific tab instance, check for previous sessions with this URL
+        console.log('No existing page load ID found, checking for previous sessions');
+        
+        // Try to find most recent session for this URL
+        const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+        const matchingSession = chatSessions.find(s => s.url === currentUrl);
+        
+        if (matchingSession) {
+          console.log('Found matching previous session:', matchingSession.pageLoadId);
+          // Use the matching session's page load ID
+          currentPageLoadId = matchingSession.pageLoadId;
+          isInNewConversation = false;
+          sessionUrl = matchingSession.url;
+          
+          // Update storage to associate this tab with the session
+          await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+          console.log(`Associated current tab with existing session: ${currentPageLoadId}`);
+        } else {
+          // Only create a new page load ID if we have no history for this URL
+          await checkOrCreatePageLoadId();
+        }
+      }
+      
       console.log('Tab info updated successfully:', currentTabId, currentUrl);
       
       // Load chat history for this tab/URL/pageLoadId
@@ -115,7 +181,14 @@ async function updateCurrentTabInfo() {
 
 // Event listeners for all document elements
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('DOMContentLoaded fired');
+  console.log('CRITICAL: DOMContentLoaded fired, starting popup initialization sequence');
+  
+  if (popupInitialized) {
+    console.warn('CRITICAL: DOMContentLoaded fired more than once, skipping duplicate initialization');
+    return;
+  }
+  
+  popupInitialized = true;
   
   // Get DOM elements
   const questionInput = document.getElementById('questionInput');
@@ -176,38 +249,184 @@ document.addEventListener('DOMContentLoaded', async () => {
   temperatureValueDisplay = document.getElementById('temperatureValue');
   const currentSiteFilterToggle = document.getElementById('currentSiteFilterToggle');
 
-  // Ensure we start with the main view
-  showMainView();
-  updateUIState();
+  try {
+    // Critical initialization sequence
+    console.log('CRITICAL: Beginning Chrome popup initialization sequence');
+    
+    // 1. First get the active tab info which we need for everything
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tabs || !tabs[0]) {
+      console.error('CRITICAL: No active tab found during popup initialization');
+      throw new Error('No active tab found');
+    }
+    
+    // Set the basic tab info
+    currentTabId = tabs[0].id;
+    currentUrl = tabs[0].url;
+    currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
+    console.log('CRITICAL: Got active tab info:', currentTabId, currentUrl);
+    
+    // 2. Check specifically for an existing pageLoadId for this exact tab
+    const tabStorageKey = `page_load_${currentTabId}_${currentUrl}`;
+    const { [tabStorageKey]: existingTabPageLoadId } = await chrome.storage.local.get(tabStorageKey);
+    
+    console.log('CRITICAL: Looking for pageLoadId with key:', tabStorageKey);
+    console.log('CRITICAL: Existing pageLoadId result:', existingTabPageLoadId);
+    
+    if (existingTabPageLoadId) {
+      // We have a specific ID for this tab - use it
+      currentPageLoadId = existingTabPageLoadId;
+      isInNewConversation = false;
+      console.log('CRITICAL: Found existing page load ID for this tab:', currentPageLoadId);
+      
+      // Check if there's chat history for this ID
+      const chatHistoryKey = getChatHistoryKey(currentUrl, existingTabPageLoadId);
+      console.log('CRITICAL: Checking history with key:', chatHistoryKey);
+      const { [chatHistoryKey]: history = [] } = await chrome.storage.local.get(chatHistoryKey);
+      
+      if (history && history.length > 0) {
+        console.log(`CRITICAL: Found ${history.length} messages for this session`);
+        isInNewConversation = false;
+        
+        // 3. Load the chat history for this ID
+        await loadChatHistory();
+        console.log('CRITICAL: Loaded chat history');
+      } else {
+        console.log('CRITICAL: No history found for existing page load ID');
+      }
+      
+      // 4. Load any saved input text
+      await loadSavedInputText();
+    } else {
+      // No existing ID for this specific tab
+      console.log('CRITICAL: No existing page load ID found for this tab, checking sessions');
+      
+      // 5. Check if we have any previous sessions for this URL
+      const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+      console.log('CRITICAL: Found', chatSessions.length, 'total chat sessions');
+      
+      // Find the most recent session for this URL
+      const matchingSession = chatSessions.find(s => s.url === currentUrl);
+      
+      if (matchingSession) {
+        // Found a matching session for this URL
+        console.log('CRITICAL: Found matching session for this URL:', matchingSession.pageLoadId);
+        
+        // Use this session
+        currentPageLoadId = matchingSession.pageLoadId;
+        isInNewConversation = false;
+        
+        // Write this page load ID to storage to associate it with this tab
+        await chrome.storage.local.set({ [tabStorageKey]: matchingSession.pageLoadId });
+        console.log('CRITICAL: Saved association between tab and existing session');
+        
+        // Load the matching session
+        await loadAndDisplayChatSession(matchingSession.pageLoadId, null, false);
+        console.log('CRITICAL: Loaded matching session');
+        
+        // Set the sessionUrl to ensure messages are saved to the correct chat history
+        sessionUrl = matchingSession.url;
+      } else {
+        // No matching sessions at all, create a new one
+        console.log('CRITICAL: No matching sessions found, creating new session');
+        
+        // Generate a new page load ID
+        currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        isInNewConversation = true;
+        
+        // Save it for this tab/URL
+        await chrome.storage.local.set({ [tabStorageKey]: currentPageLoadId });
+        console.log('CRITICAL: Created new page load ID:', currentPageLoadId);
+        
+        // Initialize empty chat
+        await saveChatSession(currentTabId, currentUrl, currentPageLoadId, [], '');
+      }
+    }
+    
+    // Ensure we're showing the right view
+    showMainView();
+    updateUIState();
+    
+    console.log('CRITICAL: Popup initialization sequence completed successfully');
+    
+    // Important: after the main initialization is complete, attach a listener
+    // to detect if background.js is ready and sync state with it
+    chrome.runtime.sendMessage({ action: 'popupInitialized', pageLoadId: currentPageLoadId }, 
+      (response) => {
+        if (response && response.success) {
+          console.log('CRITICAL: Background script acknowledged initialization');
+        }
+      }
+    );
+  } catch (error) {
+    console.error('CRITICAL ERROR during popup initialization:', error);
+    // Fallback to simpler initialization if something went wrong
+    await updateCurrentTabInfo();
+  }
 
-  // Initial tab information update
-  await updateCurrentTabInfo();
-
-  // Add focus event listener to the window to update tab information when popup regains focus
+  // Add focus event listener to handle tab focus changes after initial load
   window.addEventListener('focus', async () => {
-    console.log('Window regained focus - updating tab info WITHOUT reloading chat history');
+    console.log('Window regained focus - checking for session changes');
     try {
+      // Get current tab info
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tabs[0]) {
+      if (!tabs || !tabs[0]) {
+        console.error('No active tab found on focus event');
+        return;
+      }
+      
+      // Check if we've switched to a different tab/url
+      if (tabs[0].id !== currentTabId || tabs[0].url !== currentUrl) {
+        console.log('Tab/URL changed, updating session');
+        
+        // Update basic info
         currentTabId = tabs[0].id;
-        currentUrl = tabs[0].url;
+        currentUrl = tabs[0].url; 
         currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
         
-        // Check for existing page load ID or create a new one
-        await checkOrCreatePageLoadId();
-        console.log('Tab info updated on focus event:', currentTabId, currentUrl);
+        // Use the same initialization logic as before
+        const tabStorageKey = `page_load_${currentTabId}_${currentUrl}`;
+        const { [tabStorageKey]: existingTabPageLoadId } = await chrome.storage.local.get(tabStorageKey);
         
-        // Update UI state but DON'T reload chat history to prevent duplication
-        updateUIState();
-        
-        // Load saved input text
-        await loadSavedInputText();
+        if (existingTabPageLoadId) {
+          // We have a specific ID for this tab - use it
+          currentPageLoadId = existingTabPageLoadId;
+          isInNewConversation = false;
+          console.log('Found existing page load ID on focus event:', currentPageLoadId);
+          
+          // Load the chat history for this ID
+          await loadChatHistory();
+          
+          // Load any saved input text
+          await loadSavedInputText();
+          
+          // Update UI
+          updateConversationInfo();
+          showMainView();
+          updateUIState();
+        } else {
+          // Check for matching sessions for this URL
+          const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+          const matchingSession = chatSessions.find(s => s.url === currentUrl);
+          
+          if (matchingSession) {
+            console.log('Found matching session on focus event:', matchingSession.pageLoadId);
+            await loadAndDisplayChatSession(matchingSession.pageLoadId, null, false);
+          } else {
+            console.log('No matching session found on focus, creating new');
+            await checkOrCreatePageLoadId();
+            showMainView();
+            updateUIState();
+          }
+        }
+      } else {
+        console.log('Same tab/URL on focus event, no action needed');
       }
     } catch (error) {
-      console.error('Error updating tab info on focus event:', error);
+      console.error('Error handling focus event:', error);
     }
   });
-  
+
   // Load saved settings
   const { apiKey } = await chrome.runtime.sendMessage({ action: 'getApiKey' });
   if (apiKey) {
@@ -393,11 +612,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Load past sessions in background without showing them
-  await loadChatSessions();
-  
-  // Ensure we're in main view
-  showMainView();
+  // Remove duplicate load and display calls that were moved to early initialization
+  // await loadChatSessions();  
+  // showMainView();
 
   // Toggle API key visibility
   toggleApiKeyBtn.addEventListener('click', () => {
@@ -827,29 +1044,80 @@ async function checkOrCreatePageLoadId() {
   // If we already have a currentPageLoadId and we're not in a new conversation,
   // keep using the same ID to continue the conversation in the same chat
   if (currentPageLoadId && !isInNewConversation) {
-    console.log(`Continuing with existing page load ID: ${currentPageLoadId}`);
-    return;
+    console.log(`ROBUST: Continuing with existing page load ID: ${currentPageLoadId}`);
+    return currentPageLoadId;
   }
 
   const storageKey = `page_load_${currentTabId}_${currentUrl}`;
+  console.log(`ROBUST: Checking for existing page load ID with key: ${storageKey}`);
   const { [storageKey]: existingPageLoadId } = await chrome.storage.local.get(storageKey);
   
   if (existingPageLoadId) {
     // If we already have a pageLoadId, use it
+    console.log(`ROBUST: Found existing page load ID in storage: ${existingPageLoadId}`);
     currentPageLoadId = existingPageLoadId;
-    console.log(`Using existing page load ID: ${currentPageLoadId}`);
+    
+    // Set isInNewConversation to false when we find an existing ID
+    // This ensures we continue the existing conversation rather than starting a new one
+    isInNewConversation = false;
+    
+    // Check if there's chat history for this ID
+    const chatHistoryKey = getChatHistoryKey(currentUrl, existingPageLoadId);
+    console.log(`ROBUST: Checking for chat history with key: ${chatHistoryKey}`);
+    const { [chatHistoryKey]: history = [] } = await chrome.storage.local.get(chatHistoryKey);
+    
+    // If there's history, definitely not a new conversation
+    if (history && history.length > 0) {
+      console.log(`ROBUST: Found ${history.length} messages for this session, setting as active conversation`);
+      isInNewConversation = false;
+    }
+    
+    // Return the existing ID
+    return existingPageLoadId;
   } else {
-    // Create a new pageLoadId for this page load
-    currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // If no session for this specific tab instance, check for previous sessions with this URL
+    console.log('ROBUST: No existing page load ID found, checking for previous sessions');
     
-    // Store it for future reference
-    await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+    // Try to find most recent session for this URL
+    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+    console.log(`ROBUST: Found ${chatSessions.length} total chat sessions`);
     
-    console.log(`Created new page load ID: ${currentPageLoadId}`);
+    const matchingSession = chatSessions.find(s => s.url === currentUrl);
     
-    // Clear any existing input as this is a fresh page load
-    questionInput.value = '';
-    await saveInputText();
+    if (matchingSession) {
+      console.log('ROBUST: Found matching previous session:', matchingSession.pageLoadId);
+      // Use the matching session's page load ID
+      currentPageLoadId = matchingSession.pageLoadId;
+      isInNewConversation = false;
+      sessionUrl = matchingSession.url;
+      
+      // Update storage to associate this tab with the session
+      await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+      console.log(`ROBUST: Associated current tab with existing session: ${currentPageLoadId}`);
+      
+      // Return the matched session ID
+      return currentPageLoadId;
+    } else {
+      // Only create a new page load ID if we have no history for this URL
+      currentPageLoadId = `pageload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      // Store it for future reference
+      await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
+      
+      console.log(`ROBUST: Created new page load ID: ${currentPageLoadId}`);
+      
+      // This is definitely a new conversation
+      isInNewConversation = true;
+      
+      // Clear any existing input as this is a fresh page load
+      if (questionInput) {
+        questionInput.value = '';
+        await saveInputText();
+      }
+      
+      // Return the new ID
+      return currentPageLoadId;
+    }
   }
 }
 
@@ -1440,9 +1708,25 @@ function getChatHistoryKey(url = null, pageLoadId = currentPageLoadId) {
  * Loads chat history for the current tab/URL/pageLoadId
  */
 async function loadChatHistory() {
-  if (!currentTabId || !currentUrl || !currentPageLoadId) {
-    console.warn('Cannot load chat history: missing tab ID, URL, or page load ID');
+  if (!currentTabId || !currentUrl) {
+    console.warn('Cannot load chat history: missing tab ID or URL');
     return;
+  }
+  
+  // Critical: If we don't have a page load ID yet, check storage directly
+  if (!currentPageLoadId) {
+    console.warn('loadChatHistory: No currentPageLoadId, attempting to retrieve from storage');
+    const tabStorageKey = `page_load_${currentTabId}_${currentUrl}`;
+    const { [tabStorageKey]: storedPageLoadId } = await chrome.storage.local.get(tabStorageKey);
+    
+    if (storedPageLoadId) {
+      console.log(`loadChatHistory: Retrieved page load ID from storage: ${storedPageLoadId}`);
+      currentPageLoadId = storedPageLoadId;
+      isInNewConversation = false;
+    } else {
+      console.error('Cannot load chat history: missing page load ID and none found in storage');
+      return;
+    }
   }
   
   try {
@@ -1459,43 +1743,31 @@ async function loadChatHistory() {
     console.log(`Found ${history ? history.length : 0} messages in chat history`);
     
     if (history && history.length > 0) {
-      // Instead of using message count, we'll track whether we've loaded history before
-      // This way we only load history on first load, but not on subsequent updates
-      // which prevents duplicate message rendering
+      // Clear the current chat display
+      chatHistory.innerHTML = '';
       
-      // Create a flag key for this page load to track if history has been loaded
-      const historyLoadedKey = `history_loaded_${currentPageLoadId}`;
-      const { [historyLoadedKey]: historyLoaded } = await chrome.storage.local.get(historyLoadedKey);
+      // Create a set to track processed timestamps to avoid duplicates
+      const processedTimestamps = new Set();
       
-      if (!historyLoaded) {
-        console.log('First time loading history for this session, displaying messages');
+      // Add each message to the chat
+      for (const message of history) {
+        // Skip if timestamp already processed (avoid duplicates)
+        if (message.timestamp && processedTimestamps.has(message.timestamp)) {
+          console.log(`Skipping duplicate message with timestamp ${message.timestamp}`);
+          continue;
+        }
         
-        // Display chat history from storage
-        history.forEach(message => {
-          displayMessage(message.role, message.content, message.timestamp);
-        });
+        // Add to processed set
+        if (message.timestamp) {
+          processedTimestamps.add(message.timestamp);
+        }
         
-        console.log(`Displayed ${history.length} messages from history`);
-        
-        // Mark history as loaded for this session
-        await chrome.storage.local.set({ [historyLoadedKey]: true });
-      } else {
-        console.log('History already loaded for this session, skipping display to avoid duplication');
+        // Display the message
+        displayMessage(message.role, message.content, message.timestamp);
       }
       
-      // Scroll to bottom with a small delay to ensure DOM is updated
-      setTimeout(() => {
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-      }, 100);
-      
-      // Update background script's in-memory history
-      await chrome.runtime.sendMessage({
-        action: 'updateChatHistory',
-        tabId: currentTabId,
-        url: currentUrl,
-        pageLoadId: currentPageLoadId,
-        history: history
-      });
+      // Scroll to bottom
+      chatHistory.scrollTop = chatHistory.scrollHeight;
     }
   } catch (error) {
     console.error('Error loading chat history:', error);

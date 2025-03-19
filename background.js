@@ -174,6 +174,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('MESSAGE: Received message without type or action:', request);
   }
   
+  // Handle popup initialized message
+  if (request.action === 'popupInitialized') {
+    console.log('MESSAGE: Popup initialized with pageLoadId:', request.pageLoadId);
+    // Acknowledge receipt to help synchronize state
+    sendResponse({ success: true, timestamp: Date.now() });
+    return true;
+  }
+  
   if (request.type === 'processTab') {
     console.log('MESSAGE: Handling processTab request');
     processTabs()
