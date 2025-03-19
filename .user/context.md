@@ -299,3 +299,9 @@ FORMAT GUIDE - DO NOT DELETE
   - Enhanced chat history display to prevent duplicate messages
   - Created comprehensive solution to handle all popup lifecycle edge cases
   - References: popup.js, background.js
+- **[Input Persistence Fix]** Resolved issue with user input being restored when reopening the extension after successful inference:
+  - Added new clearSavedInputText function to remove stored input from Chrome storage
+  - Called clearSavedInputText after successful inference in both inference paths
+  - Ensured stored input text is properly cleaned up after successful submission
+  - Prevents previously submitted questions from reappearing in the input field
+  - References: popup.js

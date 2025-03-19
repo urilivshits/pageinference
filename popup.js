@@ -865,6 +865,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Save the chat session with the correct history array
             await saveChatSession(currentTabId, currentUrl, currentPageLoadId, currentChatHistory, question);
+            
+            // Clear saved input text since we've successfully processed it
+            await clearSavedInputText();
           } catch (error) {
             console.error('Error processing inference request:', error);
             showError(error.message || 'An error occurred');
@@ -1303,6 +1306,16 @@ async function saveInputText() {
     const inputText = questionInput.value;
     const storageKey = `input_text_${currentTabId}_${currentUrl}_${currentPageLoadId}`;
     await chrome.storage.local.set({ [storageKey]: inputText });
+  }
+}
+
+/**
+ * Clear saved input text from storage
+ */
+async function clearSavedInputText() {
+  if (currentTabId && currentUrl && currentPageLoadId) {
+    const storageKey = `input_text_${currentTabId}_${currentUrl}_${currentPageLoadId}`;
+    await chrome.storage.local.remove(storageKey);
   }
 }
 
@@ -2552,6 +2565,16 @@ async function continueWithScrapeResponse(scraperResponse, question) {
     
     // Reset processing flag
     isProcessing = false;
+    
+    // Get the chat history array from storage for saving
+    const chatHistoryKey = getChatHistoryKey();
+    const { [chatHistoryKey]: currentChatHistory = [] } = await chrome.storage.local.get(chatHistoryKey);
+    
+    // Save the chat session with the correct history array
+    await saveChatSession(currentTabId, currentUrl, currentPageLoadId, currentChatHistory, question);
+    
+    // Clear saved input text since we've successfully processed it
+    await clearSavedInputText();
   } catch (error) {
     console.error('Error in inference:', error);
     showError(error.message || 'An error occurred during inference');
