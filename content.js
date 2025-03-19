@@ -86,6 +86,67 @@ function setupMessageListener() {
   } catch (e) {
     console.warn('Failed to send initialization confirmation:', e);
   }
+
+  // Track Ctrl key state and communicate to background script
+  let ctrlKeyPressed = false;
+  let keyEventTimeout = null;
+
+  // Function to send Ctrl key state with less delay when pressed
+  function sendCtrlKeyState(isPressed) {
+    clearTimeout(keyEventTimeout);
+    
+    // Use zero delay when pressing (true) but short delay when releasing (false)
+    const delay = isPressed ? 0 : 10;
+    
+    keyEventTimeout = setTimeout(() => {
+      chrome.runtime.sendMessage({ 
+        action: 'ctrlKeyState', 
+        isPressed: isPressed 
+      }, (response) => {
+        console.log(`Content script sent Ctrl key=${isPressed}, response:`, response);
+      });
+    }, delay);
+  }
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Control') {
+      if (!ctrlKeyPressed) {
+        ctrlKeyPressed = true;
+        // Send immediate message when Ctrl is pressed
+        sendCtrlKeyState(true);
+      }
+    }
+  });
+
+  document.addEventListener('keyup', function(event) {
+    if (event.key === 'Control') {
+      ctrlKeyPressed = false;
+      // Send slightly delayed message when Ctrl is released
+      sendCtrlKeyState(false);
+    }
+  });
+
+  // Hold state longer on window blur to give enough time for click to process
+  window.addEventListener('blur', function() {
+    if (ctrlKeyPressed) {
+      // Wait longer before resetting on blur to ensure click completes
+      setTimeout(() => {
+        ctrlKeyPressed = false;
+        chrome.runtime.sendMessage({ 
+          action: 'ctrlKeyState', 
+          isPressed: false 
+        }, (response) => {
+          console.log('Content script sent Ctrl key reset on blur, response:', response);
+        });
+      }, 500); // Longer delay on blur
+    }
+  });
+
+  // Send initial state
+  chrome.runtime.sendMessage({ 
+    action: 'ctrlKeyState', 
+    isPressed: false 
+  });
 }
 
 // Initialize immediately

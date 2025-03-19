@@ -21,6 +21,77 @@ const chatHistories = {};
 // Track content script initialization status per tab
 const contentScriptStatus = {};
 
+// Track last icon click timestamp for double-click detection
+let lastClickTimestamp = 0;
+const DOUBLE_CLICK_THRESHOLD = 500; // ms
+
+// Setup to detect ctrl key via message passing from content script
+let lastCtrlKeyState = false;
+let ctrlClickPending = false; // New flag to track a pending Ctrl+Click
+
+// Listen for messages from content scripts regarding key state
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'ctrlKeyState') {
+    // Skip if we're in a click processing window
+    if (request.isPressed === false && Date.now() - lastClickTimestamp < 500) {
+      console.log('BACKGROUND: Ignoring Ctrl key up event during click processing');
+      sendResponse({ success: true, ignored: true });
+      return true;
+    }
+    
+    // Important: If Ctrl key becomes pressed, set ctrlClickPending to true directly
+    if (request.isPressed === true && lastCtrlKeyState === false) {
+      ctrlClickPending = true;
+      console.log('BACKGROUND: Setting ctrlClickPending to true because Ctrl was just pressed');
+      
+      // Auto-clear the flag after 5 seconds to prevent it from staying active too long
+      setTimeout(() => {
+        if (ctrlClickPending) {
+          console.log('BACKGROUND: Auto-clearing ctrlClickPending after timeout');
+          ctrlClickPending = false;
+        }
+      }, 5000);
+    }
+    
+    lastCtrlKeyState = request.isPressed;
+    console.log('BACKGROUND: Ctrl key state updated:', lastCtrlKeyState);
+    sendResponse({ success: true });
+  } else if (request.action === 'popupInitialized') {
+    // Tell the popup if a Ctrl+Click is pending
+    const response = { 
+      success: true, 
+      ctrlClickPending: ctrlClickPending,
+      message: ctrlClickPending ? 'Ctrl+Click detected and pending' : 'No Ctrl+Click pending'
+    };
+    
+    console.log('BACKGROUND: Sending Ctrl+Click status to popup:', response);
+    
+    // Reset the flag after telling the popup
+    if (ctrlClickPending) {
+      ctrlClickPending = false;
+    }
+    
+    sendResponse(response);
+  } else if (request.action === 'checkCtrlClickPending') {
+    // Secondary check for Ctrl+Click pending status
+    console.log('BACKGROUND: Received checkCtrlClickPending request, current status:', ctrlClickPending);
+    
+    const response = { 
+      success: true, 
+      ctrlClickPending: ctrlClickPending,
+      message: ctrlClickPending ? 'Ctrl+Click detected in secondary check' : 'No Ctrl+Click pending in secondary check'
+    };
+    
+    // Reset the flag after telling the popup
+    if (ctrlClickPending) {
+      ctrlClickPending = false;
+    }
+    
+    sendResponse(response);
+  }
+  return true; // Keep message channel open for async response
+});
+
 // Default model name
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const SEARCH_MODEL = DEFAULT_MODEL; // Only this model supports search functionality
@@ -2181,3 +2252,446 @@ async function processTabs() {
     throw error;
   }
 } 
+
+// Listen for keyboard command (Ctrl+Shift+Y)
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'run-page-inference') {
+    console.log('Keyboard shortcut triggered: run-page-inference');
+    
+    try {
+      // Get the active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs || !tabs.length) {
+        console.error('No active tab found');
+        return;
+      }
+      
+      const tab = tabs[0];
+      const tabId = tab.id;
+      const url = tab.url;
+      const baseDomain = getBaseDomain(url);
+      
+      // Get all chat sessions
+      const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+      console.log('Found', chatSessions.length, 'total chat sessions');
+      
+      // Find the most recent chat for the current website domain
+      const sessionsForDomain = chatSessions
+        .filter(session => {
+          // Strict domain validation
+          if (!session.url) {
+            console.log('Skipping session with missing URL');
+            return false;
+          }
+          
+          const sessionDomain = getBaseDomain(session.url);
+          const matches = sessionDomain === baseDomain;
+          console.log(`Checking session URL: ${session.url}, domain: ${sessionDomain}, matches current: ${matches}`);
+          return matches;
+        })
+        .sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent first
+      
+      if (sessionsForDomain.length === 0) {
+        console.log('No previous chat sessions found for this domain:', baseDomain);
+        return;
+      }
+      
+      // Get the most recent session
+      const mostRecentSession = sessionsForDomain[0];
+      
+      // Strict validation of lastUserRequest
+      if (!mostRecentSession.lastUserRequest || typeof mostRecentSession.lastUserRequest !== 'string' || mostRecentSession.lastUserRequest.trim() === '') {
+        console.log('No valid previous user request found in this chat session');
+        return;
+      }
+      
+      // Double check that this session truly belongs to the current domain
+      const sessionDomain = getBaseDomain(mostRecentSession.url);
+      if (sessionDomain !== baseDomain) {
+        console.error(`Domain mismatch! Session domain (${sessionDomain}) does not match current domain (${baseDomain})`);
+        return;
+      }
+      
+      console.log('Found most recent chat session with pageLoadId:', mostRecentSession.pageLoadId);
+      console.log('Last user request:', mostRecentSession.lastUserRequest);
+      
+      // Get the chat history for this session - try different key formats
+      // First try the format that includes tabId and full URL
+      let chatHistoryKey = `chat_history_${mostRecentSession.tabId}_${mostRecentSession.url}_${mostRecentSession.pageLoadId}`;
+      console.log('Looking for chat history with key 1:', chatHistoryKey);
+      let { [chatHistoryKey]: chatHistory = [] } = await chrome.storage.local.get(chatHistoryKey);
+      
+      // If not found, try with just the base domain (used in newer versions)
+      if (!chatHistory || chatHistory.length === 0) {
+        const baseDomain = getBaseDomain(mostRecentSession.url);
+        chatHistoryKey = `chat_history_${baseDomain}_${mostRecentSession.pageLoadId}`;
+        console.log('Looking for chat history with key 2:', chatHistoryKey);
+        const result = await chrome.storage.local.get(chatHistoryKey);
+        chatHistory = result[chatHistoryKey] || [];
+      }
+      
+      // If still not found, try without the tabId but with full URL
+      if (!chatHistory || chatHistory.length === 0) {
+        chatHistoryKey = `chat_history_${mostRecentSession.url}_${mostRecentSession.pageLoadId}`;
+        console.log('Looking for chat history with key 3:', chatHistoryKey);
+        const result = await chrome.storage.local.get(chatHistoryKey);
+        chatHistory = result[chatHistoryKey] || [];
+      }
+      
+      // If still not found, check all keys containing the pageLoadId
+      if (!chatHistory || chatHistory.length === 0) {
+        console.log('Still no chat history found, checking all keys containing the pageLoadId');
+        const allData = await chrome.storage.local.get(null);
+        const allKeys = Object.keys(allData);
+        console.log('All storage keys:', allKeys);
+        
+        // Find any keys that might contain our pageLoadId
+        const relevantKeys = allKeys.filter(key => key.includes(mostRecentSession.pageLoadId));
+        console.log('Keys containing pageLoadId:', relevantKeys);
+        
+        // Find any key that looks like a chat history
+        const chatKeys = relevantKeys.filter(key => key.includes('chat_history'));
+        if (chatKeys.length > 0) {
+          console.log('Found potential chat history keys:', chatKeys);
+          chatHistoryKey = chatKeys[0]; // Use the first match
+          chatHistory = allData[chatHistoryKey] || [];
+          console.log('Found chat history with key:', chatHistoryKey);
+        }
+      }
+      
+      console.log('Found chat history:', chatHistory);
+      
+      // Check if we got an empty array or undefined chat history
+      if (!chatHistory || chatHistory.length === 0) {
+        console.log('Chat history is empty or undefined');
+        
+        // Try an alternative approach: get all storage keys that might contain chat history
+        const allStorage = await chrome.storage.local.get(null);
+        console.log('All storage keys:', Object.keys(allStorage));
+        
+        // Look for any key that contains the pageLoadId and "chat_history"
+        const chatHistoryKeys = Object.keys(allStorage).filter(key => 
+          key.includes('chat_history') && key.includes(mostRecentSession.pageLoadId)
+        );
+        console.log('Potential chat history keys for this session:', chatHistoryKeys);
+        
+        if (chatHistoryKeys.length > 0) {
+          const alternativeHistory = allStorage[chatHistoryKeys[0]];
+          console.log('Alternative chat history found:', alternativeHistory);
+          
+          // Try to find user messages in this alternative history
+          if (Array.isArray(alternativeHistory)) {
+            const alternativeUserMessages = alternativeHistory.filter(msg => msg && msg.role === 'user');
+            console.log('Alternative user messages:', alternativeUserMessages);
+            
+            if (alternativeUserMessages.length > 0) {
+              const lastUserMessage = alternativeUserMessages[alternativeUserMessages.length - 1].content;
+              console.log('Found last user message using alternative method:', lastUserMessage);
+              
+              // Store this message for execution
+              await chrome.storage.local.set({
+                'execute_last_input': {
+                  input: lastUserMessage,
+                  tabId,
+                  url,
+                  pageLoadId: mostRecentSession.pageLoadId,
+                  timestamp: Date.now()
+                }
+              });
+              
+              // Set a special badge to indicate the shortcut was pressed
+              await chrome.action.setBadgeText({ text: '↵' });
+              await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+              await chrome.action.setTitle({ title: 'Click to run: "' + lastUserMessage + '"' });
+              
+              // Alert the user with a visual cue
+              try {
+                // Try to flash the badge by alternating colors
+                for (let i = 0; i < 3; i++) {
+                  setTimeout(() => {
+                    chrome.action.setBadgeBackgroundColor({ color: '#FFEB3B' });
+                  }, i * 400);
+                  setTimeout(() => {
+                    chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+                  }, i * 400 + 200);
+                }
+              } catch (e) {
+                console.error('Error flashing badge:', e);
+              }
+              
+              return;
+            }
+          }
+        }
+        
+        // If we still couldn't find any user messages, try using the lastUserRequest directly
+        if (mostRecentSession.lastUserRequest) {
+          console.log('Using lastUserRequest from session:', mostRecentSession.lastUserRequest);
+          
+          // Store this message for execution
+          await chrome.storage.local.set({
+            'execute_last_input': {
+              input: mostRecentSession.lastUserRequest,
+              tabId,
+              url,
+              pageLoadId: mostRecentSession.pageLoadId,
+              timestamp: Date.now()
+            }
+          });
+          
+          // Set a special badge to indicate the shortcut was pressed
+          await chrome.action.setBadgeText({ text: '↵' });
+          await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+          await chrome.action.setTitle({ title: 'Click to run: "' + mostRecentSession.lastUserRequest + '"' });
+          
+          // Alert the user with a visual cue
+          try {
+            // Try to flash the badge by alternating colors
+            for (let i = 0; i < 3; i++) {
+              setTimeout(() => {
+                chrome.action.setBadgeBackgroundColor({ color: '#FFEB3B' });
+              }, i * 400);
+              setTimeout(() => {
+                chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+              }, i * 400 + 200);
+            }
+          } catch (e) {
+            console.error('Error flashing badge:', e);
+          }
+          
+          return;
+        }
+        
+        // If we still couldn't find anything, show the orange question mark
+        await chrome.action.setBadgeText({ text: '?' });
+        await chrome.action.setBadgeBackgroundColor({ color: '#FFA500' });
+        await chrome.action.setTitle({ title: 'Click to run: "No previous chat history"' });
+        setTimeout(() => {
+          chrome.action.setBadgeText({ text: '' });
+        }, 1500);
+        return;
+      }
+      
+      // Find the last user message
+      console.log('Checking chat history for user messages');
+      const userMessages = chatHistory.filter(msg => {
+        console.log('Checking message:', msg);
+        return msg && msg.role === 'user';
+      });
+      console.log('Found user messages:', userMessages);
+      
+      if (userMessages.length === 0) {
+        console.log('No user messages found in the chat history array');
+        
+        // If no user messages were found in the chat history, try using the lastUserRequest directly
+        if (mostRecentSession.lastUserRequest) {
+          console.log('Using lastUserRequest from session:', mostRecentSession.lastUserRequest);
+          
+          // Store this message for execution
+          await chrome.storage.local.set({
+            'execute_last_input': {
+              input: mostRecentSession.lastUserRequest,
+              tabId,
+              url,
+              pageLoadId: mostRecentSession.pageLoadId,
+              timestamp: Date.now()
+            }
+          });
+          
+          // Set a special badge to indicate the shortcut was pressed
+          await chrome.action.setBadgeText({ text: '↵' });
+          await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+          await chrome.action.setTitle({ title: 'Click to run: "' + mostRecentSession.lastUserRequest + '"' });
+          
+          // Alert the user with a visual cue
+          try {
+            // Try to flash the badge by alternating colors
+            for (let i = 0; i < 3; i++) {
+              setTimeout(() => {
+                chrome.action.setBadgeBackgroundColor({ color: '#FFEB3B' });
+              }, i * 400);
+              setTimeout(() => {
+                chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+              }, i * 400 + 200);
+            }
+          } catch (e) {
+            console.error('Error flashing badge:', e);
+          }
+          
+          return;
+        }
+        
+        // If we still couldn't find anything, show the orange question mark
+        console.log('No user messages or lastUserRequest found');
+        await chrome.action.setBadgeText({ text: '?' });
+        await chrome.action.setBadgeBackgroundColor({ color: '#FFA500' });
+        await chrome.action.setTitle({ title: 'Click to run: "No previous chat history"' });
+        setTimeout(() => {
+          chrome.action.setBadgeText({ text: '' });
+        }, 1500);
+        return;
+      }
+      
+      // We found user messages, get the last one
+      const lastUserMessage = userMessages[userMessages.length - 1].content;
+      console.log('Found last user message:', lastUserMessage);
+      
+      // Store the last input to be executed when popup opens
+      await chrome.storage.local.set({
+        'execute_last_input': {
+          input: lastUserMessage,
+          tabId,
+          url,
+          pageLoadId: mostRecentSession.pageLoadId,
+          timestamp: Date.now()
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error handling keyboard shortcut:', error);
+      // Show error badge
+      chrome.action.setBadgeText({ text: '!' });
+      chrome.action.setBadgeBackgroundColor({ color: '#F44336' });
+      chrome.action.setTitle({ title: 'Error: ' + error.message });
+      setTimeout(() => {
+        chrome.action.setBadgeText({ text: '' });
+        chrome.action.setTitle({ title: '' });
+      }, 1500);
+    }
+  }
+});
+
+// Handle extension icon clicks (for double-click detection)
+chrome.action.onClicked.addListener(async (tab) => {
+  const now = Date.now();
+  const timeSinceLastClick = now - lastClickTimestamp;
+  
+  console.log(`Extension icon clicked. Time since last click: ${timeSinceLastClick}ms`);
+  
+  // Store the current Ctrl key state
+  const ctrlKeyState = lastCtrlKeyState;
+  
+  // Update the timestamp first
+  lastClickTimestamp = now;
+  
+  // If this is a double-click (second click within threshold)
+  if (timeSinceLastClick < DOUBLE_CLICK_THRESHOLD) {
+    console.log('Double-click detected on extension icon, executing last user input');
+    
+    try {
+      // Get the active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs || !tabs.length) {
+        console.error('No active tab found');
+        return;
+      }
+      
+      const tab = tabs[0];
+      const tabId = tab.id;
+      const url = tab.url;
+      const baseDomain = getBaseDomain(url);
+      
+      console.log(`Active tab: ${tabId}, URL: ${url}, Domain: ${baseDomain}`);
+      
+      // Get all chat sessions
+      const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+      console.log('Found', chatSessions.length, 'total chat sessions');
+      
+      // Find the most recent chat for the current website domain
+      const sessionsForDomain = chatSessions
+        .filter(session => {
+          // Strict domain validation
+          if (!session.url) {
+            console.log('Skipping session with missing URL');
+            return false;
+          }
+          
+          const sessionDomain = getBaseDomain(session.url);
+          const matches = sessionDomain === baseDomain;
+          console.log(`Checking session URL: ${session.url}, domain: ${sessionDomain}, matches current: ${matches}`);
+          return matches;
+        })
+        .sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent first
+      
+      if (sessionsForDomain.length === 0) {
+        console.log('No previous chat sessions found for this domain:', baseDomain);
+        return;
+      }
+      
+      // Get the most recent session
+      const mostRecentSession = sessionsForDomain[0];
+      
+      // Strict validation of lastUserRequest
+      if (!mostRecentSession.lastUserRequest || typeof mostRecentSession.lastUserRequest !== 'string' || mostRecentSession.lastUserRequest.trim() === '') {
+        console.log('No valid previous user request found in this chat session');
+        return;
+      }
+      
+      // Double check that this session truly belongs to the current domain
+      const sessionDomain = getBaseDomain(mostRecentSession.url);
+      if (sessionDomain !== baseDomain) {
+        console.error(`Domain mismatch! Session domain (${sessionDomain}) does not match current domain (${baseDomain})`);
+        return;
+      }
+      
+      console.log('Found most recent chat session with pageLoadId:', mostRecentSession.pageLoadId);
+      console.log('Last user request:', mostRecentSession.lastUserRequest);
+      
+      // Store the command to execute with a longer timeout
+      await chrome.storage.local.set({
+        commandToExecute: {
+          pageLoadId: mostRecentSession.pageLoadId,
+          message: mostRecentSession.lastUserRequest,
+          timestamp: Date.now(),
+          url: url,
+          tabId: tabId,
+          // Flag to indicate this is from a double-click
+          isFromDoubleClick: true,
+          // Make the command valid for longer to ensure it's picked up
+          expiresAt: Date.now() + 60000 // 60 seconds
+        }
+      });
+      
+      console.log('Command stored in chrome.storage.local for execution');
+      
+      // Set a badge to indicate a command is waiting
+      await chrome.action.setBadgeText({ text: '↵' });
+      await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+      await chrome.action.setTitle({ 
+        title: `Click to run: "${mostRecentSession.lastUserRequest}"`
+      });
+      
+      console.log('Badge set, attempting to open popup...');
+      
+      // Wait a moment before opening the popup to ensure storage is updated
+      setTimeout(async () => {
+        try {
+          // Note: We can't reliably open the popup programmatically in all browsers
+          // The user will need to click the icon once more to see the popup
+          console.log('Waiting for user to click the extension icon to open popup and execute command');
+        } catch (error) {
+          console.error('Error in setTimeout callback:', error);
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error processing double-click:', error);
+    }
+  } else {
+    // Single click - normal popup will open automatically
+    console.log('Single click detected, popup will open normally');
+    
+    // CRITICAL: Store Ctrl key state and timestamp BEFORE popup opens
+    console.log('BACKGROUND: Storing Ctrl key state at click time:', ctrlKeyState);
+    
+    // Store click timestamp and ctrl key state for popup to check
+    await chrome.storage.local.set({ 
+      iconClickTime: now,
+      ctrlKeyStateAtClick: ctrlKeyState // Use stored state at start of function
+    });
+    
+    if (ctrlKeyState) {
+      console.log('BACKGROUND: Ctrl+Click detected, setting flag for popup');
+      ctrlClickPending = true; // Set the flag that will be checked when popup initializes
+    }
+  }
+});

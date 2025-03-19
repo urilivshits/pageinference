@@ -190,6 +190,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   popupInitialized = true;
   
+  // Tell background script that popup is initialized and check for Ctrl+Click
+  console.log('POPUP: Sending popupInitialized message to background');
+  chrome.runtime.sendMessage({ action: 'popupInitialized', pageLoadId: currentPageLoadId }, async (response) => {
+    console.log('POPUP: Received popupInitialized response:', response);
+    
+    // Check if a Ctrl+Click is pending directly from background.js
+    if (response && response.ctrlClickPending) {
+      console.log('POPUP: Ctrl+Click pending detected from background, executing last message');
+      
+      // Wait a moment for the UI to be fully ready
+      setTimeout(async () => {
+        try {
+          console.log('POPUP: Executing last message due to Ctrl+Click with delay');
+          await executeLastMessage('Ctrl+Click: ');
+        } catch (error) {
+          console.error('POPUP: Error executing last message:', error);
+        }
+      }, 1000);
+    } else {
+      console.log('POPUP: No Ctrl+Click pending detected, continuing normal initialization');
+    }
+  });
+  
   // Get DOM elements
   const questionInput = document.getElementById('questionInput');
   console.log('questionInput element:', questionInput);
@@ -225,6 +248,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initial resize
   setTimeout(autoResizeTextarea, 0);
+  
+  // Listen for command from background script to execute last input
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'executeLastInput' && request.lastInput) {
+      console.log('Received executeLastInput command with input:', request.lastInput);
+      
+      // Set the input value to the last input
+      questionInput.value = request.lastInput;
+      
+      // Resize the textarea to match the content
+      setTimeout(autoResizeTextarea, 0);
+      
+      // Trigger the submit button click after a short delay to ensure UI is ready
+      setTimeout(() => {
+        console.log('Auto-triggering submit button click');
+        submitBtn.click();
+      }, 300);
+      
+      // Send response to acknowledge receipt
+      sendResponse({ success: true });
+    }
+    return true; // Keep the message channel open for async response
+  });
   
   errorMessage = document.getElementById('errorMessage');
   console.log('Error message element:', errorMessage);
@@ -265,6 +311,154 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentUrl = tabs[0].url;
     currentPageTitle = tabs[0].title || new URL(currentUrl).hostname;
     console.log('CRITICAL: Got active tab info:', currentTabId, currentUrl);
+    
+    // Check if we need to execute the last input (from keyboard shortcut)
+    console.log('EXECUTE_CHECK: Checking for stored keyboard shortcut command');
+    const { execute_last_input } = await chrome.storage.local.get('execute_last_input');
+    console.log('EXECUTE_CHECK: Retrieved execute_last_input:', execute_last_input);
+    
+    // Extra diagnostics - check all storage keys
+    console.log('EXECUTE_CHECK: Checking all storage keys');
+    const allStorage = await chrome.storage.local.get(null);
+    console.log('EXECUTE_CHECK: Storage contains execute_last_input?', 'execute_last_input' in allStorage);
+    
+    if (execute_last_input) {
+      const { input, tabId, url, pageLoadId, timestamp } = execute_last_input;
+      // Only execute if it's recent (within last 30 seconds) and matches current tab
+      const isRecent = Date.now() - timestamp < 30000; // Increased from 10000ms to 30000ms
+      const matchesCurrentTab = tabId === currentTabId && url === currentUrl;
+      
+      console.log('EXECUTE_CHECK: Command data:', {
+        input,
+        tabId, 
+        currentTabId,
+        url,
+        currentUrl,
+        pageLoadId, 
+        timestamp,
+        isRecent,
+        matchesCurrentTab,
+        timeSinceCommand: Date.now() - timestamp,
+        timeWindow: '30 seconds' // Updated time window
+      });
+      
+      if (isRecent && matchesCurrentTab && input && input.trim()) {
+        console.log('EXECUTE_CHECK: Executing last input from keyboard shortcut:', input);
+        
+        // Clear the stored command to prevent duplicate execution
+        await chrome.storage.local.remove('execute_last_input');
+        console.log('EXECUTE_CHECK: Cleared stored command');
+        
+        // Clear badge
+        await chrome.action.setBadgeText({ text: '' });
+        await chrome.action.setTitle({ title: '' });
+        
+        // Add a visual indicator at the top of the popup
+        const executingNotice = document.createElement('div');
+        executingNotice.className = 'executing-shortcut-notice';
+        executingNotice.textContent = `Executing: "${input}"`;
+        executingNotice.style.backgroundColor = '#FF9800';
+        executingNotice.style.color = 'white';
+        executingNotice.style.padding = '8px';
+        executingNotice.style.textAlign = 'center';
+        executingNotice.style.fontWeight = 'bold';
+        executingNotice.style.position = 'sticky';
+        executingNotice.style.top = '0';
+        executingNotice.style.zIndex = '1000';
+        executingNotice.style.borderRadius = '0 0 4px 4px';
+        
+        // Insert at the top of the popup
+        document.body.insertBefore(executingNotice, document.body.firstChild);
+        
+        // Remove after execution
+        setTimeout(() => {
+          executingNotice.style.opacity = '0';
+          executingNotice.style.transition = 'opacity 0.5s';
+          setTimeout(() => executingNotice.remove(), 500);
+        }, 3000);
+        
+        // Make sure page is loaded and then execute
+        setTimeout(() => {
+          // Set input
+          console.log('EXECUTE_CHECK: Setting input value');
+          questionInput.value = input;
+          
+          // Resize input field
+          autoResizeTextarea();
+          
+          // Trigger submit after UI is ready
+          setTimeout(() => {
+            console.log('EXECUTE_CHECK: Auto-triggering submit from keyboard shortcut');
+            submitBtn.click();
+          }, 1000); // Increased from 500ms to 1000ms
+        }, 500); // Increased from 300ms to 500ms
+      } else if (isRecent && input && input.trim()) {
+        // OVERRIDE: Force execution even if tab doesn't match perfectly
+        console.log('EXECUTE_CHECK: OVERRIDE - Executing input even though tab doesn\'t match perfectly');
+        console.log('EXECUTE_CHECK: Current tab:', currentTabId, currentUrl);
+        console.log('EXECUTE_CHECK: Command tab:', tabId, url);
+        
+        // Clear the stored command to prevent duplicate execution
+        await chrome.storage.local.remove('execute_last_input');
+        console.log('EXECUTE_CHECK: Cleared stored command');
+        
+        // Clear badge
+        await chrome.action.setBadgeText({ text: '' });
+        await chrome.action.setTitle({ title: '' });
+        
+        // Add a visual indicator at the top of the popup
+        const executingNotice = document.createElement('div');
+        executingNotice.className = 'executing-shortcut-notice';
+        executingNotice.textContent = `Executing: "${input}" (from different tab)`;
+        executingNotice.style.backgroundColor = '#FF9800';
+        executingNotice.style.color = 'white';
+        executingNotice.style.padding = '8px';
+        executingNotice.style.textAlign = 'center';
+        executingNotice.style.fontWeight = 'bold';
+        executingNotice.style.position = 'sticky';
+        executingNotice.style.top = '0';
+        executingNotice.style.zIndex = '1000';
+        executingNotice.style.borderRadius = '0 0 4px 4px';
+        
+        // Insert at the top of the popup
+        document.body.insertBefore(executingNotice, document.body.firstChild);
+        
+        // Remove after execution
+        setTimeout(() => {
+          executingNotice.style.opacity = '0';
+          executingNotice.style.transition = 'opacity 0.5s';
+          setTimeout(() => executingNotice.remove(), 500);
+        }, 3000);
+        
+        // Make sure page is loaded and then execute
+        setTimeout(() => {
+          // Set input
+          console.log('EXECUTE_CHECK: Setting input value');
+          questionInput.value = input;
+          
+          // Resize input field
+          autoResizeTextarea();
+          
+          // Trigger submit after UI is ready
+          setTimeout(() => {
+            console.log('EXECUTE_CHECK: Auto-triggering submit from keyboard shortcut');
+            submitBtn.click();
+          }, 1000);
+        }, 500);
+      } else {
+        // Clear outdated command
+        if (!isRecent) {
+          console.log('EXECUTE_CHECK: Found outdated last input command, clearing it');
+          await chrome.storage.local.remove('execute_last_input');
+        } else if (!matchesCurrentTab) {
+          console.log('EXECUTE_CHECK: Command is for a different tab, not executing');
+        } else if (!input || !input.trim()) {
+          console.log('EXECUTE_CHECK: Command has no valid input, not executing');
+        }
+      }
+    } else {
+      console.log('EXECUTE_CHECK: No stored command found');
+    }
     
     // 2. Check specifically for an existing pageLoadId for this exact tab
     const tabStorageKey = `page_load_${currentTabId}_${currentUrl}`;
@@ -914,6 +1108,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Refresh the sessions list with the new filter
     loadAndShowPastSessions();
   });
+
+  // Check if there's a stored command to execute
+  await checkForCommandToExecute();
 });
 
 /**
@@ -2634,3 +2831,457 @@ chrome.storage.sync.get(['model', 'isPageScrapingEnabled', 'isWebSearchEnabled',
   isCurrentSiteFilterEnabled = data.isCurrentSiteFilterEnabled !== undefined ? data.isCurrentSiteFilterEnabled : true;
   currentSiteFilterToggle.checked = isCurrentSiteFilterEnabled;
 });
+
+// Check if there's a stored command to execute
+async function checkForCommandToExecute() {
+  console.log('POPUP: Checking for command to execute');
+  
+  try {
+    const { commandToExecute } = await chrome.storage.local.get('commandToExecute');
+    
+    if (commandToExecute) {
+      console.log('POPUP: Found commandToExecute:', commandToExecute);
+      
+      // Check if the command is still valid (not expired)
+      const now = Date.now();
+      if (commandToExecute.expiresAt && commandToExecute.expiresAt < now) {
+        console.log('POPUP: Command expired, clearing');
+        await chrome.storage.local.remove('commandToExecute');
+        return;
+      }
+      
+      // Clear the badge text and title since we're processing the command
+      await chrome.action.setBadgeText({ text: '' });
+      await chrome.action.setTitle({ title: '' });
+      
+      // Check if this is from double-click
+      if (commandToExecute.isFromDoubleClick) {
+        console.log('POPUP: Processing command from double-click');
+        
+        // Set the input value
+        document.getElementById('questionInput').value = commandToExecute.message;
+        
+        // Wait for DOM to be fully ready before clicking submit
+        setTimeout(() => {
+          console.log('POPUP: Submitting command from double-click');
+          const submitBtn = document.getElementById('submitBtn');
+          if (submitBtn) {
+            submitBtn.click();
+          } else {
+            console.warn('POPUP: Submit button not found');
+          }
+          
+          // Remove the command after execution
+          chrome.storage.local.remove('commandToExecute', () => {
+            console.log('POPUP: Removed commandToExecute after execution');
+          });
+        }, 1500); // Increased timeout for better reliability
+      }
+    }
+  } catch (error) {
+    console.error('POPUP: Error checking for command to execute:', error);
+  }
+}
+
+// Prevent duplicate event listeners by storing a reference
+let domContentLoadedHandler = null;
+
+// Only set up the event listener if it hasn't been set up already
+if (!window.domContentLoadedListenerAdded) {
+  window.domContentLoadedListenerAdded = true;
+  
+  // Create the handler function
+  domContentLoadedHandler = async function() {
+    console.log('POPUP: DOMContentLoaded handler running');
+    
+    // Check for Ctrl+Click or command to execute as early as possible
+    await checkForCommandOrCtrlClick();
+    
+    // Set up double-click handlers for the double-click area
+    setupDoubleClickHandlers();
+    
+    // The rest of the initialization will happen in the existing code
+  };
+  
+  // Add the event listener
+  document.addEventListener('DOMContentLoaded', domContentLoadedHandler);
+  console.log('POPUP: Added DOMContentLoaded listener for command execution');
+}
+
+// Add double-click handler for in-popup execution
+function setupDoubleClickHandlers() {
+  console.log('POPUP: Setting up double-click handlers');
+  
+  const doubleClickArea = document.getElementById('double-click-area');
+  if (!doubleClickArea) {
+    console.error('POPUP: Double-click area not found in DOM');
+    return;
+  }
+  
+  let lastClickTime = 0;
+  const DOUBLE_CLICK_THRESHOLD = 500; // ms
+  
+  doubleClickArea.addEventListener('click', async () => {
+    const now = Date.now();
+    const timeSinceLastClick = now - lastClickTime;
+    
+    console.log(`POPUP: Double-click area clicked. Time since last click: ${timeSinceLastClick}ms`);
+    
+    // Update the timestamp first
+    lastClickTime = now;
+    
+    // If this is a double-click (second click within threshold)
+    if (timeSinceLastClick < DOUBLE_CLICK_THRESHOLD) {
+      console.log('POPUP: Double-click detected, executing last user input');
+      
+      try {
+        // Get active tab info
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs || !tabs.length) {
+          console.error('POPUP: No active tab found');
+          return;
+        }
+        
+        const tab = tabs[0];
+        const url = tab.url;
+        const baseDomain = getBaseDomain(url);
+        
+        console.log(`POPUP: Active tab URL: ${url}, Domain: ${baseDomain}`);
+        
+        // Get all chat sessions
+        const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+        console.log('POPUP: Found', chatSessions.length, 'total chat sessions');
+        
+        // Find the most recent chat for the current website domain
+        const sessionsForDomain = chatSessions
+          .filter(session => {
+            const sessionDomain = getBaseDomain(session.url);
+            return sessionDomain === baseDomain;
+          })
+          .sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent first
+        
+        if (sessionsForDomain.length === 0) {
+          console.log('POPUP: No previous chat sessions found for this domain');
+          showError('No previous chat sessions found for this domain');
+          return;
+        }
+        
+        // Get the most recent session
+        const mostRecentSession = sessionsForDomain[0];
+        
+        if (!mostRecentSession.lastUserRequest) {
+          console.log('POPUP: No previous user request found in this chat session');
+          showError('No previous user request found in this chat session');
+          return;
+        }
+        
+        console.log('POPUP: Found most recent chat session with pageLoadId:', mostRecentSession.pageLoadId);
+        console.log('POPUP: Last user request:', mostRecentSession.lastUserRequest);
+        
+        // Set the input value and submit it
+        const inputElement = document.getElementById('questionInput');
+        if (inputElement) {
+          inputElement.value = mostRecentSession.lastUserRequest;
+        } else {
+          console.error('POPUP: Question input element not found');
+          return;
+        }
+        
+        // Create a notice that command is executing
+        const notice = document.createElement('div');
+        notice.style.position = 'sticky';
+        notice.style.top = '0';
+        notice.style.left = '0';
+        notice.style.right = '0';
+        notice.style.padding = '10px';
+        notice.style.backgroundColor = '#4CAF50'; // Green for in-popup double-click
+        notice.style.color = 'white';
+        notice.style.textAlign = 'center';
+        notice.style.zIndex = '1000';
+        notice.style.fontWeight = 'bold';
+        notice.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        notice.innerText = `Executing: "${mostRecentSession.lastUserRequest}"`;
+        
+        // Insert at the top of the chat history
+        const chatHistory = document.getElementById('chat-history') || document.getElementById('chatHistory');
+        if (chatHistory) {
+          chatHistory.insertBefore(notice, chatHistory.firstChild);
+        } else {
+          console.error('POPUP: Chat history element not found');
+        }
+        
+        // Wait a moment before clicking submit
+        setTimeout(() => {
+          const submitBtn = document.getElementById('submitBtn');
+          if (submitBtn) {
+            submitBtn.click();
+            console.log('POPUP: Submitted last user request via double-click');
+          } else {
+            console.error('POPUP: Submit button not found');
+          }
+          
+          // Remove the notice after a few seconds
+          setTimeout(() => {
+            if (notice.parentNode) {
+              notice.style.transition = 'opacity 0.5s';
+              notice.style.opacity = '0';
+              setTimeout(() => {
+                if (notice.parentNode) {
+                  notice.parentNode.removeChild(notice);
+                }
+              }, 500);
+            }
+          }, 3000);
+        }, 500);
+      } catch (error) {
+        console.error('POPUP: Error processing double-click:', error);
+        showError('Error: ' + error.message);
+      }
+    }
+  });
+  
+  console.log('POPUP: Double-click handler set up successfully');
+}
+
+// Track Ctrl key state for Ctrl+Click detection
+let ctrlKeyPressed = false;
+
+// Add Ctrl key detection in the popup context
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Control') {
+    ctrlKeyPressed = true;
+    console.log('POPUP: Ctrl key pressed');
+  }
+});
+
+document.addEventListener('keyup', (event) => {
+  if (event.key === 'Control') {
+    ctrlKeyPressed = false;
+    console.log('POPUP: Ctrl key released');
+  }
+});
+
+// Check if there's a stored command to execute or if Ctrl+Click was detected
+async function checkForCommandOrCtrlClick() {
+  console.log('POPUP: Checking for command to execute or Ctrl+Click');
+  
+  // Add a small delay to ensure popup is fully initialized
+  setTimeout(async () => {
+    try {
+      // Check if this popup was opened with Ctrl key pressed
+      const { iconClickTime, ctrlKeyStateAtClick } = await chrome.storage.local.get(['iconClickTime', 'ctrlKeyStateAtClick']);
+      const wasRecentlyOpened = iconClickTime && (Date.now() - iconClickTime < 3000);
+      
+      console.log('POPUP: Checking Ctrl+Click state:', { 
+        wasRecentlyOpened, 
+        ctrlKeyStateAtClick,
+        timeSinceClick: iconClickTime ? Date.now() - iconClickTime : 'N/A'
+      });
+      
+      // If popup was recently opened with Ctrl pressed - this is much more reliable than checking current key state
+      if (wasRecentlyOpened) {
+        console.log('POPUP: Recent click detected, ctrlKeyStateAtClick =', ctrlKeyStateAtClick);
+        
+        // Clear the state immediately to prevent duplicate execution
+        await chrome.storage.local.remove(['iconClickTime', 'ctrlKeyStateAtClick']);
+        
+        // Check if Ctrl was pressed at the time of the click
+        if (ctrlKeyStateAtClick === true) {
+          console.log('POPUP: Executing last message due to Ctrl+Click');
+          // Execute the last message for this domain
+          await executeLastMessage('Ctrl+Click: ');
+          return;
+        }
+      }
+      
+      // Then check for regular command execution from earlier methods
+      const { commandToExecute } = await chrome.storage.local.get('commandToExecute');
+      
+      if (commandToExecute) {
+        console.log('POPUP: Found commandToExecute:', commandToExecute);
+        
+        // Check if the command is still valid (not expired)
+        const now = Date.now();
+        if (commandToExecute.expiresAt && commandToExecute.expiresAt < now) {
+          console.log('POPUP: Command expired, clearing');
+          await chrome.storage.local.remove('commandToExecute');
+          return;
+        }
+        
+        // Clear the badge text and title since we're processing the command
+        await chrome.action.setBadgeText({ text: '' });
+        await chrome.action.setTitle({ title: '' });
+        
+        // Check if this is from double-click
+        if (commandToExecute.isFromDoubleClick) {
+          console.log('POPUP: Processing command from double-click');
+          
+          // Set the input value
+          document.getElementById('questionInput').value = commandToExecute.message;
+          
+          // Wait for DOM to be fully ready before clicking submit
+          setTimeout(() => {
+            console.log('POPUP: Submitting command from double-click');
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+              submitBtn.click();
+            } else {
+              console.warn('POPUP: Submit button not found');
+            }
+            
+            // Remove the command after execution
+            chrome.storage.local.remove('commandToExecute', () => {
+              console.log('POPUP: Removed commandToExecute after execution');
+            });
+          }, 1500); // Increased timeout for better reliability
+        }
+      }
+    } catch (error) {
+      console.error('POPUP: Error checking for command to execute:', error);
+    }
+  }, 500); // Add 500ms delay to allow for key state to settle
+}
+
+// Execute the last message for the current domain
+async function executeLastMessage(prefixText = '') {
+  try {
+    // Get active tab info
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tabs || !tabs.length) {
+      console.error('POPUP: No active tab found');
+      return false;
+    }
+    
+    const tab = tabs[0];
+    const url = tab.url;
+    const baseDomain = getBaseDomain(url);
+    
+    console.log(`POPUP: Active tab URL: ${url}, Domain: ${baseDomain}`);
+    
+    // Get all chat sessions
+    const { chatSessions = [] } = await chrome.storage.local.get('chatSessions');
+    console.log('POPUP: Found', chatSessions.length, 'total chat sessions');
+    
+    // Find the most recent chat for the current website domain
+    const sessionsForDomain = chatSessions
+      .filter(session => {
+        // Strict domain validation to ensure we're only matching the exact domain
+        if (!session.url) {
+          console.log('POPUP: Skipping session with missing URL');
+          return false;
+        }
+        
+        const sessionDomain = getBaseDomain(session.url);
+        const matches = sessionDomain === baseDomain;
+        console.log(`POPUP: Checking session URL: ${session.url}, domain: ${sessionDomain}, matches current: ${matches}`);
+        return matches;
+      })
+      .sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent first
+    
+    if (sessionsForDomain.length === 0) {
+      console.log('POPUP: No previous chat sessions found for this domain:', baseDomain);
+      return false;
+    }
+    
+    // Get the most recent session
+    const mostRecentSession = sessionsForDomain[0];
+    
+    // Strict validation of lastUserRequest
+    if (!mostRecentSession.lastUserRequest || typeof mostRecentSession.lastUserRequest !== 'string' || mostRecentSession.lastUserRequest.trim() === '') {
+      console.log('POPUP: No valid previous user request found in this chat session');
+      return false;
+    }
+    
+    console.log('POPUP: Found most recent chat session with pageLoadId:', mostRecentSession.pageLoadId);
+    console.log('POPUP: Last user request:', mostRecentSession.lastUserRequest);
+    
+    // Double check that this session truly belongs to the current domain
+    const sessionDomain = getBaseDomain(mostRecentSession.url);
+    if (sessionDomain !== baseDomain) {
+      console.error(`POPUP: Domain mismatch! Session domain (${sessionDomain}) does not match current domain (${baseDomain})`);
+      return false;
+    }
+    
+    // Set the input value and submit it
+    const inputElement = document.getElementById('questionInput');
+    if (inputElement) {
+      inputElement.value = mostRecentSession.lastUserRequest;
+    } else {
+      console.error('POPUP: Question input element not found');
+      return false;
+    }
+    
+    // Wait a moment before clicking submit
+    setTimeout(() => {
+      const submitBtn = document.getElementById('submitBtn');
+      if (submitBtn) {
+        submitBtn.click();
+        console.log('POPUP: Submitted last message from executeLastMessage');
+        return true;
+      } else {
+        console.error('POPUP: Submit button not found');
+        return false;
+      }
+    }, 800);
+    
+    return true;
+  } catch (error) {
+    console.error('POPUP: Error executing last message:', error);
+    return false;
+  }
+}
+
+// Initialize the popup when the DOM is ready
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('POPUP: DOMContentLoaded event fired');
+  
+  try {
+    // Tell background script that popup is initialized
+    console.log('POPUP: Sending popupInitialized message to background');
+    chrome.runtime.sendMessage({ action: 'popupInitialized', pageLoadId: currentPageLoadId }, async (response) => {
+      console.log('POPUP: Received popupInitialized response:', response);
+      
+      // Check if a Ctrl+Click is pending directly from background.js
+      if (response && response.ctrlClickPending) {
+        console.log('POPUP: Ctrl+Click pending detected from background, executing last message');
+        
+        // Wait a moment for the UI to be fully ready
+        setTimeout(async () => {
+          try {
+            console.log('POPUP: Executing last message due to Ctrl+Click with delay');
+            await executeLastMessage('Ctrl+Click: ');
+          } catch (error) {
+            console.error('POPUP: Error executing last message:', error);
+          }
+        }, 1000);
+      } else {
+        console.log('POPUP: No Ctrl+Click pending detected, continuing normal initialization');
+      }
+      
+      // Continue with normal initialization
+      // Rest of the existing initialization code...
+    });
+    
+    // Continue with setup that doesn't depend on the response
+    // Normal initialization code...
+  } catch (error) {
+    console.error('POPUP: Error in DOMContentLoaded:', error);
+  }
+});
+
+// Manually check for Ctrl+Click pending status shortly after initialization
+setTimeout(() => {
+  console.log('POPUP: Performing second check for Ctrl+Click pending status');
+  chrome.runtime.sendMessage({ action: 'checkCtrlClickPending' }, async (response) => {
+    console.log('POPUP: Second check response:', response);
+    if (response && response.ctrlClickPending) {
+      console.log('POPUP: Ctrl+Click detected in second check, executing last message');
+      
+      try {
+        await executeLastMessage('Ctrl+Click (delayed check): ');
+      } catch (error) {
+        console.error('POPUP: Error executing last message in delayed check:', error);
+      }
+    }
+  });
+}, 200);

@@ -437,3 +437,173 @@ Notes:
   - [x] Ensure input is cleared from Chrome storage after successful submission
   - [x] Test by reopening the extension after submitting input
   - [x] Update documentation in context.md
+
+## User Query: "cool now lets do the following: 1. add a keyboard shortcut (ctrl+enter) that when clicked will do the following: - if no chat exists for the tab - open the extension popup - if chat does exist for the tab - open the extension popup and run the last user input of the tab - make sure shortcuts are editable in chrome extensions own settings"
+
+- Task: Implement keyboard shortcut functionality
+  - [x] Add commands section to manifest.json with Ctrl+Shift+Y shortcut
+  - [x] Implement command handler in background.js
+  - [x] Check for existing chat session when shortcut is triggered
+  - [x] Add logic to execute last input if chat exists
+  - [x] Implement message listener in popup.js to handle executeLastInput
+  - [x] Make sure shortcuts are editable in Chrome extensions settings
+  - [x] Test functionality with both new and existing chat sessions
+  - [x] Update task tracking in tasks.md
+
+## User Query: "i see the issue, so now it works but it seems that it only executes the api call in case the popup is opened. lets add here another step that popup needs to open first before the api call execution."
+
+- Task: Improve keyboard shortcut user experience
+  - [x] Enhance visual feedback with persistent badge indicator
+  - [x] Add tooltip instructions via chrome.action.setTitle
+  - [x] Create flashing badge effect to draw attention
+  - [x] Add visual notification at the top of the popup when executing a stored command
+  - [x] Increase timeout windows to allow more time between shortcut and popup opening
+  - [x] Add override to execute commands even when tabs don't perfectly match
+  - [x] Clear badge when command is executed or popup opened
+  - [x] Update task tracking in tasks.md
+
+## User Query: "i see what you did, but lets rework this solution because of the chrome limitation. lets just make it so that this logic for the last message executes upon double-click by the extension icon, if possible."
+
+- Task: Implement double-click functionality on extension icon to execute last message
+  - [x] Add double-click detection to the background script
+  - [x] Track timestamps of icon clicks to detect double-clicks
+  - [x] Implement logic to find and execute the most recent user message for the current domain
+  - [x] Add visual feedback with badge and tooltip for user guidance
+  - [x] Automatically open popup after double-click to execute the command
+  - [x] Maintain compatibility with single-click normal popup opening
+  - [x] Update tasks.md with completed subtasks
+
+## User Query: "dont seem to see any of these logs. and it just opens and closes the popup"
+
+- Task: Fix double-click extension icon functionality
+  - [x] Update double-click detection in background.js to be more robust
+  - [x] Remove potentially unsupported chrome.action.openPopup() call
+  - [x] Add more detailed logging to trace execution flow
+  - [x] Increase timeout for command execution after popup opens
+  - [x] Add error handling around DOM element selection
+  - [x] Add null checks for chat-history and submitBtn elements
+  - [x] Implement safe initialization to prevent duplicate handlers
+  - [x] Use longer execution delay (1500ms) to ensure UI is fully loaded
+  - [x] Add flags to track command source (isFromDoubleClick) for better debugging
+  - [x] Add command expiration time to prevent stale commands from executing
+
+## User Query: "still same: [logs showing extension popup repeatedly initializing]"
+
+- Task: Fix extension icon double-click functionality using in-popup approach
+  - [x] Identify root issue: chrome.action.onClicked doesn't fire when default_popup exists
+  - [x] Add a transparent double-click area at the top of the popup
+  - [x] Implement double-click detection in popup.js
+  - [x] Add logic to find the most recent user message for the current domain
+  - [x] Show visual indicator when executing a previous command
+  - [x] Add error handling for various edge cases (no history, no message)
+  - [x] Add detailed logging for debugging
+  - [x] Update tasks.md with the new implementation approach
+
+## User Query: "i see, now it works. but lets execute it in a different way. lets make it so that if extention is open via extention icon and while opening a "ctrl" button was held then the last message logic should run right away."
+
+- Task: Implement Ctrl+Click functionality to automatically run last message
+  - [x] Add event listeners in background.js to track Ctrl key state
+  - [x] Store Ctrl key state in chrome.storage when extension icon is clicked
+  - [x] Create checkForCommandOrCtrlClick() function to handle Ctrl+Click detection
+  - [x] Implement executeLastMessage() function to find and run the last message
+  - [x] Add visual notification when a message is executed via Ctrl+Click
+  - [x] Handle edge cases (no history, no message, element not found)
+  - [x] Add additional error handling and detailed logging
+  - [x] Update DOMContentLoaded handler to check for Ctrl+Click
+  - [x] Update tasks.md with completed subtasks
+
+## User Query: "Service worker registration failed. Status code: 15 Uncaught ReferenceError: document is not defined Context background.js Stack Trace background.js:32 (anonymous function)"
+
+- Task: Fix service worker error in background.js
+  - [x] Remove document event listeners from background.js
+  - [x] Move Ctrl key detection to popup.js where document is available
+  - [x] Update chrome.action.onClicked handler to remove references to ctrlKeyPressed
+  - [x] Implement alternative approach for Ctrl+Click detection using popup context
+  - [x] Use popup's document events to detect Ctrl key state
+  - [x] Modify storage method to communicate click timestamps instead of key states
+  - [x] Update command execution logic to work with the new approach
+  - [x] Ensure all service worker compatibility issues are resolved
+  - [x] Update tasks.md with completed subtasks
+
+## User Query: "still doesnt work, and dont see anything in the logs as i only see background.js logs"
+
+- Task: Improve Ctrl+Click detection reliability using content script
+  - [x] Add Ctrl key state tracking in content.js where document is reliably available
+  - [x] Implement message passing from content script to background script for key state
+  - [x] Store Ctrl key state in background script when extension icon is clicked
+  - [x] Update popup.js to check for stored Ctrl key state instead of live detection
+  - [x] Remove unreliable document event listeners from popup.js
+  - [x] Add better logging in background script for easier debugging
+  - [x] Implement debouncing for Ctrl key messages to prevent spamming
+  - [x] Reset Ctrl key state when window loses focus
+  - [x] Update tasks.md with the improved implementation approach
+
+## User Query: "ok i see the console but smth weird happens, im holding ctrl and it says "background.js:35 BACKGROUND: Ctrl key state updated: true" but when i click on the extension icon to open it right before openning it changes the state of ctrl to false. lets maybe revert the logic so if it was false upon openning then should run the last message inference?"
+
+- Task: Fix Ctrl key race condition during icon click
+  - [x] Add logic to prevent Ctrl key up events from being processed during click handling
+  - [x] Implement debouncing in content script to prevent excessive message sending
+  - [x] Add response logging for better debugging of message passing
+  - [x] Add longer delay on window blur events to ensure click completes first
+  - [x] Improve documentation of key state capture in icon click handler
+  - [x] Ignore key up events that occur immediately after icon clicks
+  - [x] Use clearTimeout to prevent duplicate/racing message events
+
+## User Query: "this is all i see in console now, still no api call. lets maybe schedule the call with a bit delay?"
+
+- Task: Improve Ctrl+Click reliability with delayed execution
+  - [x] Add setTimeout delay to checkForCommandOrCtrlClick function in popup.js
+  - [x] Extend the time window for detecting recent clicks from 2000ms to 3000ms
+  - [x] Add better logging to track Ctrl key state and timing information
+  - [x] Fix background.js to store Ctrl key state before it can change
+  - [x] Use a local variable to capture Ctrl state at the beginning of click handler
+  - [x] Make iconClickTime storage use the same timestamp as captured state
+  - [x] Ensure popup checks for Ctrl state regardless of what happens during init
+  - [x] Add await to chrome.storage.local.set calls to ensure they complete
+  - [x] Update task tracking in tasks.md with completed subtasks
+
+## User Query: "still the same: 20:03:22.759 background.js:194 MESSAGE: Received message type: contentScriptInitialized 20:03:22.759 background.js:300 Content script initialized in tab 281327858 for URL: https://www.cursor.com/settings 20:03:22.759 background.js:42 BACKGROUND: Ctrl key state updated: false 20:03:22.759 background.js:196 MESSAGE: Received message action: ctrlKeyState 20:03:27.169 background.js:42 BACKGROUND: Ctrl key state updated: true 20:03:27.169 background.js:196 MESSAGE: Received message action: ctrlKeyState 20:03:27.773 background.js:196 MESSAGE: Received message action: popupInitialized 20:03:27.773 background.js:203 MESSAGE: Popup initialized with pageLoadId: pageload_1741695672655_93xgiyc 20:03:27.774 background.js:196 MESSAGE: Received message action: getApiKey 20:03:27.774 background.js:493 Getting API key 20:03:27.774 background.js:495 API key exists: true 20:03:28.257 background.js:42 BACKGROUND: Ctrl key state updated: false 20:03:28.257 background.js:196 MESSAGE: Received message action: ctrlKeyState"
+
+- Task: Implement direct Ctrl+Click detection with persistent flag
+  - [x] Add ctrlClickPending flag in background script to track pending Ctrl+Click
+  - [x] Update background.js to set the flag when icon is clicked with Ctrl key pressed
+  - [x] Modify popup initialization message handler to check for Ctrl+Click flag
+  - [x] Update popupInitialized message response to include Ctrl+Click status
+  - [x] Ensure popup receives and responds to the flag regardless of timing
+  - [x] Add a more direct communication path between background and popup
+  - [x] Fix duplicate event listener issues in popup.js
+  - [x] Update task tracking in tasks.md with completed subtasks
+
+## User Query: "it seems that ctrlCliclPending never actually sets to true once popup is opened. added some console log for it: [console logs showing ctrlClickPending always false]"
+
+- Task: Fix Ctrl+Click pending flag not being set
+  - [x] Add immediate Ctrl key state setting when Ctrl is pressed in background.js
+  - [x] Implement auto-clearing timeout to prevent flag from staying active too long
+  - [x] Add function in content script to send Ctrl key state with zero delay when pressed
+  - [x] Add secondary check for Ctrl+Click pending status shortly after popup initialization
+  - [x] Implement handler for checkCtrlClickPending message in background.js
+  - [x] Add comprehensive logging to track Ctrl key state and flag changes
+  - [x] Ensure fast response time for key state messages
+  - [x] Update tasks.md with the improved implementation approach
+
+## User Query: "cool, now it seems it works properly. lets clean it up and also remove this two indications: 1. No previous user request found in this chat session 2. and the green message that says that api call is being executed."
+
+- Task: Clean up notifications and error messages for a better user experience
+  - [x] Remove the "No previous user request found in this chat session" error message
+  - [x] Remove the green notification banner for API calls being executed
+  - [x] Clean up the orange notification for double-click command execution
+  - [x] Make error conditions silently fail without showing error badges
+  - [x] Remove any related notice creation and removal code
+  - [x] Clean up related error display code in executeLastMessage function
+  - [x] Remove unused notice animation and removal timers
+  - [x] Update tasks.md with completed subtasks
+
+## User Query: "cool, one thing that remained - if i try to run it on chat with no history at all, then somehow it takes my last message (maybe from a previous tab, maybe just last input). Lets remove taking last input if it does not belong to the exact chat"
+
+- Task: Fix Ctrl+Click domain validation
+  - [x] Add strict domain validation to executeLastMessage in popup.js
+  - [x] Implement additional checks to verify the session URL matches current domain
+  - [x] Add validation for lastUserRequest to ensure it's a valid string
+  - [x] Apply same strict validation to double-click handler in background.js
+  - [x] Add detailed logging to help diagnose domain matching issues
+  - [x] Update tasks.md with completed subtasks

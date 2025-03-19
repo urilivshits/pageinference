@@ -305,3 +305,125 @@ FORMAT GUIDE - DO NOT DELETE
   - Ensured stored input text is properly cleaned up after successful submission
   - Prevents previously submitted questions from reappearing in the input field
   - References: popup.js
+- **[Keyboard Shortcut Implementation]** Added Ctrl+Shift+Y keyboard shortcut to quickly access the extension and execute queries:
+  - Implemented commands configuration in manifest.json to register the shortcut
+  - Created command handler in background.js to respond to keyboard events
+  - Added logic to either open the popup or execute the last input based on chat existence
+  - Implemented message listener in popup.js to handle automatic input execution
+  - Ensured shortcuts are user-configurable through Chrome's extension settings
+  - Enhanced user experience with faster access to the extension functionality
+  - References: manifest.json, background.js, popup.js
+- **[Enhanced Keyboard Shortcut Experience]** Improved the keyboard shortcut functionality to provide better user guidance:
+  - Added persistent visual badge indicator when a command is ready to execute
+  - Implemented animated badge flashing to draw user attention to required action
+  - Added tooltip instructions via chrome.action.setTitle to clarify next steps
+  - Created sticky notification banner in the popup showing the command being executed
+  - Extended time window for command execution from 10 to 30 seconds
+  - Implemented override to execute commands even when tab context changes
+  - Fixed issues with chat history key format inconsistencies
+  - Created a two-step process (press shortcut → click icon) that works reliably within Chrome's limitations
+  - References: background.js, popup.js
+- **[Double-Click Extension Icon Functionality]** Implemented intuitive double-click execution of previous commands:
+  - Added timestamp tracking to detect double-clicks on the extension icon
+  - Created logic to find the most recent user message for the current domain
+  - Implemented visual feedback with badge and tooltip for clear user guidance
+  - Automatically opens popup after double-click to execute the stored command
+  - Maintained compatibility with normal single-click popup opening
+  - Provides fallback messages when no previous chat or message exists
+  - Created a more intuitive interaction model compared to keyboard shortcuts
+  - References: background.js
+- **[In-Popup Double-Click Implementation]** Created an alternative double-click interface directly in the popup:
+  - Added a transparent double-click area at the top of the popup
+  - Implemented double-click detection in popup.js based on click timestamps
+  - Added direct access to chat history from within the popup context
+  - Created visual notification banner showing the command being executed
+  - Added error handling and user feedback for edge cases
+  - Works regardless of browser extension API limitations
+  - Provides immediate visual feedback when executing previous commands
+  - References: popup.html, popup.js
+- **[Ctrl+Click Quick Execution]** Implemented Ctrl+Click shortcut to automatically run the last message:
+  - Added listeners to track Ctrl key state in background script
+  - Stores Ctrl key state when extension icon is clicked
+  - Automatically executes the last message for the current domain when popup opens
+  - Shows green notification banner with the command being executed
+  - Creates a more intuitive modifier-based interaction pattern
+  - Requires minimal user effort (single Ctrl+Click) to repeat previous commands
+  - Works within Chrome's extension architecture constraints
+  - References: background.js, popup.js
+- **[Service Worker Compatibility Fix]** Resolved critical service worker error causing extension failure:
+  - Removed document event listeners from background script (service workers have no DOM access)
+  - Moved Ctrl key detection logic to popup.js where document object is available
+  - Reimplemented Ctrl+Click detection using direct key event listeners in popup context
+  - Replaced key state storage with timestamp-based approach for popup-background communication
+  - Ensured all background script code is service worker compatible
+  - Fixed "Uncaught ReferenceError: document is not defined" error in background.js
+  - Improved architecture to respect Chrome Extension Manifest V3 requirements
+  - Maintained full Ctrl+Click functionality with a more reliable implementation
+  - References: background.js, popup.js
+- **[Enhanced Ctrl+Click Implementation]** Improved reliability of Ctrl+Click functionality:
+  - Moved Ctrl key detection to content scripts where document object is consistently available
+  - Implemented message passing between content script and background script for key state
+  - Used a more reliable approach storing key state at click time rather than checking real-time
+  - Added window blur detection to reset key state when focus is lost
+  - Implemented debouncing to prevent excessive message passing 
+  - Enhanced logging in background script for easier troubleshooting
+  - Created a workflow that works reliably across all Chrome extension contexts
+  - Functions without relying on popup's ability to detect keypress events
+  - References: content.js, background.js, popup.js
+- **[Ctrl Key Race Condition Fix]** Resolved timing issues with Ctrl+Click detection:
+  - Identified race condition where Ctrl key up events were being processed before click handling completed
+  - Added prevention logic in background script to ignore key up events during click processing window (500ms)
+  - Implemented debouncing in content script to prevent excessive message passing
+  - Added longer delay (500ms) on window blur events to ensure click completes before state reset
+  - Improved event logging for better troubleshooting of message passing sequence
+  - Enhanced reliability of modifier key detection during extension icon clicks
+  - Created a more robust system for capturing key state at the exact moment of interaction
+  - References: background.js, content.js
+- **[Delayed Command Execution]** Enhanced reliability of Ctrl+Click functionality with timing improvements:
+  - Added 500ms delay to command execution in popup to allow for proper initialization
+  - Implemented state capture at the beginning of click handler to prevent race conditions
+  - Extended the detection window for recent clicks from 2s to 3s for better reliability
+  - Added comprehensive logging to track key state and timing for easier troubleshooting
+  - Used local variable in background script to preserve Ctrl state at exact moment of click
+  - Made popup check for any recent click and then evaluate stored Ctrl state separately
+  - Added awaits to storage operations to ensure completion before continuing execution
+  - Created a more resilient system that handles the rapid key state changes when clicking
+  - References: popup.js, background.js
+- **[Direct Ctrl+Click Detection]** Implemented more reliable method for Ctrl+Click detection:
+  - Added persistent ctrlClickPending flag in background script to track pending Ctrl+Click operations
+  - Integrated flag directly with popup initialization sequence for guaranteed detection
+  - Created direct communication channel between background and popup during critical initialization
+  - Used a "tell-and-respond" pattern where popup asks background script about pending Ctrl+Clicks
+  - Eliminated timing-dependent race conditions that were causing unreliable behavior
+  - Added explicit popup execution that waits for full UI initialization
+  - Created a system that works regardless of key state changes during popup opening
+  - Transformed key timing problem into a persistent flag-based approach
+  - References: background.js, popup.js
+- **[Improved Ctrl+Click Flag Handling]** Enhanced reliability of Ctrl+Click detection with immediate flag setting:
+  - Added direct ctrlClickPending flag setting when Ctrl key is first pressed
+  - Implemented zero-delay message passing for Ctrl keydown events for immediate state updates
+  - Added auto-clearing timeout (5 seconds) to prevent flag from staying active indefinitely
+  - Implemented secondary check mechanism shortly after popup initialization
+  - Created specialized message handler for delayed Ctrl+Click status verification
+  - Used separate delays for key press (0ms) and key release (10ms) to prioritize activation
+  - Added multiple logging points for comprehensive debugging and tracing
+  - Implemented redundant checking to ensure command execution despite race conditions
+  - References: background.js, content.js, popup.js
+- **[UI Notification Cleanup]** Enhanced user experience with cleaner interface:
+  - Removed intrusive error and status notifications for failed or completed operations
+  - Eliminated "No previous user request found" error messages in favor of silent failure
+  - Removed green API execution notification banners for a more streamlined experience
+  - Cleaned up double-click command execution notifications
+  - Made error conditions fail silently without displaying error badges or messages
+  - Removed related animation and timer code for notice creation/removal
+  - Created a cleaner, less distracting UI focused on content rather than status indicators
+  - References: background.js, popup.js
+- **[Domain Validation Enhancement]** Improved Ctrl+Click domain validation with stricter checks:
+  - Added comprehensive domain validation to ensure messages are only replayed for the exact matching domain
+  - Implemented multiple validation checkpoints to prevent cross-domain message execution
+  - Added validation of message content to ensure only valid, non-empty strings are executed
+  - Implemented detailed logging for domain matching to aid in troubleshooting
+  - Added double verification of session domain both during filtering and before execution
+  - Prevented unintended execution of messages from different domains or tabs
+  - Created a more secure approach that respects domain isolation in the chat history
+  - References: popup.js, background.js

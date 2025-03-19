@@ -9,8 +9,26 @@
   <link rel="stylesheet" href="lib/highlight.min.css">
   <script src="lib/highlight.min.js"></script>
   <script src="lib/markdown-it.min.js"></script>
+  <style>
+    /* ... existing styles ... */
+    
+    #double-click-area {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 30px;
+      background-color: transparent;
+      z-index: 1000;
+      cursor: pointer;
+    }
+    
+    /* ... remaining styles ... */
+  </style>
 </head>
 <body>
+  <div id="double-click-area" title="Double-click to run last query"></div>
+  
   <div class="container">
     <header>
       <h1>Talk to any webpage</h1>

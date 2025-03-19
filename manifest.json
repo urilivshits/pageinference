@@ -14,7 +14,8 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "windows"
   ],
   "host_permissions": [
     "https://*.openai.com/*"
@@ -41,5 +42,13 @@
       "resources": ["lib/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "commands": {
+    "run-page-inference": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "Run page inference with last input or open popup"
+    }
+  }
 } 
