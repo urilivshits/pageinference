@@ -19,6 +19,12 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
 -->
 
+- **[UI Simplification]** Streamlined the interface by hiding the Reason button:
+  - Removed less frequently used feature from the main interface
+  - Focused UI on core functionality (Search Page and Search Web)
+  - Created cleaner, more focused user experience
+  - References: styles.css
+
 - **[OpenAI Responses API Integration]** Implemented web search functionality using the OpenAI Responses API instead of the Chat Completions API. This enhancement:
   - Provides native web search capabilities through the web_search_preview tool
   - Displays sources with results for better information attribution
@@ -53,6 +59,7 @@ FORMAT GUIDE - DO NOT DELETE
   - Persists user preference between sessions
   - Dynamically updates the chat list when filter is toggled
   - Shows appropriate empty states when no matching chats are found
+  - Enabled by default for better domain-focused experience
   - References: popup.js, popup.html, styles.css
 
 ## Resolved Bugs
@@ -62,6 +69,14 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Bug ID/Description]** Fixed [issue description] in [file-name.js]
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
+
+- **[Cross-Site Chat History Bug]** Fixed issue with chat sessions from different sites not being properly saved:
+  - Added sessionUrl variable to keep track of the URL associated with loaded chat history
+  - Modified getChatHistoryKey function to prioritize sessionUrl when available
+  - Updated addMessageToChat to ensure messages are saved to the correct chat history
+  - Added sessionUrl reset when starting new conversations
+  - Ensured chat continuation works properly when loading a chat from a different site
+  - References: popup.js
 
 - **[Settings Layout Optimization]** Fixed settings page layout to fit within popup without scrolling:
   - Reduced vertical spacing between form elements and sections

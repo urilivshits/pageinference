@@ -373,3 +373,19 @@ Notes:
   - [x] Persist filter preference in chrome.storage
   - [x] Show empty state when no matching chats are found 
   - [x] Update tasks.md with completed subtasks
+
+## User Query: "thanks, there's a bug. when im on one page (website1) and i go into history and load chat from another page (website2) and i start to chat i get the responses but they are not then saved to the chat im currently on (and maybe not saved at all)."
+- Task: Fix cross-site chat history saving bug
+  - [x] Add sessionUrl variable to track URL of loaded chat history
+  - [x] Modify getChatHistoryKey to use sessionUrl when available
+  - [x] Update addMessageToChat to use sessionUrl for saving messages
+  - [x] Add sessionUrl reset when starting new conversations
+  - [x] Ensure URL consistency in chat history saving
+  - [x] Update tasks.md with completed subtasks
+
+## User Query: "cool, now lets just make "show current site only" a default, and lets also hide the "reason" button."
+- Task: Update UI defaults and visibility
+  - [x] Change isCurrentSiteFilterEnabled default value to true
+  - [x] Update storage loading logic to use true as default value
+  - [x] Add CSS to hide the Reason button
+  - [x] Update tasks.md with completed subtasks

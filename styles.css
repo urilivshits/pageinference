@@ -1871,4 +1871,9 @@ textarea#questionInput::-webkit-scrollbar {
 .filter-label {
   font-size: 0.875rem;
   color: var(--text-color);
+}
+
+/* Hide Reason button */
+#reasonBtn {
+  display: none;
 } 

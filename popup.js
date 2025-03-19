@@ -58,6 +58,7 @@ let currentTabId;
 let currentUrl;
 let currentPageTitle;
 let currentPageLoadId;
+let sessionUrl; // Store the URL of the loaded session (may be different from current tab URL)
 let isInNewConversation = true;
 let wasInConversationsView = false; // Track last view before going to settings
 let loadedFromHistoryItem = false; // New flag to track if we loaded from history item click
@@ -69,7 +70,7 @@ let isSubmitInProgress = false; // Add a flag to track if submit operation is in
 let lastSubmittedQuestion = ''; // Track the last submitted question to prevent duplicates
 let isPageScrapingEnabled = true; // State variable for page scraping toggle
 let isWebSearchEnabled = true; // State variable for web search toggle
-let isCurrentSiteFilterEnabled = false; // State variable for current site filter toggle
+let isCurrentSiteFilterEnabled = true; // State variable for current site filter toggle - default to true
 
 // Function to update the current tab information
 async function updateCurrentTabInfo() {
@@ -924,13 +925,17 @@ function truncateText(text, maxLength) {
 }
 
 /**
- * Create a new conversation for the current page
+ * Start a new conversation
  */
 async function startNewConversation() {
   console.log('Starting new conversation');
   
   // Reset state
   isProcessing = false;
+  
+  // Set new conversation state
+  isInNewConversation = true;
+  sessionUrl = null; // Reset the session URL
   
   // Generate a new page load ID first
   const oldPageLoadId = currentPageLoadId;
@@ -940,60 +945,26 @@ async function startNewConversation() {
   if (currentTabId && currentUrl) {
     const storageKey = `page_load_${currentTabId}_${currentUrl}`;
     await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
-    
-    // Clear lastSubmissionTime for the new conversation
-    const lastSubmissionTimeKey = `last_submission_time_${currentPageLoadId}`;
-    await chrome.storage.local.remove(lastSubmissionTimeKey);
-    
-    // Clear history loaded flag for the new conversation
-    const historyLoadedKey = `history_loaded_${currentPageLoadId}`;
-    await chrome.storage.local.remove(historyLoadedKey);
-    
-    console.log(`Created new page load ID: ${currentPageLoadId} replacing ${oldPageLoadId}`);
-  } else {
-    console.error('No active tab when starting new conversation');
+    console.log(`Saved new page load ID to storage: ${currentPageLoadId}`);
   }
   
-  // Check for empty conversations before creating a new one
-  try {
-    // Remove empty conversations except for the new one we're about to create
-    const removedCount = await removeEmptyConversations(currentPageLoadId);
-    if (removedCount > 0) {
-      console.log(`Removed ${removedCount} empty conversations before starting new conversation`);
-    }
-  } catch (error) {
-    console.error('Error removing empty conversations:', error);
-    // Continue with new conversation creation even if this check fails
-  }
-  
-  // Update storage with new ID
-  const storageKey = `page_load_${currentTabId}_${currentUrl}`;
-  await chrome.storage.local.set({ [storageKey]: currentPageLoadId });
-  
-  // Clear the chat history display
+  // Clear chat history display
   chatHistory.innerHTML = '';
   
-  // Clear the input text
-  questionInput.value = '';
-  await saveInputText();
-  
-  // Mark as new conversation
-  isInNewConversation = true;
-  
-  // Update conversation info with the new format
+  // Update conversation info
   updateConversationInfo({
     title: currentPageTitle || 'Current Page',
     created: new Date().toISOString(),
+    lastUpdated: new Date().toISOString(),
     messageCount: 0,
-    // We still track lastUserRequest for storage, though it's not displayed
     lastUserRequest: ''
   });
   
-  // Save this as a new chat session immediately with initial empty last user request
-  await saveChatSession(currentTabId, currentUrl, currentPageLoadId, [], 'New conversation');
+  // Save initial empty chat session
+  await saveChatSession(currentTabId, currentUrl, currentPageLoadId, [], '');
   
-  // Show main view and update UI state
-  showMainView();
+  // Update UI state
+  updateUIState();
   
   console.log(`Started new conversation with ID: ${currentPageLoadId}`);
 }
@@ -1256,7 +1227,8 @@ async function addMessageToChat(role, content) {
   chatHistory.scrollTop = chatHistory.scrollHeight;
   
   // Persist the updated chat history
-  if (currentTabId && currentUrl && currentPageLoadId) {
+  if (currentTabId && currentPageLoadId) {
+    // Get the correct chat history key
     const chatHistoryKey = getChatHistoryKey();
     const { [chatHistoryKey]: currentHistory = [] } = await chrome.storage.local.get(chatHistoryKey);
     
@@ -1274,11 +1246,14 @@ async function addMessageToChat(role, content) {
       lastUserRequest = content;
     }
     
+    // Determine which URL to use for the chat history
+    const urlToUse = sessionUrl || currentUrl;
+    
     // Update background script's in-memory history
     await chrome.runtime.sendMessage({
       action: 'updateChatHistory',
       tabId: currentTabId,
-      url: currentUrl,
+      url: urlToUse,
       pageLoadId: currentPageLoadId,
       history: currentHistory
     });
@@ -1286,7 +1261,7 @@ async function addMessageToChat(role, content) {
     // Save this chat session in the sessions index
     await saveChatSession(
       currentTabId, 
-      currentUrl, 
+      urlToUse, 
       currentPageLoadId, 
       currentHistory,
       role === 'user' ? content : undefined  // Pass the user request if this is a user message
@@ -1449,13 +1424,15 @@ async function saveChatSession(tabId, url, pageLoadId, history, lastUserRequest)
 
 /**
  * Get the storage key for chat history based on current tab, URL, and pageLoadId
- * @param {string} url - The URL to use (optional, defaults to currentUrl)
+ * @param {string} url - The URL to use (optional, defaults to sessionUrl or currentUrl)
  * @param {string} pageLoadId - The pageLoadId to use (optional, defaults to currentPageLoadId)
  * @returns {string} The storage key
  */
-function getChatHistoryKey(url = currentUrl, pageLoadId = currentPageLoadId) {
-  const baseDomain = getBaseDomain(url);
-  console.log(`Using base domain '${baseDomain}' for chat history key`);
+function getChatHistoryKey(url = null, pageLoadId = currentPageLoadId) {
+  // Determine which URL to use - explicit parameter, session URL, or current tab URL
+  const urlToUse = url || sessionUrl || currentUrl;
+  const baseDomain = getBaseDomain(urlToUse);
+  console.log(`Using base domain '${baseDomain}' for chat history key from URL ${urlToUse}`);
   return `chat_history_${baseDomain}_${pageLoadId}`;
 }
 
@@ -1802,6 +1779,7 @@ async function loadAndDisplayChatSession(pageLoadId, sessionInfo = null, fromHis
         // Update current conversation info
         isInNewConversation = false;
         currentPageLoadId = pageLoadId;
+        sessionUrl = session.url; // Store the URL of the loaded session
         
         // Save the currentPageLoadId to storage to ensure it persists
         // This is essential for continuing the same conversation
@@ -2357,7 +2335,7 @@ chrome.storage.sync.get(['model', 'isPageScrapingEnabled', 'isWebSearchEnabled',
   isWebSearchEnabled = data.isWebSearchEnabled !== undefined ? data.isWebSearchEnabled : true;
   searchBtn.classList.toggle('active', isWebSearchEnabled);
   
-  // Load current site filter setting (default to false if not set)
-  isCurrentSiteFilterEnabled = data.isCurrentSiteFilterEnabled !== undefined ? data.isCurrentSiteFilterEnabled : false;
+  // Load current site filter setting (default to true if not set)
+  isCurrentSiteFilterEnabled = data.isCurrentSiteFilterEnabled !== undefined ? data.isCurrentSiteFilterEnabled : true;
   currentSiteFilterToggle.checked = isCurrentSiteFilterEnabled;
 });
