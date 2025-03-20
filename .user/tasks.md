@@ -645,3 +645,14 @@ Notes:
   - [x] Extract website-specific system prompts
   - [x] Create index file for accessing all prompts
   - [x] Implement helper function for selecting appropriate prompt
+
+## User Query: "lets maybe also create a dedicated location for unit tests for this and all future functionality that we'll rafactor, what do you think? if so lets add it to the plan?"
+
+- Task: Implement testing framework for refactored code
+  - [x] Create tests directory structure mirroring codebase structure
+  - [x] Develop lightweight test framework with assertion utilities
+  - [x] Write example unit tests for URL utilities
+  - [x] Create test runner to execute all tests
+  - [ ] Implement storage service mock for testing without browser APIs
+  - [ ] Add tests for message passing utilities
+  - [ ] Add tests for system prompt selection logic

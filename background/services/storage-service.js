@@ -1,292 +1,244 @@
 /**
  * Storage Service
  * 
- * Provides a unified API for storing and retrieving data from Chrome storage.
- * Abstracts the details of chrome.storage to provide a simpler interface.
+ * Provides functions for interacting with Chrome extension storage.
  */
 
 import { STORAGE_KEYS } from '../../shared/constants.js';
-
-/**
- * Set a value in storage
- * 
- * @param {string} key - The key to store the value under
- * @param {any} value - The value to store
- * @param {string} storageArea - The storage area to use ('local' or 'sync', defaults to 'local')
- * @return {Promise<void>} Promise that resolves when the value is stored
- */
-export async function setValue(key, value, storageArea = 'local') {
-  const storage = storageArea === 'sync' ? chrome.storage.sync : chrome.storage.local;
-  return new Promise((resolve, reject) => {
-    try {
-      storage.set({ [key]: value }, () => {
-        if (chrome.runtime.lastError) {
-          console.error('Storage error:', chrome.runtime.lastError);
-          reject(chrome.runtime.lastError);
-          return;
-        }
-        console.log(`Stored ${key} in ${storageArea} storage`);
-        resolve();
-      });
-    } catch (error) {
-      console.error('Error storing value:', error);
-      reject(error);
-    }
-  });
-}
+import { validateSettings } from '../../shared/models/settings.js';
 
 /**
  * Get a value from storage
  * 
- * @param {string} key - The key to retrieve
- * @param {any} defaultValue - The default value to return if the key doesn't exist
- * @param {string} storageArea - The storage area to use ('local' or 'sync', defaults to 'local')
- * @return {Promise<any>} Promise that resolves with the retrieved value
+ * @param {string} key - The key to get
+ * @param {*} defaultValue - The default value if key doesn't exist
+ * @return {Promise<*>} The value or defaultValue if not found
  */
-export async function getValue(key, defaultValue = null, storageArea = 'local') {
-  const storage = storageArea === 'sync' ? chrome.storage.sync : chrome.storage.local;
-  return new Promise((resolve, reject) => {
-    try {
-      storage.get(key, result => {
-        if (chrome.runtime.lastError) {
-          console.error('Storage error:', chrome.runtime.lastError);
-          reject(chrome.runtime.lastError);
-          return;
-        }
-        const value = result[key] !== undefined ? result[key] : defaultValue;
-        resolve(value);
-      });
-    } catch (error) {
-      console.error('Error retrieving value:', error);
-      reject(error);
-    }
+export function getValue(key, defaultValue = null) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([key], (result) => {
+      resolve(key in result ? result[key] : defaultValue);
+    });
   });
 }
 
 /**
- * Remove a key from storage
+ * Set a value in storage
+ * 
+ * @param {string} key - The key to set
+ * @param {*} value - The value to store
+ * @return {Promise<void>}
+ */
+export function setValue(key, value) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [key]: value }, resolve);
+  });
+}
+
+/**
+ * Remove a value from storage
  * 
  * @param {string} key - The key to remove
- * @param {string} storageArea - The storage area to use ('local' or 'sync', defaults to 'local')
- * @return {Promise<void>} Promise that resolves when the key is removed
+ * @return {Promise<void>}
  */
-export async function removeValue(key, storageArea = 'local') {
-  const storage = storageArea === 'sync' ? chrome.storage.sync : chrome.storage.local;
-  return new Promise((resolve, reject) => {
-    try {
-      storage.remove(key, () => {
-        if (chrome.runtime.lastError) {
-          console.error('Storage error:', chrome.runtime.lastError);
-          reject(chrome.runtime.lastError);
-          return;
-        }
-        console.log(`Removed ${key} from ${storageArea} storage`);
-        resolve();
-      });
-    } catch (error) {
-      console.error('Error removing value:', error);
-      reject(error);
-    }
+export function removeValue(key) {
+  return new Promise((resolve) => {
+    chrome.storage.local.remove(key, resolve);
   });
 }
 
 /**
- * Get all values from storage
+ * Get multiple values from storage
  * 
- * @param {string} storageArea - The storage area to use ('local' or 'sync', defaults to 'local')
- * @return {Promise<Object>} Promise that resolves with all values in storage
+ * @param {Array<string>} keys - The keys to get
+ * @return {Promise<Object>} Object containing the requested values
  */
-export async function getAllValues(storageArea = 'local') {
-  const storage = storageArea === 'sync' ? chrome.storage.sync : chrome.storage.local;
-  return new Promise((resolve, reject) => {
-    try {
-      storage.get(null, result => {
-        if (chrome.runtime.lastError) {
-          console.error('Storage error:', chrome.runtime.lastError);
-          reject(chrome.runtime.lastError);
-          return;
-        }
-        resolve(result);
-      });
-    } catch (error) {
-      console.error('Error retrieving all values:', error);
-      reject(error);
-    }
+export function getMultipleValues(keys) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(keys, resolve);
   });
 }
 
 /**
- * Clear all values from storage
+ * Set multiple values in storage
  * 
- * @param {string} storageArea - The storage area to use ('local' or 'sync', defaults to 'local')
- * @return {Promise<void>} Promise that resolves when storage is cleared
+ * @param {Object} items - Object with key/value pairs to set
+ * @return {Promise<void>}
  */
-export async function clearStorage(storageArea = 'local') {
-  const storage = storageArea === 'sync' ? chrome.storage.sync : chrome.storage.local;
-  return new Promise((resolve, reject) => {
-    try {
-      storage.clear(() => {
-        if (chrome.runtime.lastError) {
-          console.error('Storage error:', chrome.runtime.lastError);
-          reject(chrome.runtime.lastError);
-          return;
-        }
-        console.log(`Cleared ${storageArea} storage`);
-        resolve();
-      });
-    } catch (error) {
-      console.error('Error clearing storage:', error);
-      reject(error);
-    }
+export function setMultipleValues(items) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set(items, resolve);
   });
 }
 
-// Specific storage functions for common operations
-
 /**
- * Get the OpenAI API key
+ * Get the API key from storage
  * 
- * @return {Promise<string|null>} Promise that resolves with the API key or null if not set
+ * @return {Promise<string|null>} The API key or null if not found
  */
-export async function getApiKey() {
-  return getValue(STORAGE_KEYS.API_KEY, null, 'sync');
+export function getApiKey() {
+  return getValue(STORAGE_KEYS.API_KEY);
 }
 
 /**
- * Set the OpenAI API key
+ * Set the API key in storage
  * 
  * @param {string} apiKey - The API key to store
- * @return {Promise<void>} Promise that resolves when the API key is stored
+ * @return {Promise<void>}
  */
-export async function setApiKey(apiKey) {
-  return setValue(STORAGE_KEYS.API_KEY, apiKey, 'sync');
+export function setApiKey(apiKey) {
+  return setValue(STORAGE_KEYS.API_KEY, apiKey);
+}
+
+/**
+ * Get the user preferences from storage
+ * 
+ * @return {Promise<Object>} The user preferences
+ */
+export async function getUserPreferences() {
+  const rawPreferences = await getValue(STORAGE_KEYS.USER_PREFERENCES, {});
+  return validateSettings(rawPreferences);
+}
+
+/**
+ * Update user preferences in storage
+ * 
+ * @param {Object} preferences - The preferences to update
+ * @return {Promise<Object>} The updated preferences
+ */
+export async function updateUserPreferences(preferences) {
+  // Get current preferences
+  const currentPreferences = await getUserPreferences();
+  
+  // Merge with new preferences
+  const updatedPreferences = {
+    ...currentPreferences,
+    ...preferences
+  };
+  
+  // Validate the preferences
+  const validatedPreferences = validateSettings(updatedPreferences);
+  
+  // Save to storage
+  await setValue(STORAGE_KEYS.USER_PREFERENCES, validatedPreferences);
+  
+  return validatedPreferences;
 }
 
 /**
  * Get all chat sessions
  * 
- * @return {Promise<Array>} Promise that resolves with an array of chat sessions
+ * @return {Promise<Array>} Array of chat session summaries
  */
 export async function getChatSessions() {
-  return getValue(STORAGE_KEYS.CHAT_SESSIONS, []);
+  const sessions = await getValue(STORAGE_KEYS.CHAT_SESSIONS, []);
+  return Array.isArray(sessions) ? sessions : [];
 }
 
 /**
  * Update a chat session
  * 
- * @param {string} pageLoadId - The page load ID of the session to update
- * @param {Object} sessionData - The updated session data
- * @return {Promise<void>} Promise that resolves when the session is updated
+ * @param {string} pageLoadId - The page load ID
+ * @param {Object} sessionData - The session data to save
+ * @return {Promise<void>}
  */
-export async function updateChatSession(pageLoadId, sessionData) {
-  const sessions = await getChatSessions();
-  const sessionIndex = sessions.findIndex(s => s.pageLoadId === pageLoadId);
-  
-  if (sessionIndex !== -1) {
-    // Update existing session
-    sessions[sessionIndex] = {
-      ...sessions[sessionIndex],
-      ...sessionData,
-      lastUpdated: Date.now()
-    };
-  } else {
-    // Add new session
-    sessions.push({
-      pageLoadId,
-      ...sessionData,
-      created: Date.now(),
-      lastUpdated: Date.now()
-    });
-  }
-  
-  return setValue(STORAGE_KEYS.CHAT_SESSIONS, sessions);
+export function updateChatSession(pageLoadId, sessionData) {
+  return setValue(pageLoadId, sessionData);
 }
 
 /**
- * Delete a chat session
+ * Delete a chat session from the sessions list
  * 
- * @param {string} pageLoadId - The page load ID of the session to delete
- * @return {Promise<void>} Promise that resolves when the session is deleted
+ * @param {string} pageLoadId - The page load ID to delete
+ * @return {Promise<void>}
  */
 export async function deleteChatSession(pageLoadId) {
   const sessions = await getChatSessions();
-  const updatedSessions = sessions.filter(s => s.pageLoadId !== pageLoadId);
+  const filteredSessions = sessions.filter(s => s.pageLoadId !== pageLoadId);
   
-  return setValue(STORAGE_KEYS.CHAT_SESSIONS, updatedSessions);
+  // Update the sessions list
+  await setValue(STORAGE_KEYS.CHAT_SESSIONS, filteredSessions);
 }
 
 /**
- * Get user preferences
+ * Clear all chat sessions and their data
  * 
- * @return {Promise<Object>} Promise that resolves with user preferences
+ * @return {Promise<void>}
  */
-export async function getUserPreferences() {
-  const [theme, temperature, pageScraping, webSearch, currentSiteFilter, defaultModel] = await Promise.all([
-    getValue(STORAGE_KEYS.THEME, 'light'),
-    getValue(STORAGE_KEYS.TEMPERATURE, 0.7),
-    getValue(STORAGE_KEYS.PAGE_SCRAPING_ENABLED, true),
-    getValue(STORAGE_KEYS.WEB_SEARCH_ENABLED, true),
-    getValue(STORAGE_KEYS.CURRENT_SITE_FILTER, true),
-    getValue(STORAGE_KEYS.DEFAULT_MODEL, 'gpt-4o-mini')
-  ]);
+export async function clearAllChatSessions() {
+  // Get all sessions
+  const sessions = await getChatSessions();
   
-  return {
-    theme,
-    temperature,
-    pageScraping,
-    webSearch,
-    currentSiteFilter,
-    defaultModel
-  };
+  // Create an array of promises to remove each session
+  const deletePromises = sessions.map(session => 
+    removeValue(session.pageLoadId)
+  );
+  
+  // Wait for all deletions to complete
+  await Promise.all(deletePromises);
+  
+  // Clear the sessions list
+  await setValue(STORAGE_KEYS.CHAT_SESSIONS, []);
 }
 
 /**
- * Set user preferences
+ * Store a debug log entry
  * 
- * @param {Object} preferences - Object containing preferences to update
- * @return {Promise<void>} Promise that resolves when preferences are updated
+ * @param {Object} logEntry - The log entry to store
+ * @return {Promise<void>}
  */
-export async function setUserPreferences(preferences) {
-  const updates = [];
-  
-  if (preferences.theme !== undefined) {
-    updates.push(setValue(STORAGE_KEYS.THEME, preferences.theme));
+export async function storeDebugLog(logEntry) {
+  // Ensure the log entry has a timestamp
+  if (!logEntry.timestamp) {
+    logEntry.timestamp = Date.now();
   }
   
-  if (preferences.temperature !== undefined) {
-    updates.push(setValue(STORAGE_KEYS.TEMPERATURE, preferences.temperature));
-  }
+  // Get current logs
+  const logs = await getValue(STORAGE_KEYS.DEBUG_LOGS, []);
   
-  if (preferences.pageScraping !== undefined) {
-    updates.push(setValue(STORAGE_KEYS.PAGE_SCRAPING_ENABLED, preferences.pageScraping));
-  }
+  // Add new log entry
+  logs.push(logEntry);
   
-  if (preferences.webSearch !== undefined) {
-    updates.push(setValue(STORAGE_KEYS.WEB_SEARCH_ENABLED, preferences.webSearch));
-  }
+  // Keep only the latest 100 entries
+  const trimmedLogs = logs.slice(-100);
   
-  if (preferences.currentSiteFilter !== undefined) {
-    updates.push(setValue(STORAGE_KEYS.CURRENT_SITE_FILTER, preferences.currentSiteFilter));
-  }
-  
-  if (preferences.defaultModel !== undefined) {
-    updates.push(setValue(STORAGE_KEYS.DEFAULT_MODEL, preferences.defaultModel));
-  }
-  
-  await Promise.all(updates);
+  // Save to storage
+  await setValue(STORAGE_KEYS.DEBUG_LOGS, trimmedLogs);
+}
+
+/**
+ * Get all debug logs
+ * 
+ * @return {Promise<Array>} Array of debug log entries
+ */
+export function getDebugLogs() {
+  return getValue(STORAGE_KEYS.DEBUG_LOGS, []);
+}
+
+/**
+ * Clear all debug logs
+ * 
+ * @return {Promise<void>}
+ */
+export function clearDebugLogs() {
+  return setValue(STORAGE_KEYS.DEBUG_LOGS, []);
 }
 
 export default {
-  setValue,
   getValue,
+  setValue,
   removeValue,
-  getAllValues,
-  clearStorage,
+  getMultipleValues,
+  setMultipleValues,
   getApiKey,
   setApiKey,
+  getUserPreferences,
+  updateUserPreferences,
   getChatSessions,
   updateChatSession,
   deleteChatSession,
-  getUserPreferences,
-  setUserPreferences
+  clearAllChatSessions,
+  storeDebugLog,
+  getDebugLogs,
+  clearDebugLogs
 }; 

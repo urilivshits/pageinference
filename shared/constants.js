@@ -1,96 +1,102 @@
 /**
- * Page Inference - Application Constants
+ * Constants
  * 
- * This file contains constants used throughout the application.
- * Centralizing these values makes it easier to maintain and update them.
+ * Application-wide constants used across the extension.
  */
 
-// API Constants
-export const API = {
-  // OpenAI API Constants
-  OPENAI: {
-    DEFAULT_MODEL: 'gpt-4o-mini',
-    SEARCH_MODEL: 'gpt-4o-mini',
-    // Models that support web browsing/search capabilities
-    BROWSING_CAPABLE_MODELS: [
-      'gpt-4o-mini'
-    ],
-    // Default model settings
-    DEFAULT_TEMPERATURE: 0.7,
-    MAX_TOKENS: 4096
-  }
-};
-
-// Action Types for messaging between contexts
-export const ACTION_TYPES = {
-  // Content script actions
-  CONTENT: {
-    INITIALIZED: 'contentScriptInitialized',
-    SCRAPE_CONTENT: 'scrapeContent',
-    CTRL_KEY_STATE: 'ctrlKeyState',
-  },
-  
-  // Popup actions
-  POPUP: {
-    INITIALIZED: 'popupInitialized',
-    CHECK_CTRL_CLICK: 'checkCtrlClickPending',
-  },
-  
-  // Background script actions
-  BACKGROUND: {
-    GET_CHAT_HISTORY: 'getChatHistory',
-    GET_API_KEY: 'getApiKey',
-    SET_API_KEY: 'setApiKey',
-    SEND_MESSAGE: 'sendMessage',
-    GET_SESSION_INFO: 'getSessionInfo',
-  }
-};
-
-// Storage Keys
+// Storage keys for Chrome extension storage
 export const STORAGE_KEYS = {
-  API_KEY: 'openai_api_key',
-  CHAT_SESSIONS: 'chatSessions',
+  // User settings and preferences
+  API_KEY: 'api_key',
+  USER_PREFERENCES: 'user_preferences',
   THEME: 'theme',
   TEMPERATURE: 'temperature',
-  PAGE_SCRAPING_ENABLED: 'pageScraping',
-  WEB_SEARCH_ENABLED: 'webSearch',
-  CURRENT_SITE_FILTER: 'currentSiteFilter',
-  DEFAULT_MODEL: 'defaultModel',
-  PAGE_LOAD_PREFIX: 'page_load_'
+  PAGE_SCRAPING_ENABLED: 'page_scraping_enabled',
+  WEB_SEARCH_ENABLED: 'web_search_enabled',
+  CURRENT_SITE_FILTER: 'current_site_filter',
+  DEFAULT_MODEL: 'default_model',
+  
+  // Session storage
+  CHAT_SESSIONS: 'chat_sessions',
+  
+  // Debugging
+  DEBUG_MODE: 'debug_mode',
+  DEBUG_LOGS: 'debug_logs'
 };
 
-// UI Constants
-export const UI = {
-  // CSS class names
-  CLASSES: {
-    NIGHT_MODE: 'night-mode',
-    ACTIVE_BUTTON: 'active-button',
-    ERROR: 'error-message',
-    THINKING: 'thinking',
-    USER_MESSAGE: 'user-message',
-    AI_MESSAGE: 'ai-message',
-    SOURCE_LINK: 'source-link',
+// Message types for communication between content scripts and background
+export const MESSAGE_TYPES = {
+  // API calls
+  SEND_API_REQUEST: 'send_api_request',
+  API_RESPONSE: 'api_response',
+  
+  // Chat sessions
+  CREATE_CHAT_SESSION: 'create_chat_session',
+  GET_CHAT_SESSION: 'get_chat_session',
+  GET_SESSION_LIST: 'get_session_list',
+  DELETE_CHAT_SESSION: 'delete_chat_session',
+  SEND_USER_MESSAGE: 'send_user_message',
+  
+  // Page actions
+  SCRAPE_PAGE_CONTENT: 'scrape_page_content',
+  
+  // Settings
+  GET_USER_PREFERENCES: 'get_user_preferences',
+  UPDATE_USER_PREFERENCES: 'update_user_preferences',
+  GET_API_KEY: 'get_api_key',
+  SET_API_KEY: 'set_api_key',
+  
+  // Debug
+  LOG_DEBUG_INFO: 'log_debug_info',
+  GET_DEBUG_LOGS: 'get_debug_logs',
+  CLEAR_DEBUG_LOGS: 'clear_debug_logs'
+};
+
+// API constants
+export const API_CONSTANTS = {
+  // Models
+  AVAILABLE_MODELS: [
+    'gpt-4o',
+    'gpt-4o-mini',
+    'gpt-4-turbo',
+    'gpt-4',
+    'gpt-3.5-turbo'
+  ],
+  DEFAULT_MODEL: 'gpt-4o-mini',
+  
+  // Endpoints
+  BASE_URL: 'https://api.openai.com/v1',
+  CHAT_COMPLETIONS_ENDPOINT: '/chat/completions',
+  
+  // Request constants
+  DEFAULT_TEMPERATURE: 0.7,
+  MAX_TOKENS: 4096
+};
+
+// UI constants
+export const UI_CONSTANTS = {
+  THEMES: {
+    LIGHT: 'light',
+    DARK: 'dark'
   },
   
-  // Default values
-  DEFAULTS: {
-    DOUBLE_CLICK_THRESHOLD: 500, // ms
-    MAX_CONVERSATION_TITLE_LENGTH: 50,
-  }
+  ANIMATION_DURATION: 300,
+  MAX_MESSAGE_PREVIEW_LENGTH: 50
 };
 
-// Default timeout values (in milliseconds)
-export const TIMEOUTS = {
-  CONTENT_SCRIPT_INIT: 1000,
-  CTRL_KEY_CLEAR: 5000,
-  DOUBLE_CLICK_WINDOW: 500,
+// Error messages
+export const ERROR_MESSAGES = {
+  API_KEY_MISSING: 'OpenAI API key is missing. Please add your API key in the extension settings.',
+  API_REQUEST_FAILED: 'API request failed. Please check your connection and try again.',
+  SESSION_NOT_FOUND: 'Chat session not found. It may have been deleted or expired.',
+  INVALID_MESSAGE: 'Invalid message format. Please try again.',
+  STORAGE_ERROR: 'Error accessing storage. Please refresh and try again.'
 };
 
-// Export default object containing all constants
 export default {
-  API,
-  ACTION_TYPES,
   STORAGE_KEYS,
-  UI,
-  TIMEOUTS
+  MESSAGE_TYPES,
+  API_CONSTANTS,
+  UI_CONSTANTS,
+  ERROR_MESSAGES
 }; 
