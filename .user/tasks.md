@@ -607,3 +607,41 @@ Notes:
   - [x] Apply same strict validation to double-click handler in background.js
   - [x] Add detailed logging to help diagnose domain matching issues
   - [x] Update tasks.md with completed subtasks
+
+## User Query: "1. process the @rules.mdc before processing any of my requests 2. the app grows and its getting harder to maintain and build atop of it for you since its all in several files and you keep breaking existing functionality when working on a new functionality, it is time to do a refactoring while following the industry best practices, including the best practices for google chrome extensions 3. lets start this process in this thread step-by-step 4. please reindex the repo, update artifacts and go over the code and suggest a code refactoring plan so that it would make it simpler for us to maintain and develop the project without breaking the existing functionality."
+
+- Task: Analyze codebase structure and organization
+  - [x] Examine file sizes and organization of key JavaScript files
+  - [x] Identify code duplication and overlapping functionality
+  - [x] Assess current architecture pattern and extension organization
+  - [x] Review library usage and integration approaches
+
+- Task: Create comprehensive refactoring plan
+  - [x] Define modular architecture for improved maintainability
+  - [x] Plan component structure following Chrome extension best practices
+  - [x] Design state management approach for consistent data handling
+  - [x] Outline testing strategy to prevent regressions
+  - [x] Create migration roadmap with incremental implementation steps
+
+- Task: Implement modular file structure
+  - [x] Reorganize codebase into logical modules and components
+  - [x] Extract reusable utilities into dedicated files
+  - [x] Establish consistent directory structure for components, services, and utilities
+  - [ ] Implement proper import/export patterns between modules
+  - [ ] Ensure backward compatibility during restructuring
+
+- Task: Modernize code architecture
+  - [x] Implement service-oriented architecture for core functionality
+  - [ ] Create dedicated modules for API communication
+  - [x] Develop proper state management for cross-script communication
+  - [ ] Improve error handling and recovery mechanisms
+  - [ ] Implement unit testing for critical components
+
+## User Query: "great, one thing i'd add is a separate storage for all the openai system messages that exist in the project, what do you think?"
+
+- Task: Implement centralized system messages storage
+  - [x] Create dedicated prompts directory structure 
+  - [x] Extract generic system prompts
+  - [x] Extract website-specific system prompts
+  - [x] Create index file for accessing all prompts
+  - [x] Implement helper function for selecting appropriate prompt

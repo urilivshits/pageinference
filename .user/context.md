@@ -11,6 +11,23 @@ FORMAT GUIDE - DO NOT DELETE
 
 - **[API Selection]** Evaluated OpenAI Completions API versus Responses API for web search functionality, determining that Responses API offers superior built-in web search capabilities, simplified integration, and enhanced tools. Completions API requires custom function implementation for web search while Responses API provides a native `web_search_preview` tool that directly connects to OpenAI's search infrastructure without requiring custom implementation.
 
+- **[Architecture Refactoring Decision]** Designed a comprehensive refactoring plan to improve code maintainability and prevent regressions in functionality. The plan involves:
+  - Reorganizing the monolithic JavaScript files into a modular structure
+  - Implementing a service-oriented architecture for better separation of concerns
+  - Establishing proper state management across different extension contexts
+  - Creating a standardized utility library for shared functionality
+  - Following Chrome Extension best practices for component organization
+  - Adding proper versioning and migration path for incremental changes
+  - Implementing testing strategies to prevent regression issues
+
+- **[Modular Refactoring Implementation]** Created foundation for a modular architecture to improve maintainability and prevent regression issues:
+  - Established a well-organized directory structure separating concerns by component type (background, popup, content)
+  - Created dedicated service modules for storage management with Promise-based API
+  - Centralized all system prompts in a dedicated prompts directory with clear organization by purpose
+  - Implemented utility modules for URL handling and message passing
+  - Defined a constants file to centralize configuration values across the extension
+  - Set up entry point files that will gradually replace the monolithic scripts
+
 ## Implemented Features
 <!--
 FORMAT GUIDE - DO NOT DELETE
