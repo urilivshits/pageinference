@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Inference</title>
+  <link rel="stylesheet" href="styles/popup.css">
+  <link rel="stylesheet" href="../lib/highlight.min.css">
+  <script src="../lib/highlight.min.js"></script>
+  <script src="../lib/markdown-it.min.js"></script>
+</head>
+<body data-theme="light">
+  <div id="double-click-area" title="Double-click to run last query"></div>
+  <div class="popup-container">
+    <!-- Header with controls -->
+    <header class="popup-header">
+      <div class="logo">
+        <img src="../icons/icon-32.png" alt="Page Inference Logo">
+        <h1>Page Inference</h1>
+      </div>
+      <div class="window-controls">
+        <button id="minimize-button" class="window-control minimize" title="Minimize">−</button>
+        <button id="close-button" class="window-control close" title="Close">×</button>
+      </div>
+    </header>
+    
+    <!-- Tab navigation -->
+    <nav class="tab-navigation">
+      <button id="chat-tab" class="tab-button active" data-tab="chat">Chat</button>
+      <button id="history-tab" class="tab-button" data-tab="history">History</button>
+      <button id="settings-tab" class="tab-button" data-tab="settings">Settings</button>
+    </nav>
+
+    <!-- Current conversation info -->
+    <div id="current-conversation-info" class="conversation-info hidden">
+      <div id="current-conversation-title" class="chat-session-title"></div>
+      <div id="current-conversation-timestamp" class="session-meta"></div>
+    </div>
+    
+    <!-- Chat tab -->
+    <div id="chat-container" class="tab-container active" data-tab="chat">
+      <div id="chat-messages" class="chat-messages"></div>
+      <div id="loading-indicator" class="loading-indicator hidden">
+        <div class="spinner"></div>
+        <span>AI is thinking...</span>
+      </div>
+      <div id="error-message" class="error-message hidden"></div>
+      <div class="chat-input-container">
+        <div class="action-buttons">
+          <button id="new-chat-button" class="icon-button" title="New Chat">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button id="reason-button" class="icon-button" title="Reason">Reason</button>
+          <button id="search-page-button" class="icon-button" title="Search Page">Search Page</button>
+          <button id="search-web-button" class="icon-button" title="Search Web">Search Web</button>
+        </div>
+        <textarea id="message-input" placeholder="Ask a question about this page..." rows="1"></textarea>
+        <button id="send-button" class="send-button">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+          </svg>
+          <span class="spinner-container">
+            <div class="spinner" style="display: none;"></div>
+          </span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- History tab -->
+    <div id="history-container" class="tab-container" data-tab="history">
+      <div class="history-header">
+        <div class="filter-container">
+          <input id="filter-input" type="text" placeholder="Search sessions...">
+          <div class="domain-filter">
+            <input id="domain-filter-toggle" type="checkbox">
+            <label id="domain-filter-label" for="domain-filter-toggle">Only show current site</label>
+          </div>
+        </div>
+      </div>
+      <ul id="sessions-list" class="sessions-list"></ul>
+      <div id="no-sessions-message" class="no-sessions-message">No chat sessions found</div>
+    </div>
+    
+    <!-- Settings tab -->
+    <div id="settings-container" class="tab-container" data-tab="settings">
+      <div class="settings-section">
+        <h2>API Key</h2>
+        <div class="setting-item">
+          <label for="api-key-input">OpenAI API Key</label>
+          <div class="api-key-input-container">
+            <input id="api-key-input" type="password" placeholder="sk-...">
+            <button id="toggle-api-key-button" class="icon-button small" title="Show/Hide API Key">👁️</button>
+            <button id="save-api-key-button" class="primary-button">Save</button>
+          </div>
+          <p class="setting-description">Your API key is stored locally and never sent to our servers.</p>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h2>Chat Settings</h2>
+        <div class="setting-item">
+          <label for="model-selector">AI Model</label>
+          <select id="model-selector">
+            <option value="gpt-4o-mini">GPT-4o mini (Default, Search-enabled)</option>
+            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+            <option value="gpt-4">GPT-4</option>
+            <option value="gpt-4o">GPT-4o</option>
+          </select>
+          <p class="setting-description">Note: Only GPT-4o mini supports web search functionality. Other models may require additional API access permissions.</p>
+        </div>
+        
+        <div class="setting-item">
+          <label for="temperature-slider">Temperature: <span id="temperature-value">0.7</span></label>
+          <input id="temperature-slider" type="range" min="0" max="1" step="0.1" value="0.7">
+          <p class="setting-description">Higher values make the output more random, lower values make it more deterministic.</p>
+        </div>
+        
+        <div class="setting-item">
+          <label for="web-search-toggle">Web Search</label>
+          <div class="toggle-container">
+            <input id="web-search-toggle" type="checkbox" class="toggle-input">
+            <label for="web-search-toggle" class="toggle-label"></label>
+          </div>
+          <p class="setting-description">Allow the AI to search the web for more up-to-date information.</p>
+        </div>
+        
+        <div class="setting-item">
+          <label for="page-scraping-toggle">Page Content</label>
+          <div class="toggle-container">
+            <input id="page-scraping-toggle" type="checkbox" class="toggle-input" checked>
+            <label for="page-scraping-toggle" class="toggle-label"></label>
+          </div>
+          <p class="setting-description">Allow the AI to access the current page content.</p>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h2>Appearance</h2>
+        <div class="setting-item">
+          <label>Theme</label>
+          <div class="theme-options">
+            <label class="theme-option">
+              <input type="radio" name="theme" value="system" checked>
+              System
+            </label>
+            <label class="theme-option">
+              <input type="radio" name="theme" value="light">
+              Light
+            </label>
+            <label class="theme-option">
+              <input type="radio" name="theme" value="dark">
+              Dark
+            </label>
+          </div>
+          <p class="setting-description">Choose your preferred theme.</p>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h2>About</h2>
+        <div class="about-content">
+          <p>Page Inference v1.0.0</p>
+          <p>© 2023 Page Inference</p>
+          <div class="links">
+            <a href="https://pageinference.com" target="_blank">Website</a>
+            <a href="https://pageinference.com/privacy" target="_blank">Privacy Policy</a>
+            <a href="https://pageinference.com/terms" target="_blank">Terms of Service</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="popup.js"></script>
+</body>
+</html> 

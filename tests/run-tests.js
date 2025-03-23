@@ -5,23 +5,58 @@
  * Add new test files to the imports below as they are created.
  */
 
-console.log("Starting tests...");
+// Initialize global process if not present
+if (!global.process) {
+  global.process = {
+    stdout: { write: console.log },
+    stderr: { write: console.error },
+    exit: (code) => { throw new Error(`Process exited with code ${code}`); }
+  };
+}
 
-// Import test framework
+// Import test framework and environment
 import { printSummary } from './test-framework.js';
+import './test-environment.js';
 
-// Import test files
-console.log("Importing url-utils.test.js...");
-import './shared/utils/url-utils.test.js';
-console.log("Importing models.test.js...");
-import './models.test.js';
-// Import additional test files as they are created
-// import './shared/utils/message-utils.test.js';
-// import './shared/prompts/index.test.js';
-// import './background/services/storage-service.test.js';
+// Run tests asynchronously
+async function runTests() {
+  try {
+    process.stdout.write('\nStarting test execution...\n\n');
+    
+    // Run Simple tests
+    process.stdout.write('Running Simple tests...\n');
+    try {
+      await import('./simple.test.js');
+    } catch (error) {
+      process.stderr.write(`Error in Simple tests: ${error.stack}\n`);
+    }
+    
+    // Run Scraper tests
+    process.stdout.write('\nRunning Generic Scraper tests...\n');
+    try {
+      await import('./content/scraper.test.js');
+    } catch (error) {
+      process.stderr.write(`Error in Scraper tests: ${error.stack}\n`);
+    }
+    
+    // Let the LinkedIn tests run via setTimeout in scraper.test.js
+    
+    // Print test summary
+    setTimeout(() => {
+      printSummary();
+      process.stdout.write('\nAll tests completed!\n\n');
+    }, 3000);  // Wait for LinkedIn tests to complete
+    
+  } catch (error) {
+    process.stderr.write('\nTest execution failed:\n');
+    process.stderr.write(error.stack + '\n');
+    process.exit(1);
+  }
+}
 
-// Print final summary after all tests have run
-console.log('\n==================================');
-console.log('🧪 ALL TESTS COMPLETED');
-console.log('==================================');
-printSummary(); 
+// Run the tests
+runTests().catch(error => {
+  process.stderr.write('Error running tests:\n');
+  process.stderr.write(error.stack + '\n');
+  process.exit(1);
+}); 

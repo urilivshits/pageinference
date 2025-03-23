@@ -2,7 +2,7 @@
  * URL Utilities Tests
  */
 
-import { test, assertEqual, assertTrue, assertFalse, suite } from '../../test-framework.js';
+import { test, suite, assertEqual, assertTrue, assertFalse } from '../../test-framework.js';
 import { 
   getHostname,
   getDomain, 
@@ -48,8 +48,6 @@ suite('URL Utilities', () => {
   
   test('isValidUrl should return false for invalid URLs', () => {
     assertFalse(isValidUrl('not-a-url'));
-    // In modern browsers this URL might actually be valid with auto-correction
-    // assertFalse(isValidUrl('http:/example.com')); // Missing slash
     assertFalse(isValidUrl('example')); // No protocol
   });
   
@@ -100,10 +98,7 @@ suite('URL Utilities', () => {
     ];
     
     const grouped = groupByDomain(items);
-    
-    assertTrue('example.com' in grouped);
-    assertTrue('test.com' in grouped);
-    
+    assertEqual(Object.keys(grouped).length, 2);
     assertEqual(grouped['example.com'].length, 3);
     assertEqual(grouped['test.com'].length, 1);
   });

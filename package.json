@@ -1,0 +1,12 @@
+{
+  "name": "pageinference",
+  "version": "1.0.0",
+  "description": "A browser extension for inferring information from web pages",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run-tests.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

@@ -25,7 +25,7 @@
 ### Phase 3: API and Communication
 - [x] Implement OpenAI API service
 - [x] Implement message-passing between components
-- [ ] Implement page content scraping service
+- [x] Implement page content scraping service
 - [ ] Implement event listeners for extension actions
 
 ### Phase 4: UI Components
@@ -37,6 +37,7 @@
 ### Phase 5: Testing & Refinement
 - [x] Set up testing infrastructure
 - [x] Create model tests
+- [x] Create content scraper tests
 - [ ] Create service tests
 - [ ] Create API tests
 - [ ] Create UI tests

@@ -4,8 +4,6 @@
  * Tests for the data models used in the extension.
  */
 
-console.log("Loading models.test.js");
-
 import { suite, test, assertEqual, assertTrue } from './test-framework.js';
 import * as models from '../shared/models/index.js';
 

@@ -8,9 +8,7 @@
  */
 
 // Import scrapers
-// import './scrapers/generic-scraper.js';
-// import './scrapers/linkedin-scraper.js';
-// import './scrapers/document-scraper.js';
+import { scrapeCurrentPage } from './scrapers/index.js';
 
 // Track initialization status
 window.__pageInferenceInitialized = false;
@@ -47,16 +45,35 @@ function initialize() {
 function setupContentScript() {
   if (window.__pageInferenceInitialized) return;
   
-  // This will be replaced with actual initialization logic
-  // For now, just setting up a basic message listener
-  
   // Listen for messages from the popup or background script
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Content script received message:', request);
     
-    // This will be replaced with more sophisticated handling
-    // For now, just acknowledging receipt
+    // Handle content scraping request
+    if (request.action === 'scrapeContent') {
+      console.log('Scraping page content...');
+      try {
+        const pageContent = scrapeCurrentPage();
+        console.log('Scraped content length:', pageContent.length);
+        sendResponse({ content: pageContent });
+        console.log('Sent response with content');
+      } catch (error) {
+        console.error('Error during content scraping:', error);
+        sendResponse({ 
+          error: 'Error scraping content: ' + error.message,
+          content: `Error extracting content from ${window.location.href}. ${error.message}`
+        });
+      }
+      return true; // Keep the message channel open for async responses
+    }
     
+    // Handle ping to check if content script is initialized
+    if (request.action === 'ping') {
+      sendResponse({ success: true, initialized: true });
+      return true;
+    }
+    
+    // Fallback for unhandled messages
     sendResponse({ success: true, message: 'Message received by content script' });
     return true; // Keep the message channel open for async responses
   });
@@ -76,7 +93,85 @@ function setupContentScript() {
   } catch (e) {
     console.warn('Failed to send initialization confirmation:', e);
   }
+  
+  // Set up keyboard event listeners (for Ctrl key state)
+  setupKeyListeners();
+}
+
+/**
+ * Set up keyboard event listeners to track key states
+ */
+function setupKeyListeners() {
+  let ctrlKeyPressed = false;
+  let keyEventTimeout = null;
+
+  // Function to send Ctrl key state with less delay when pressed
+  function sendCtrlKeyState(isPressed) {
+    clearTimeout(keyEventTimeout);
+    
+    // Use zero delay when pressing (true) but short delay when releasing (false)
+    const delay = isPressed ? 0 : 10;
+    
+    keyEventTimeout = setTimeout(() => {
+      chrome.runtime.sendMessage({ 
+        action: 'ctrlKeyState', 
+        isPressed: isPressed 
+      }, (response) => {
+        console.log(`Content script sent Ctrl key=${isPressed}, response:`, response);
+      });
+    }, delay);
+  }
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Control') {
+      if (!ctrlKeyPressed) {
+        ctrlKeyPressed = true;
+        // Send immediate message when Ctrl is pressed
+        sendCtrlKeyState(true);
+      }
+    }
+  });
+
+  document.addEventListener('keyup', function(event) {
+    if (event.key === 'Control') {
+      ctrlKeyPressed = false;
+      // Send slightly delayed message when Ctrl is released
+      sendCtrlKeyState(false);
+    }
+  });
+
+  // Hold state longer on window blur to give enough time for click to process
+  window.addEventListener('blur', function() {
+    if (ctrlKeyPressed) {
+      // Wait longer before resetting on blur to ensure click completes
+      setTimeout(() => {
+        ctrlKeyPressed = false;
+        chrome.runtime.sendMessage({ 
+          action: 'ctrlKeyState', 
+          isPressed: false 
+        }, (response) => {
+          console.log('Content script sent Ctrl key reset on blur, response:', response);
+        });
+      }, 500); // Longer delay on blur
+    }
+  });
+
+  // Send initial state
+  chrome.runtime.sendMessage({ 
+    action: 'ctrlKeyState', 
+    isPressed: false 
+  });
 }
 
 // Start initialization
-initialize(); 
+initialize();
+
+// Add a failsafe initialization for slow loading pages
+setTimeout(() => {
+  if (!window.__pageInferenceInitialized) {
+    console.log('Delayed initialization triggered');
+    initialize();
+  } else {
+    console.log('Delayed initialization not needed, already initialized');
+  }
+}, 1500); 
