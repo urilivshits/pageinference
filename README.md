@@ -2,6 +2,15 @@
 
 A JavaScript library for scraping and inferring content from web pages, with specialized support for LinkedIn job pages.
 
+## Project Versions
+
+This project contains two versions:
+
+1. **Original Browser Extension**: The original Chrome extension for page inference.
+2. **Refactored Module Version**: A restructured version with improved modularity and comprehensive tests.
+
+See [REFACTORED_VERSION_INSTALLATION.md](REFACTORED_VERSION_INSTALLATION.md) for instructions on installing the refactored version.
+
 ## Features
 
 - Generic web page scraping to extract structured content
@@ -11,12 +20,19 @@ A JavaScript library for scraping and inferring content from web pages, with spe
 
 ## Project Structure
 
+### Refactored Version Structure
+
 ```
 /content
+  content.js           - Refactored content script entry point
   /scrapers
     generic-scraper.js  - Core scraping functionality for any webpage
     linkedin-scraper.js - LinkedIn-specific scraping functionality
     index.js            - Main export and scraper detection
+  /helpers.js          - Helper utilities for extension integration
+/popup
+  popup.html           - Refactored popup interface
+  popup.js             - Popup script
 /tests
   /content
     scraper.test.js       - Tests for the generic scraper
@@ -24,6 +40,10 @@ A JavaScript library for scraping and inferring content from web pages, with spe
   test-framework.js       - Simple testing framework
   test-environment.js     - JSDOM setup for tests
   run-tests.js            - Test runner script
+test-generic-scraper.js   - Standalone test for generic scraper
+test-linkedin-scraper.js  - Standalone test for LinkedIn scraper
+module-loader.js          - Module loader for extension integration
+refactored-manifest.json  - Updated manifest for refactored version
 ```
 
 ## Scrapers
