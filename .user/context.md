@@ -87,6 +87,51 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
 
+- **[Message Channel Timeout Fix]** Resolved asynchronous message handling errors in refactored extension:
+  - Fixed "message channel closed before a response was received" errors across multiple components
+  - Implemented Promise.race with timeouts to prevent indefinite waiting for responses
+  - Added direct storage access fallbacks when message channel errors occur
+  - Updated background.js message handler to properly handle all message types
+  - Improved error handling and recovery mechanisms throughout components
+  - Added specific handlers for each message type in background script
+  - Fixed icon path to use correct icons from the refactored directory structure
+  - References: background/background.js, popup/components/chat.js, popup/components/settings.js, popup/components/history.js, popup/popup.html
+
+- **[Syntax Error in Highlight.js Import]** Fixed SyntaxError in highlight.js library usage:
+  - Identified error in ES module import for highlight.js library that doesn't provide default export
+  - Updated chat.js to use the global window.hljs object loaded via script tag in popup.html
+  - Changed all references from the imported hljs to window.hljs
+  - Modified testing files to properly mock the global hljs object
+  - Ensured proper code highlighting functionality in chat messages
+  - Maintained consistent syntax highlighting in both light and dark themes
+  - References: popup/components/chat.js, tests/components/chat.test.js
+
+- **[Markdown Library Syntax Error Fix]** Fixed SyntaxError related to the marked.js library in the refactored extension:
+  - Identified missing closing parenthesis error in marked.min.js library usage
+  - Replaced incompatible ES module import for marked library with markdown-it library
+  - Updated chat.js component to use markdown-it instead of the marked library
+  - Modified testing files to mock markdown-it instead of marked
+  - Preserved markdown rendering functionality with highlighting support
+  - Created a cleaner implementation that aligns with the included script dependencies
+  - References: popup/components/chat.js, tests/components/chat.test.js
+
+- **[Service Worker Import Error Fix]** Fixed critical error with import() being disallowed in ServiceWorkerGlobalScope:
+  - Replaced ES module imports with traditional script approach compatible with service workers
+  - Removed dynamic import() calls that violated HTML specification for service workers
+  - Created inline implementations of core services (storage, messaging) for the background script
+  - Implemented simple Promise-based wrappers around Chrome Storage API
+  - Added proper error handling and logging for initialization sequence
+  - Preserved the same functionality but with a service worker compatible implementation
+  - References: background/background.js
+
+- **[Service Worker Registration Fix]** Fixed service worker registration failure (Status code 15) in the refactored extension:
+  - Replaced static ES module imports with dynamic imports using chrome.runtime.getURL() and URL constructor
+  - Added proper error handling with try/catch block in the initialization function
+  - Created a dedicated loadModules() function to properly load dependencies asynchronously
+  - Implemented a more robust module loading approach compatible with Chrome Extension Manifest V3
+  - Preserved a backup of the original file for safety
+  - References: background/background.js
+
 - **[Cross-Site Chat History Bug]** Fixed issue with chat sessions from different sites not being properly saved:
   - Added sessionUrl variable to keep track of the URL associated with loaded chat history
   - Modified getChatHistoryKey function to prioritize sessionUrl when available

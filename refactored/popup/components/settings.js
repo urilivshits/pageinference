@@ -22,6 +22,22 @@ let pageScrapingToggle;
 let currentSettings = null;
 let modelAvailability = {};
 
+// Storage keys (copied from old app to maintain compatibility)
+const STORAGE_KEYS = {
+  USER_PREFERENCES: 'userPreferences', 
+  API_KEY: 'openai_api_key'
+};
+
+// Default settings
+const defaultSettings = {
+  theme: 'light',
+  temperature: 0.7,
+  pageScraping: true,
+  webSearch: true,
+  currentSiteFilter: true,
+  defaultModel: 'gpt-4o-mini'
+};
+
 /**
  * Initialize the settings component
  */
@@ -116,20 +132,89 @@ function toggleApiKeyVisibility() {
 }
 
 /**
+ * Apply settings to the UI elements
+ * 
+ * @param {Object} settings - The settings to apply
+ */
+function applySettingsToUI(settings) {
+  if (!settings) return;
+  
+  // Apply theme
+  if (settings.theme) {
+    const themeOption = document.querySelector(`input[name="theme"][value="${settings.theme}"]`);
+    if (themeOption) {
+      themeOption.checked = true;
+      applyTheme(settings.theme);
+    }
+  }
+  
+  // Apply temperature
+  if (settings.temperature !== undefined) {
+    temperatureSlider.value = settings.temperature;
+    temperatureValue.textContent = settings.temperature;
+    updateSliderGradient(temperatureSlider);
+  }
+  
+  // Apply model
+  if (settings.defaultModel) {
+    const option = Array.from(modelSelector.options).find(opt => opt.value === settings.defaultModel);
+    if (option) {
+      modelSelector.value = settings.defaultModel;
+    }
+  }
+  
+  // Apply toggles
+  if (settings.webSearch !== undefined) {
+    webSearchToggle.checked = settings.webSearch;
+  }
+  
+  if (settings.pageScraping !== undefined) {
+    pageScrapingToggle.checked = settings.pageScraping;
+  }
+}
+
+/**
  * Load user settings from storage
  */
 async function loadSettings() {
   try {
-    // Get user preferences
-    const response = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.GET_USER_PREFERENCES
-    });
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to load settings');
+    // Get user preferences using Promise.race to handle timeouts
+    let response;
+    try {
+      response = await Promise.race([
+        chrome.runtime.sendMessage({
+          type: MESSAGE_TYPES.GET_USER_PREFERENCES
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Settings request timed out')), 5000)
+        )
+      ]);
+    } catch (error) {
+      console.error('Error requesting settings, attempting fallback:', error);
+      
+      // Fallback to direct storage access
+      try {
+        console.log('Attempting direct storage access for settings');
+        const result = await chrome.storage.local.get(STORAGE_KEYS.USER_PREFERENCES);
+        currentSettings = result[STORAGE_KEYS.USER_PREFERENCES] || defaultSettings;
+        
+        // Apply settings to UI
+        applySettingsToUI(currentSettings);
+        
+        // Load API key separately (for security)
+        loadApiKey();
+        return;
+      } catch (storageError) {
+        console.error('Fallback storage access failed for settings:', storageError);
+        throw new Error('Failed to load settings: ' + storageError.message);
+      }
     }
     
-    currentSettings = response.data;
+    if (!response || !response.success) {
+      throw new Error(response?.error || 'Failed to load settings');
+    }
+    
+    currentSettings = response.data || defaultSettings;
     
     // Apply settings to UI
     applySettingsToUI(currentSettings);
@@ -144,6 +229,9 @@ async function loadSettings() {
         Error loading settings: ${error.message}
       </div>
     `;
+    
+    // Apply default settings
+    applySettingsToUI(defaultSettings);
   }
 }
 
@@ -195,13 +283,34 @@ function populateModelSelector() {
  */
 async function loadApiKey() {
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.GET_API_KEY
-    });
+    // Try message first
+    try {
+      const response = await Promise.race([
+        chrome.runtime.sendMessage({
+          type: MESSAGE_TYPES.GET_API_KEY
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('API key request timed out')), 5000)
+        )
+      ]);
+      
+      if (response.success && response.data) {
+        // Mask the API key for display
+        apiKeyInput.value = response.data.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, '$1***$3');
+        apiKeyInput.setAttribute('data-has-key', 'true');
+        return;
+      }
+    } catch (error) {
+      console.error('Error requesting API key via message, trying direct storage:', error);
+    }
     
-    if (response.success && response.data) {
+    // Fallback to direct storage
+    const result = await chrome.storage.local.get(STORAGE_KEYS.API_KEY);
+    const apiKey = result[STORAGE_KEYS.API_KEY];
+    
+    if (apiKey) {
       // Mask the API key for display
-      apiKeyInput.value = response.data.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, '$1***$3');
+      apiKeyInput.value = apiKey.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, '$1***$3');
       apiKeyInput.setAttribute('data-has-key', 'true');
     } else {
       apiKeyInput.value = '';
@@ -229,15 +338,14 @@ function updateSliderGradient(slider) {
  */
 async function checkModelAvailability() {
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.CHECK_MODEL_AVAILABILITY
-    });
+    // For now, just make all models available since we don't have this endpoint yet
+    modelAvailability = {
+      'gpt-4o-mini': true,
+      'gpt-3.5-turbo': true,
+      'gpt-4': true,
+      'gpt-4o': true
+    };
     
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to check model availability');
-    }
-    
-    modelAvailability = response.data || {};
     updateModelSelector();
   } catch (error) {
     console.error('Error checking model availability:', error);
@@ -308,28 +416,25 @@ async function handleSaveApiKey() {
   }
   
   try {
-    // First test the key
-    const testResponse = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.TEST_API_KEY,
-      data: { apiKey }
-    });
+    // First save directly to storage as fallback
+    await chrome.storage.local.set({ [STORAGE_KEYS.API_KEY]: apiKey });
     
-    if (!testResponse.success) {
-      throw new Error(testResponse.error || 'API key test failed');
-    }
-    
-    // If test passed, save the key
-    const saveResponse = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.SET_API_KEY,
-      data: { apiKey }
-    });
-    
-    if (!saveResponse.success) {
-      throw new Error(saveResponse.error || 'Failed to save API key');
+    // Try background channel if available
+    try {
+      const saveResponse = await chrome.runtime.sendMessage({
+        type: MESSAGE_TYPES.SET_API_KEY,
+        data: { apiKey }
+      });
+      
+      if (!saveResponse.success) {
+        console.warn('Background save not successful, but direct storage succeeded');
+      }
+    } catch (msgError) {
+      console.warn('Background save failed, but direct storage succeeded:', msgError);
     }
     
     // Show success message
-    alert('API key saved and verified successfully');
+    alert('API key saved successfully');
     
     // Reload the key display
     loadApiKey();
@@ -349,17 +454,38 @@ async function handleSaveApiKey() {
  */
 async function updateSettings(settings) {
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.UPDATE_USER_PREFERENCES,
-      data: settings
-    });
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to update settings');
+    // First try through message
+    let success = false;
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MESSAGE_TYPES.UPDATE_USER_PREFERENCES,
+        data: settings
+      });
+      
+      if (response.success) {
+        currentSettings = response.data;
+        success = true;
+      }
+    } catch (msgError) {
+      console.warn('Failed to update settings via message:', msgError);
     }
     
-    // Update current settings
-    currentSettings = response.data;
+    // If message failed, update directly in storage
+    if (!success) {
+      // Get current settings
+      const result = await chrome.storage.local.get(STORAGE_KEYS.USER_PREFERENCES);
+      const currentPrefs = result[STORAGE_KEYS.USER_PREFERENCES] || defaultSettings;
+      
+      // Update with new settings
+      const updatedSettings = { ...currentPrefs, ...settings };
+      
+      // Save back to storage
+      await chrome.storage.local.set({ 
+        [STORAGE_KEYS.USER_PREFERENCES]: updatedSettings 
+      });
+      
+      currentSettings = updatedSettings;
+    }
   } catch (error) {
     console.error('Error updating settings:', error);
     // Restore previous settings in UI

@@ -8,9 +8,18 @@ import { test, suite, assertEqual, assertTrue, assertFalse } from '../test-frame
 import { MESSAGE_TYPES } from '../../shared/constants.js';
 import { initializeChatComponent, setLoading, displayErrorMessage, hideErrorMessage, loadCurrentSession, createAssistantMessage, formatMessagesForApi } from '../../popup/components/chat.js';
 
-// Mock marked function
-global.marked = {
-  parse: (text) => `<p>${text}</p>`
+// Mock markdown-it function
+global.markdownit = function() {
+  return {
+    render: (text) => `<p>${text}</p>`
+  };
+};
+
+// Mock hljs object
+global.hljs = {
+  getLanguage: () => true,
+  highlight: () => ({ value: '<code>highlighted</code>' }),
+  highlightElement: () => {}
 };
 
 // Mock session data
@@ -94,7 +103,7 @@ suite('Chat Component', async () => {
   afterEach(() => {
     cleanupMockDOM();
     delete global.chrome;
-    delete global.marked;
+    delete global.markdownit;
   });
   
   test('Component initialization', () => {

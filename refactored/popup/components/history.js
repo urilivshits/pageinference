@@ -162,22 +162,77 @@ async function loadSessions() {
     noSessionsMessage.textContent = 'Loading sessions...';
     noSessionsMessage.style.display = 'block';
     
-    // Get sessions
-    const response = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.GET_SESSION_LIST,
-      data: {
-        domain: filteringByCurrentDomain ? currentDomain : null
+    // Get sessions with timeout handling
+    let response;
+    try {
+      response = await Promise.race([
+        chrome.runtime.sendMessage({
+          type: MESSAGE_TYPES.GET_SESSION_LIST,
+          data: {
+            domain: filteringByCurrentDomain ? currentDomain : null
+          }
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session list request timed out')), 5000)
+        )
+      ]);
+    } catch (error) {
+      console.error('Error requesting sessions, attempting fallback:', error);
+      
+      // Fallback to direct storage access
+      try {
+        console.log('Attempting direct storage access for sessions');
+        const result = await chrome.storage.local.get('chatSessions');
+        let sessions = result.chatSessions || [];
+        
+        // Filter by domain if needed
+        if (filteringByCurrentDomain && currentDomain) {
+          sessions = sessions.filter(session => {
+            try {
+              const sessionDomain = new URL(session.url).hostname;
+              return sessionDomain === currentDomain;
+            } catch (e) {
+              return false;
+            }
+          });
+        }
+        
+        allSessions = sessions;
+        
+        // Sort sessions by last updated time
+        allSessions.sort((a, b) => new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0));
+        
+        // Show message if no sessions
+        if (allSessions.length === 0) {
+          noSessionsMessage.textContent = 'No chat sessions found';
+          noSessionsMessage.style.display = 'block';
+          return;
+        }
+        
+        // Hide no sessions message
+        noSessionsMessage.style.display = 'none';
+        
+        // Apply current filter if any
+        if (filterInput.value) {
+          filterSessions(filterInput.value.toLowerCase());
+        } else {
+          renderSessions(allSessions);
+        }
+        return;
+      } catch (storageError) {
+        console.error('Fallback storage access failed for sessions:', storageError);
+        throw new Error('Failed to load sessions: ' + storageError.message);
       }
-    });
+    }
     
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to load sessions');
+    if (!response || !response.success) {
+      throw new Error(response?.error || 'Failed to load sessions');
     }
     
     allSessions = response.data || [];
     
     // Sort sessions by last updated time
-    allSessions.sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated));
+    allSessions.sort((a, b) => new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0));
     
     // Show message if no sessions
     if (allSessions.length === 0) {
@@ -451,6 +506,12 @@ function createSessionElement(session) {
  */
 async function openSession(session) {
   try {
+    console.log('Opening session:', session);
+    
+    if (!session || !session.pageLoadId) {
+      throw new Error('Invalid session data: missing pageLoadId');
+    }
+    
     // If the session has a URL, open that tab and navigate to it
     if (session.url) {
       // Find if the URL is already open in a tab
@@ -473,7 +534,10 @@ async function openSession(session) {
     }
     
     // Notify chat component to show this session
-    window.dispatchEvent(new CustomEvent('open-session', { detail: session }));
+    // We pass the pageLoadId to the event to ensure the chat component can find it
+    window.dispatchEvent(new CustomEvent('open-session', { 
+      detail: { pageLoadId: session.pageLoadId }
+    }));
   } catch (error) {
     console.error('Error opening session:', error);
     alert(`Error opening session: ${error.message}`);

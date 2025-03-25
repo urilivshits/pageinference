@@ -5,8 +5,24 @@
  */
 
 import { MESSAGE_TYPES } from '../../shared/constants.js';
-import { marked } from '../../lib/marked.min.js';
-import hljs from '../../lib/highlight.min.js';
+// Remove the import of marked and use window.markdownit which is loaded via script tag
+// import { marked } from '../../lib/marked.min.js';
+// Remove the import of highlight.min.js and use the global hljs object loaded by script tag
+// import hljs from '../../lib/highlight.min.js';
+
+// Create markdown-it instance
+const md = window.markdownit({
+  highlight: function (str, lang) {
+    if (lang && window.hljs.getLanguage(lang)) {
+      try {
+        return window.hljs.highlight(str, { language: lang }).value;
+      } catch (__) {}
+    }
+    return ''; // use external default escaping
+  },
+  breaks: true,
+  linkify: true
+});
 
 // DOM elements
 let chatContainer;
@@ -70,18 +86,6 @@ export function initializeChatComponent() {
   searchPageButton = document.getElementById('search-page-button');
   searchWebButton = document.getElementById('search-web-button');
   
-  // Configure markdown renderer
-  marked.setOptions({
-    highlight: (code, lang) => {
-      if (lang && hljs.getLanguage(lang)) {
-        return hljs.highlight(code, { language: lang }).value;
-      }
-      return code;
-    },
-    breaks: true,
-    gfm: true
-  });
-  
   // Add event listeners
   setupEventListeners();
   
@@ -142,6 +146,16 @@ function setupEventListeners() {
   setInterval(() => {
     saveInputText();
   }, 5000);
+  
+  // Listen for session open event from history component
+  window.addEventListener('open-session', (event) => {
+    if (event.detail && event.detail.pageLoadId) {
+      handleShowSession({ detail: { pageLoadId: event.detail.pageLoadId } });
+    } else {
+      console.error('Invalid session data received from history component:', event.detail);
+      displayErrorMessage('Cannot open session: Invalid data');
+    }
+  });
 }
 
 /**
@@ -201,28 +215,49 @@ function handleDoubleClick() {
 }
 
 /**
- * Handle showing a session from history
+ * Handle showing a session
+ * @param {Event|Object} event - Event or session object from history
  */
 async function handleShowSession(event) {
-  const { pageLoadId, url, title } = event.detail;
+  const pageLoadId = event?.detail?.pageLoadId;
+  
+  if (!pageLoadId) {
+    console.error('No pageLoadId provided to handleShowSession');
+    displayErrorMessage('Cannot load session: missing ID');
+    return;
+  }
+  
+  // Show loading indicator and clear current messages
+  setLoading(true);
+  chatMessages.innerHTML = '';
   
   try {
-    // Update session state
-    sessionState.pageLoadId = pageLoadId;
-    sessionState.url = url;
-    sessionState.title = title;
+    console.log('Loading session with pageLoadId:', pageLoadId);
     
-    // Load the session
+    // Get the session from the background script
     const response = await chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.GET_CHAT_SESSION,
       data: { pageLoadId }
     });
     
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to load session');
+    // First check if we got a successful response
+    if (!response || !response.success) {
+      throw new Error(response?.error || 'Failed to load session');
+    }
+    
+    // Check if session exists in the response
+    if (!response.data) {
+      throw new Error('Session not found');
     }
     
     currentSession = response.data;
+    
+    // Check if session has messages array
+    if (!currentSession.messages || !Array.isArray(currentSession.messages)) {
+      console.warn('Session has no messages array or invalid messages:', currentSession);
+      currentSession.messages = [];
+    }
+    
     renderMessages(currentSession.messages);
     updateConversationInfo();
     
@@ -230,7 +265,14 @@ async function handleShowSession(event) {
     hideErrorMessage();
   } catch (error) {
     console.error('Error showing session:', error);
-    displayErrorMessage(error.message);
+    displayErrorMessage(`Error loading chat: ${error.message}`);
+    
+    // Reset current session if we couldn't load it
+    if (!currentSession || !currentSession.messages) {
+      currentSession = null;
+    }
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -259,55 +301,65 @@ function handleSettingsChanged(event) {
 }
 
 /**
- * Handle sending a message with better error handling
+ * Handle sending a message
  */
 async function handleSendMessage() {
-  const message = messageInput.value.trim();
-  if (!message || sessionState.isLoading) return;
+  if (preventDuplicateSubmission()) {
+    return;
+  }
   
-  // Prevent duplicate submissions
-  if (preventDuplicateSubmission()) return;
+  // Get the message from the input
+  const message = messageInput.value.trim();
+  if (!message) {
+    return;
+  }
+  
+  // Show loading indicator
+  setLoading(true);
+  
+  // Clear the input and saved input
+  messageInput.value = '';
+  await clearSavedInputText();
+  
+  // Store the message for possible reuse
+  lastQuery = message;
   
   try {
-    // Store last query
-    sessionState.lastQuery = message;
-    lastQuery = message; // Keep for backward compatibility
-    
-    // Clear input and reset height
-    messageInput.value = '';
-    messageInput.style.height = 'auto';
-    
-    // Clear saved input
-    await clearSavedInputText();
-    
-    // Get current tab to send with message
+    // Get current tab info
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) {
-      throw new Error('Could not detect current tab');
+      throw new Error('Could not determine current tab');
     }
     
-    // Show user message immediately
-    appendMessage({ role: 'user', content: message });
-    
-    // Show loading indicator
-    setLoading(true);
-    
-    // First, scrape the page content if needed
+    // Try to get page content if page scraping is enabled
     let pageContent = null;
     try {
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
-      pageContent = response?.content;
+      console.log('Attempting to scrape page content');
+      
+      // Use the background script to scrape content
+      const scrapeResponse = await chrome.runtime.sendMessage({
+        type: 'scrapeContent'
+      });
+      
+      if (scrapeResponse && scrapeResponse.success) {
+        pageContent = scrapeResponse.data.content;
+        console.log('Page content scraped successfully');
+      } else {
+        console.warn('Failed to scrape content:', scrapeResponse?.error);
+      }
     } catch (error) {
       console.warn('Error scraping page content:', error);
     }
     
     // Check if we have a session, create one if not
     if (!currentSession) {
+      console.log('No current session, creating one');
       const sessionResponse = await chrome.runtime.sendMessage({
         type: MESSAGE_TYPES.CREATE_CHAT_SESSION,
         data: {
           url: tab.url,
-          title: tab.title
+          title: tab.title,
+          pageLoadId: `session_${Date.now()}_${Math.floor(Math.random() * 1000000)}`
         }
       });
       
@@ -316,15 +368,31 @@ async function handleSendMessage() {
       }
       
       currentSession = sessionResponse.data;
+      console.log('Created new session:', currentSession);
     }
     
+    // Get user preferences
+    const prefResponse = await chrome.runtime.sendMessage({
+      type: MESSAGE_TYPES.GET_USER_PREFERENCES
+    });
+    
+    const preferences = prefResponse.success ? prefResponse.data : {};
+    
     // Send the message to the background script
+    console.log('Sending message with pageLoadId:', currentSession.pageLoadId);
     const response = await chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.SEND_USER_MESSAGE,
       data: {
         pageLoadId: currentSession.pageLoadId,
         message: message,
-        pageContent: pageContent
+        url: tab.url,
+        title: tab.title,
+        sessionData: currentSession,
+        pageContent: pageContent,
+        enablePageScraping: preferences.pageScraping !== false,
+        enableWebSearch: preferences.webSearch === true,
+        selectedModel: preferences.defaultModel || 'gpt-4o-mini',
+        temperature: preferences.temperature || 0.7
       }
     });
     
@@ -333,13 +401,21 @@ async function handleSendMessage() {
     }
     
     // Update the current session with the response
-    currentSession = response.data;
-    
-    // Update conversation info
-    updateConversationInfo();
-    
-    // Render all messages
-    renderMessages(currentSession.messages);
+    if (response.data && response.data.session) {
+      currentSession = response.data.session;
+      
+      // Update conversation info
+      updateConversationInfo();
+      
+      // Render all messages
+      if (currentSession.messages) {
+        renderMessages(currentSession.messages);
+      } else {
+        console.warn('Session has no messages array:', currentSession);
+      }
+    } else {
+      console.warn('Response missing session data:', response);
+    }
     
     // Clear any error messages
     hideErrorMessage();
@@ -357,25 +433,87 @@ async function handleSendMessage() {
  */
 async function loadCurrentSession() {
   try {
+    console.log('Loading current chat session...');
+    
     // Clear messages
     chatMessages.innerHTML = '';
     
     // Get current tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) {
+      console.warn('No active tab found');
       return;
     }
     
-    // Try to get page load ID for the current tab
-    const response = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.GET_CHAT_SESSION,
-      data: {
-        url: tab.url
-      }
-    });
+    console.log('Current tab:', tab.url);
     
-    if (response.success && response.data) {
+    // Try to get page load ID for the current tab
+    let response;
+    try {
+      console.log('Requesting chat session for URL:', tab.url);
+      
+      // Use a Promise with timeout to prevent indefinite waiting
+      response = await Promise.race([
+        chrome.runtime.sendMessage({
+          type: MESSAGE_TYPES.GET_CHAT_SESSION,
+          data: {
+            url: tab.url
+          }
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Chat session request timed out')), 5000)
+        )
+      ]);
+      
+      console.log('Chat session response:', response);
+    } catch (error) {
+      console.error('Error requesting chat session:', error);
+      
+      // Fallback to direct storage access
+      try {
+        console.log('Attempting direct storage access fallback');
+        const storageKey = `pageload_${tab.id}_${tab.url}`;
+        const result = await chrome.storage.local.get(storageKey);
+        const pageLoadId = result[storageKey];
+        
+        console.log('Storage fallback, found pageLoadId:', pageLoadId);
+        
+        if (pageLoadId) {
+          const sessions = await chrome.storage.local.get('chatSessions');
+          const chatSessions = sessions.chatSessions || [];
+          console.log('Retrieved', chatSessions.length, 'sessions from storage');
+          
+          currentSession = chatSessions.find(s => s.pageLoadId === pageLoadId);
+          
+          if (currentSession) {
+            console.log('Fallback: Retrieved session from storage', currentSession);
+            renderMessages(currentSession.messages || []);
+            updateConversationInfo();
+            return;
+          } else {
+            console.warn('Session with ID not found in storage:', pageLoadId);
+          }
+        }
+      } catch (storageError) {
+        console.error('Fallback storage access failed:', storageError);
+      }
+      
+      // If all else fails, show empty chat
+      console.log('All session retrieval methods failed, showing empty chat');
+      currentConversationInfo.classList.add('hidden');
+      return;
+    }
+    
+    if (response && response.success && response.data) {
       currentSession = response.data;
+      console.log('Session loaded successfully:', currentSession.pageLoadId);
+      
+      // Ensure messages array exists
+      if (!currentSession.messages) {
+        console.warn('Session has no messages array, initializing empty array');
+        currentSession.messages = [];
+      }
+      
       renderMessages(currentSession.messages);
       updateConversationInfo();
     } else {
@@ -445,14 +583,14 @@ function appendMessage(message) {
   contentElement.classList.add('message-content');
   
   // Format the content with markdown
-  contentElement.innerHTML = marked(message.content);
+  contentElement.innerHTML = md.render(message.content);
   
   messageElement.appendChild(contentElement);
   chatMessages.appendChild(messageElement);
   
   // Highlight code blocks
   messageElement.querySelectorAll('pre code').forEach(block => {
-    hljs.highlightElement(block);
+    window.hljs.highlightElement(block);
   });
   
   // Scroll to the new message
