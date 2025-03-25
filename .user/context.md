@@ -36,6 +36,24 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
 -->
 
+- **[LinkedIn Scraping]** Restored specialized LinkedIn profile scraping functionality:
+  - Implemented dedicated scraper with LinkedIn-specific selectors
+  - Added support for extracting structured profile data (name, headline, about, experience, education, skills)
+  - Created multiple selector fallbacks to handle LinkedIn UI variations
+  - Added specialized text cleaning for LinkedIn content
+  - Implemented delayed initialization with multiple retries for LinkedIn's dynamic interface
+  - Ensured reliable data extraction regardless of LinkedIn profile layout
+  - References: content.js
+
+- **[Web Page Scraping]** Restored and improved the page scraping functionality in the refactored extension:
+  - Fixed content script to properly extract visible text from webpages
+  - Enhanced background script to handle scraped content reliably with improved error handling
+  - Added detailed system message prompts that format page content for better context
+  - Implemented fallbacks when scraping fails (e.g., with restricted URLs)
+  - Added extensive logging to aid in troubleshooting
+  - Created a more robust scraping approach that handles various page structures
+  - References: background/background.js, content.js, popup/components/chat.js
+
 - **[UI Simplification]** Streamlined the interface by hiding the Reason button:
   - Removed less frequently used feature from the main interface
   - Focused UI on core functionality (Search Page and Search Web)
@@ -489,6 +507,18 @@ FORMAT GUIDE - DO NOT DELETE
   - Prevented unintended execution of messages from different domains or tabs
   - Created a more secure approach that respects domain isolation in the chat history
   - References: popup.js, background.js
+- **[User Message Substitution]** Fixed issue where user's actual query was being ignored when using LinkedIn page scraping:
+  - Updated GENERIC_SYSTEM_PROMPT to not assume users want page content analysis
+  - Modified LINKEDIN_SYSTEM_PROMPT to respond directly to user queries
+  - Removed language that implied a generic page analysis request
+  - Ensured user messages are preserved in API requests
+  - References: shared/prompts/generic.js, shared/prompts/website-specific.js
+- **[Hardcoded Action Messages]** Fixed issue where action buttons (Search Page, Search Web) were replacing user input with hardcoded templates:
+  - Removed predefined template messages map in handleActionButton function
+  - Modified the function to use the user's actual input instead of replacing it with templates
+  - Ensured user's original query is preserved and sent to the API
+  - Improved system prompts to provide proper context without assuming query content
+  - References: popup/components/chat.js
 
 ## Testing Framework Implementation
 - **[Testing Framework Implementation]** Created a testing infrastructure to support the refactoring process:

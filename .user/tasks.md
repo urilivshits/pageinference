@@ -669,3 +669,91 @@ Notes:
   - [x] Test fixes to ensure proper message communication
   - [x] Update context.md with bug resolution documentation
   - [x] Update tasks.md with the completed task
+
+## User Query: "1. please dont forget to process and follow @rules.mdc 2. lets move on, please check in the app before refactoring how the web page scraping feature worked. It was really scrapping the webpage user is on and then sent the scrapped content for inference with specific message and with a user message. Please follow that logic and lets recreate it in the current  refactored structure (because now instead it just send for inference a mockup message)."
+- Task: Restore web page scraping functionality in refactored extension
+  - [x] Define test cases for web page scraping feature
+    - [x] Unit test: Verify content scraping logic works correctly in content.js
+    - [x] Service test: Verify background.js correctly processes scraped content
+    - [x] API test: Verify OpenAI API call includes scraped content when available
+  - [x] Implement proper page content scraping
+    - [x] Review existing content.js implementation for content scraping
+    - [x] Ensure content script properly extracts visible text
+    - [x] Fix any bugs in the content scraping logic
+  - [x] Implement proper handling of scraped content in background.js
+    - [x] Update send_user_message handler to properly include page content
+    - [x] Include page content in system message for OpenAI API call
+    - [x] Handle cases when scraping fails or returns empty content
+  - [x] Run tests and validate implementation
+    - [x] Test content scraping on various websites
+    - [x] Verify scraped content is properly sent to OpenAI API
+    - [x] Verify responses include references to the page content where appropriate
+
+## User Query: "im trying to scrap a linkedin page, and it worked before"
+- Task: Restore specialized LinkedIn page scraping
+  - [x] Define test cases for LinkedIn scraping
+    - [x] Unit test: Verify LinkedIn-specific selectors are correctly implemented
+    - [x] Service test: Verify scraped LinkedIn content is properly structured
+    - [x] Integration test: Verify LinkedIn content is correctly passed to OpenAI API
+  - [x] Implement dedicated LinkedIn scraping functionality
+    - [x] Add LinkedIn detection in content script
+    - [x] Create specialized LinkedIn profile scraper with appropriate selectors
+    - [x] Implement section extraction for profile data (name, about, experience, education, skills)
+    - [x] Add content cleaning functionality specific to LinkedIn
+  - [x] Add robust initialization for LinkedIn's dynamic interface
+    - [x] Implement multiple delayed initialization attempts
+    - [x] Create content update notification mechanism
+    - [x] Ensure scraper adapts to different LinkedIn profile layouts
+  - [x] Update documentation
+    - [x] Add LinkedIn scraper feature to context.md
+    - [x] Update tasks.md with LinkedIn scraping implementation tasks
+
+## User Query: "2 things: - in message content it should send a user query, not a hardcoded string - it works elswhere but still doesnt on linked in - pls check the implementation in the app before refactoring"
+- Task: Fix issues with LinkedIn scraping and message content
+  - [x] Diagnose issues with LinkedIn scraping implementation
+    - [x] Check user query processing in background.js send_user_message handler
+    - [x] Compare refactored LinkedIn scraper with original implementation
+    - [x] Identify differences between original and refactored LinkedIn scrapers
+  - [x] Fix LinkedIn scraping implementation
+    - [x] Implement proper extractLinkedInSection function from original code
+    - [x] Update selectors to match current LinkedIn DOM structure
+    - [x] Add support for retrieving various profile sections (education, experience, skills, certifications)
+    - [x] Improve section extraction with container-based and fallback approaches
+  - [x] Ensure user query is correctly sent in message content
+    - [x] Verify message parameter is properly passed in chat.js
+    - [x] Confirm user message is correctly processed in background.js
+  - [x] Test the fixes
+    - [x] Verify LinkedIn profile scraping with correct section extraction
+    - [x] Confirm user queries are properly sent to OpenAI API
+
+## User Query: "now it scrapps linked in, but not accouunt for user query. note the following conversation obj: 1. my query was "sum up this page" and not "Please search the current page for relevant information.""
+- Task: Fix hardcoded user message in OpenAI requests
+  - [x] Analyze the issue where user queries are replaced with hardcoded messages
+    - [x] Examine system prompts in the shared/prompts directory
+    - [x] Check how user messages are processed in background.js
+    - [x] Verify how messages are prepared for API requests
+  - [x] Fix system prompts to respect user queries
+    - [x] Update GENERIC_SYSTEM_PROMPT to not assume users want page analysis
+    - [x] Update LINKEDIN_SYSTEM_PROMPT to respond to user's actual questions
+    - [x] Remove any language that implies a generic page analysis request
+  - [x] Ensure user messages are sent as-is
+    - [x] Verify the user's message is correctly preserved in the messages array
+    - [x] Confirm the content includes the actual user query text
+  - [x] Test the fix
+    - [x] Verify the user's exact query is sent to OpenAI API
+    - [x] Check the system prompt doesn't introduce incorrect assumptions
+
+## User Query: "still the same. to clarify, i want in the .content of this object to have user query from the chat input, not the hardcoded "Please search the current page for relevant information""
+- Task: Fix hardcoded action messages in chat interface
+  - [x] Diagnose where hardcoded messages are being injected
+    - [x] Search for the hardcoded text "Please search the current page for relevant information" in codebase
+    - [x] Find occurrence in chat.js handleActionButton function
+    - [x] Review how action buttons modify the user's input before sending
+  - [x] Modify action button behavior
+    - [x] Remove the actionMessages template object
+    - [x] Update handleActionButton to preserve user's original message
+    - [x] Ensure user query is sent as-is instead of being replaced with templates
+  - [x] Test the changes
+    - [x] Verify action buttons no longer replace user input with hardcoded messages
+    - [x] Confirm user's actual query is sent to the API
+    - [x] Ensure system prompts still provide proper context about available tools

@@ -194,13 +194,8 @@ async function handleNewChat() {
  * Handle action button clicks
  */
 async function handleActionButton(action) {
-  const actionMessages = {
-    reason: 'Please explain your reasoning for the last response.',
-    searchPage: 'Please search the current page for relevant information.',
-    searchWeb: 'Please search the web for up-to-date information about this topic.'
-  };
-  
-  messageInput.value = actionMessages[action];
+  // Use the input message as-is instead of replacing it with predefined templates
+  // Let the system prompt guide the model's understanding of the context
   handleSendMessage();
 }
 
@@ -331,24 +326,40 @@ async function handleSendMessage() {
       throw new Error('Could not determine current tab');
     }
     
+    // Get user preferences
+    const prefResponse = await chrome.runtime.sendMessage({
+      type: MESSAGE_TYPES.GET_USER_PREFERENCES
+    });
+    
+    const preferences = prefResponse.success ? prefResponse.data : {};
+    const pageScraping = preferences.pageScraping !== false; // Default to true if not set
+    
     // Try to get page content if page scraping is enabled
     let pageContent = null;
-    try {
-      console.log('Attempting to scrape page content');
-      
-      // Use the background script to scrape content
-      const scrapeResponse = await chrome.runtime.sendMessage({
-        type: 'scrapeContent'
-      });
-      
-      if (scrapeResponse && scrapeResponse.success) {
-        pageContent = scrapeResponse.data.content;
-        console.log('Page content scraped successfully');
-      } else {
-        console.warn('Failed to scrape content:', scrapeResponse?.error);
+    if (pageScraping) {
+      try {
+        console.log('Page scraping is enabled, attempting to scrape content');
+        
+        // Use the background script to scrape content
+        const scrapeResponse = await chrome.runtime.sendMessage({
+          type: 'scrapeContent'
+        });
+        
+        if (scrapeResponse && scrapeResponse.success && scrapeResponse.data && scrapeResponse.data.content) {
+          pageContent = scrapeResponse.data.content;
+          console.log(`Page content scraped successfully: ${pageContent.length} characters`);
+        } else if (scrapeResponse && scrapeResponse.data && scrapeResponse.data.content) {
+          // We have content in the data even though success is false
+          pageContent = scrapeResponse.data.content;
+          console.warn('Partial scraping success, using available content:', pageContent.substring(0, 100) + '...');
+        } else {
+          console.warn('Failed to scrape content:', scrapeResponse?.error || 'Unknown error');
+        }
+      } catch (error) {
+        console.warn('Error during page content scraping:', error);
       }
-    } catch (error) {
-      console.warn('Error scraping page content:', error);
+    } else {
+      console.log('Page scraping is disabled, skipping content extraction');
     }
     
     // Check if we have a session, create one if not
@@ -371,15 +382,10 @@ async function handleSendMessage() {
       console.log('Created new session:', currentSession);
     }
     
-    // Get user preferences
-    const prefResponse = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.GET_USER_PREFERENCES
-    });
-    
-    const preferences = prefResponse.success ? prefResponse.data : {};
-    
     // Send the message to the background script
     console.log('Sending message with pageLoadId:', currentSession.pageLoadId);
+    console.log('Page content included:', pageContent ? 'Yes' : 'No');
+    
     const response = await chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.SEND_USER_MESSAGE,
       data: {
@@ -389,7 +395,7 @@ async function handleSendMessage() {
         title: tab.title,
         sessionData: currentSession,
         pageContent: pageContent,
-        enablePageScraping: preferences.pageScraping !== false,
+        enablePageScraping: pageScraping,
         enableWebSearch: preferences.webSearch === true,
         selectedModel: preferences.defaultModel || 'gpt-4o-mini',
         temperature: preferences.temperature || 0.7

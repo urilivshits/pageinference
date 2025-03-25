@@ -538,6 +538,9 @@ function setupMessageListeners() {
           }
           
           console.log('Processing user message:', userMessage);
+          console.log('Page scraping enabled:', enablePageScraping);
+          console.log('Web search enabled:', enableWebSearch);
+          console.log('Page content available:', pageContent ? `Yes (${pageContent.length} characters)` : 'No');
           
           // Get existing session or create a new one
           let session = await chatService.getSession(pageLoadId);
@@ -571,16 +574,39 @@ function setupMessageListeners() {
             throw new Error('API key is not set. Please add your OpenAI API key in settings.');
           }
           
-          // Create messages array for OpenAI API
+          // Create the appropriate system message based on available content and settings
+          let systemContent = '';
+          
+          if (enablePageScraping && pageContent) {
+            systemContent = `You are an AI assistant that helps with analyzing and answering questions about web pages. 
+You have access to the content of the current webpage that the user is browsing.
+
+CURRENT WEBPAGE INFORMATION:
+Title: ${title || 'No title available'}
+URL: ${url || 'No URL available'}
+
+WEBPAGE CONTENT:
+${pageContent}
+
+When responding:
+1. Focus on information from the webpage content provided above
+2. If the webpage content doesn't contain enough information to fully answer the question, clarify this
+3. Be concise and to the point
+4. When quoting from the page, use quotation marks and be accurate
+5. If you're unsure about something in the page content, acknowledge that uncertainty`;
+          } else if (enableWebSearch) {
+            systemContent = `You are a helpful AI assistant that provides accurate and informative responses. 
+When answering queries, use your knowledge, but note when you're unsure. 
+Be concise and relevant in your responses.`;
+          } else {
+            systemContent = `You are a helpful AI assistant. Answer questions concisely and accurately based on your knowledge.
+If asked about webpage content, explain that you don't have access to the current webpage.`;
+          }
+          
           const systemMessage = {
             role: 'system',
-            content: 'You are a helpful AI assistant that answers questions about the current webpage. Be concise but informative.'
+            content: systemContent
           };
-          
-          // If page content is available and scraping is enabled, add it to the system message
-          if (pageContent && enablePageScraping) {
-            systemMessage.content += '\n\nThe current webpage content is provided below:\n\n' + pageContent;
-          }
           
           const messages = [
             systemMessage,
@@ -591,6 +617,7 @@ function setupMessageListeners() {
           // Make the actual API call
           try {
             console.log('Making API call to OpenAI with model:', selectedModel);
+            console.log('System message length:', systemMessage.content.length);
             
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
@@ -680,6 +707,8 @@ function setupMessageListeners() {
       // Page scraping functionality
       'scrapeContent': async () => {
         try {
+          console.log('Handling scrapeContent request');
+          
           // Get the active tab
           const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
           if (!tabs || tabs.length === 0) {
@@ -687,46 +716,101 @@ function setupMessageListeners() {
           }
           
           const tab = tabs[0];
+          console.log('Found active tab:', tab.id, tab.url);
+          
+          // Check if we can scrape this URL (avoid chrome:// urls etc.)
+          if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+            console.warn('Cannot scrape content from this type of URL:', tab.url);
+            return { 
+              success: false, 
+              error: 'Cannot scrape content from this type of URL',
+              data: {
+                content: `This page (${tab.url}) cannot be scraped due to browser security restrictions.`,
+                title: tab.title || '',
+                url: tab.url || ''
+              }
+            };
+          }
           
           // Try to send a message to the content script
           try {
-            console.log('Attempting to scrape content from tab:', tab.id);
+            console.log('Sending scrapeContent message to tab:', tab.id);
             const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
             
+            if (!response || !response.content) {
+              console.warn('Content script returned empty or invalid response');
+              return { 
+                success: false, 
+                error: 'Failed to retrieve content from page',
+                data: {
+                  content: '',
+                  title: tab.title || '',
+                  url: tab.url || ''
+                }
+              };
+            }
+            
+            console.log(`Successfully scraped ${response.content.length} characters from page`);
             return { 
               success: true, 
               data: {
-                content: response?.content || '',
+                content: response.content,
                 title: tab.title || '',
                 url: tab.url || ''
               }
             };
           } catch (error) {
-            console.error('Error sending message to content script:', error);
+            console.error('Error communicating with content script:', error);
             
             // Since content script communication failed, try injecting the content script
-            await injectContentScriptIfNeeded(tab.id);
-            
-            // Try again after injection
+            console.log('Attempting to inject content script and retry...');
             try {
+              await injectContentScriptIfNeeded(tab.id);
+              
+              // Wait a moment for the script to initialize
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Try again after injection
+              console.log('Retrying scrapeContent after script injection');
               const retryResponse = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
               
+              if (!retryResponse || !retryResponse.content) {
+                throw new Error('Content script returned empty response after injection');
+              }
+              
+              console.log(`Successfully scraped ${retryResponse.content.length} characters after script injection`);
               return { 
                 success: true, 
                 data: {
-                  content: retryResponse?.content || '',
+                  content: retryResponse.content,
                   title: tab.title || '',
                   url: tab.url || ''
                 }
               };
             } catch (retryError) {
-              console.error('Error scraping content after script injection:', retryError);
-              throw new Error('Failed to scrape page content after script injection');
+              console.error('Failed to scrape content after script injection:', retryError);
+              return { 
+                success: false, 
+                error: 'Failed to scrape page content after script injection',
+                data: {
+                  content: `Failed to extract content from ${tab.url}. Please refresh the page and try again.`,
+                  title: tab.title || '',
+                  url: tab.url || ''
+                }
+              };
             }
           }
         } catch (error) {
-          console.error('Error scraping page content:', error);
-          return { success: false, error: error.message };
+          console.error('Error in scrapeContent handler:', error);
+          return { 
+            success: false, 
+            error: error.message,
+            data: {
+              content: '',
+              title: '',
+              url: ''
+            }
+          };
         }
       },
       
