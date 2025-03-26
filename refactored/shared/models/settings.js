@@ -10,12 +10,12 @@ import { API_CONSTANTS } from '../constants.js';
  * Default settings values
  */
 export const DEFAULT_SETTINGS = {
-  theme: 'light',
-  temperature: 0.7,
-  pageScraping: true,
-  webSearch: true,
+  theme: 'system',
+  temperature: 0,
+  pageScraping: false,
+  webSearch: false,
   currentSiteFilter: true,
-  defaultModel: API_CONSTANTS.DEFAULT_MODEL
+  defaultModel: 'gpt-4o-mini'
 };
 
 /**

@@ -30,10 +30,10 @@ const STORAGE_KEYS = {
 
 // Default settings
 const defaultSettings = {
-  theme: 'light',
-  temperature: 0.7,
-  pageScraping: true,
-  webSearch: true,
+  theme: 'system',
+  temperature: 0,
+  pageScraping: false,
+  webSearch: false,
   currentSiteFilter: true,
   defaultModel: 'gpt-4o-mini'
 };
@@ -196,41 +196,62 @@ async function loadSettings() {
       try {
         console.log('Attempting direct storage access for settings');
         const result = await chrome.storage.local.get(STORAGE_KEYS.USER_PREFERENCES);
-        currentSettings = result[STORAGE_KEYS.USER_PREFERENCES] || defaultSettings;
+        const userPreferences = result[STORAGE_KEYS.USER_PREFERENCES] || {};
         
-        // Apply settings to UI
-        applySettingsToUI(currentSettings);
+        // Make sure all default settings are present
+        currentSettings = { ...defaultSettings };
         
-        // Load API key separately (for security)
-        loadApiKey();
-        return;
+        // Only use valid values from userPreferences
+        Object.keys(defaultSettings).forEach(key => {
+          if (key in userPreferences) {
+            currentSettings[key] = userPreferences[key];
+          }
+        });
+        
+        // If any properties were missing, update the storage
+        if (Object.keys(currentSettings).some(key => !(key in userPreferences))) {
+          await chrome.storage.local.set({ [STORAGE_KEYS.USER_PREFERENCES]: currentSettings });
+        }
       } catch (storageError) {
-        console.error('Fallback storage access failed for settings:', storageError);
-        throw new Error('Failed to load settings: ' + storageError.message);
+        console.error('Error accessing storage directly:', storageError);
+        currentSettings = defaultSettings;
       }
     }
     
-    if (!response || !response.success) {
-      throw new Error(response?.error || 'Failed to load settings');
+    if (response && response.success) {
+      currentSettings = response.data;
     }
     
-    currentSettings = response.data || defaultSettings;
+    // Make sure all required properties exist
+    if (!currentSettings || typeof currentSettings !== 'object') {
+      currentSettings = { ...defaultSettings };
+      await chrome.storage.local.set({ [STORAGE_KEYS.USER_PREFERENCES]: currentSettings });
+    } else {
+      // Check for missing properties
+      let needsUpdate = false;
+      Object.keys(defaultSettings).forEach(key => {
+        if (!(key in currentSettings)) {
+          currentSettings[key] = defaultSettings[key];
+          needsUpdate = true;
+        }
+      });
+      
+      // Update storage if needed
+      if (needsUpdate) {
+        await chrome.storage.local.set({ [STORAGE_KEYS.USER_PREFERENCES]: currentSettings });
+      }
+    }
     
-    // Apply settings to UI
+    // Apply settings to the UI
     applySettingsToUI(currentSettings);
     
-    // Load API key separately (for security)
+    // Load API key
     loadApiKey();
   } catch (error) {
     console.error('Error loading settings:', error);
-    // Show error in settings container
-    settingsContainer.innerHTML += `
-      <div class="error-message">
-        Error loading settings: ${error.message}
-      </div>
-    `;
     
-    // Apply default settings
+    // Use default settings as fallback
+    currentSettings = defaultSettings;
     applySettingsToUI(defaultSettings);
   }
 }

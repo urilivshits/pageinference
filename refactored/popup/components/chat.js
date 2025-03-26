@@ -228,12 +228,11 @@ async function getSettings() {
       return response.data || {};
     }
     
-    // Fallback to direct storage access
-    const result = await chrome.storage.local.get('userPreferences');
-    return result.userPreferences || {};
+    // Fallback to direct storage access using getUserPreferences
+    return await getUserPreferences();
   } catch (error) {
     console.error('Error getting settings:', error);
-    return {};
+    return await getUserPreferences();
   }
 }
 
@@ -390,12 +389,11 @@ async function handleSendMessage() {
     }
     
     // Get user preferences
-    const prefResponse = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.GET_USER_PREFERENCES
-    });
-    
-    const preferences = prefResponse.success ? prefResponse.data : {};
-    const pageScraping = preferences.pageScraping !== false; // Default to true if not set
+    const preferences = await getUserPreferences();
+    const pageScraping = preferences.pageScraping !== undefined ? preferences.pageScraping : false;
+    const webSearch = preferences.webSearch !== undefined ? preferences.webSearch : false;
+    const temperature = preferences.temperature !== undefined ? preferences.temperature : 0;
+    const defaultModel = preferences.defaultModel || 'gpt-4o-mini';
     
     // Try to get page content if page scraping is enabled
     let pageContent = null;
@@ -448,6 +446,7 @@ async function handleSendMessage() {
     // Send the message to the background script
     console.log('Sending message with pageLoadId:', currentSession.pageLoadId);
     console.log('Page content included:', pageContent ? 'Yes' : 'No');
+    console.log('Using temperature:', temperature);
     
     const response = await chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.SEND_USER_MESSAGE,
@@ -459,9 +458,9 @@ async function handleSendMessage() {
         sessionData: currentSession,
         pageContent: pageContent,
         enablePageScraping: pageScraping,
-        enableWebSearch: preferences.webSearch === true,
-        selectedModel: preferences.defaultModel || 'gpt-4o-mini',
-        temperature: preferences.temperature || 0.7
+        enableWebSearch: webSearch,
+        selectedModel: defaultModel,
+        temperature: temperature
       }
     });
     
@@ -651,8 +650,88 @@ function appendMessage(message) {
   const contentElement = document.createElement('div');
   contentElement.classList.add('message-content');
   
+  // Check if we have web search annotations in the metadata before rendering
+  let processedContent = message.content;
+  
+  if (message.metadata && message.metadata.citations) {
+    // Format content with citations
+    const citations = message.metadata.citations;
+    
+    // Replace citation markers with superscript numbers
+    for (let i = 0; i < citations.length; i++) {
+      const citation = citations[i];
+      const index = i + 1;
+      
+      // Replace each citation marker with a superscript number
+      const regex = new RegExp(`\\[${citation.title}\\]`, 'g');
+      processedContent = processedContent.replace(regex, `<sup>[${index}]</sup>`);
+    }
+  }
+  
   // Format the content with markdown
-  contentElement.innerHTML = md.render(message.content);
+  contentElement.innerHTML = md.render(processedContent);
+  
+  // If this is an assistant message with web search results, add them
+  if (message.role === 'assistant' && message.metadata && 
+      (message.metadata.sources || message.metadata.citations)) {
+    const sources = message.metadata.sources || message.metadata.citations || [];
+    
+    if (sources.length > 0) {
+      const sourcesElement = document.createElement('div');
+      sourcesElement.classList.add('sources-container');
+      
+      const sourcesTitle = document.createElement('h4');
+      sourcesTitle.textContent = 'Web Search Results';
+      sourcesTitle.classList.add('sources-title');
+      sourcesElement.appendChild(sourcesTitle);
+      
+      const sourcesList = document.createElement('ul');
+      sourcesList.classList.add('sources-list');
+      
+      sources.forEach((source, index) => {
+        const sourceItem = document.createElement('li');
+        sourceItem.classList.add('source-item');
+        
+        const sourceLink = document.createElement('a');
+        sourceLink.href = source.url;
+        sourceLink.target = '_blank';
+        sourceLink.textContent = `[${index + 1}] ${source.title || 'Unknown Source'}`;
+        sourceLink.classList.add('source-link');
+        
+        const sourceSnippet = document.createElement('p');
+        sourceSnippet.textContent = source.snippet || '';
+        sourceSnippet.classList.add('source-snippet');
+        
+        sourceItem.appendChild(sourceLink);
+        sourceItem.appendChild(sourceSnippet);
+        sourcesList.appendChild(sourceItem);
+      });
+      
+      sourcesElement.appendChild(sourcesList);
+      
+      // Add a note about web search being active
+      const webSearchNote = document.createElement('p');
+      webSearchNote.textContent = 'Results from web search';
+      webSearchNote.classList.add('web-search-note');
+      sourcesElement.appendChild(webSearchNote);
+      
+      // Add sources after the content
+      contentElement.appendChild(sourcesElement);
+    }
+  }
+  
+  // Add an indicator for in-progress web searches
+  if (message.role === 'assistant' && message.metadata && message.metadata.webSearchInProgress) {
+    const searchingIndicator = document.createElement('div');
+    searchingIndicator.classList.add('searching-indicator');
+    searchingIndicator.textContent = 'Searching the web...';
+    contentElement.appendChild(searchingIndicator);
+  }
+  
+  // Add error styling if there's an error
+  if (message.role === 'assistant' && message.metadata && message.metadata.error) {
+    messageElement.classList.add('error');
+  }
   
   messageElement.appendChild(contentElement);
   chatMessages.appendChild(messageElement);
@@ -871,6 +950,52 @@ function setupInputAutoResize() {
     messageInput.style.height = 'auto';
     messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
   });
+}
+
+/**
+ * Get current user preferences
+ * 
+ * @return {Promise<Object>} User preferences
+ */
+export async function getUserPreferences() {
+  try {
+    const result = await chrome.storage.local.get('userPreferences');
+    const defaultPreferences = {
+      theme: 'system',
+      temperature: 0,
+      pageScraping: false,
+      webSearch: false,
+      currentSiteFilter: true,
+      defaultModel: 'gpt-4o-mini'
+    };
+    
+    // If userPreferences doesn't exist, initialize it with defaults
+    if (!result.userPreferences) {
+      await chrome.storage.local.set({ userPreferences: defaultPreferences });
+      return defaultPreferences;
+    }
+    
+    // Check for missing properties and provide defaults
+    const preferences = result.userPreferences;
+    const updatedPreferences = { ...defaultPreferences };
+    
+    // Only keep known values for each property
+    Object.keys(defaultPreferences).forEach(key => {
+      if (key in preferences) {
+        updatedPreferences[key] = preferences[key];
+      }
+    });
+    
+    // If any missing properties were found, update storage
+    if (Object.keys(updatedPreferences).some(key => !(key in preferences))) {
+      await chrome.storage.local.set({ userPreferences: updatedPreferences });
+    }
+    
+    return updatedPreferences;
+  } catch (error) {
+    console.error('Error getting user preferences:', error);
+    return {};
+  }
 }
 
 // Export the chat component

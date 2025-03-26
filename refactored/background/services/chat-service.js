@@ -124,98 +124,70 @@ export async function addMessage(pageLoadId, message) {
 }
 
 /**
- * Send a user message and get an AI response
+ * Handles a chat message from the user, processes it through the API and returns the response
  * 
- * @param {string} pageLoadId - The page load ID
- * @param {string} userMessage - The user message
- * @param {string} pageContent - The page content (optional)
- * @param {Object} options - Additional options (optional)
- * @return {Promise<Object>} The updated session with AI response
+ * @param {Object} request - The chat request with messages and settings
+ * @returns {Promise<Object>} - The chat response with content and metadata
  */
-export async function sendMessage(pageLoadId, userMessage, pageContent = null, options = {}) {
-  // Get the session
-  let session = await getChatSession(pageLoadId);
-  if (!session) {
-    throw new Error(`Chat session not found: ${pageLoadId}`);
-  }
-  
-  // Add the user message
-  const userMessageObj = createUserMessage(userMessage);
-  session = await addMessage(pageLoadId, userMessageObj);
-  
-  // Get API key
-  const apiKey = await storageService.getApiKey();
-  if (!apiKey) {
-    throw new Error('API key not found');
-  }
-  
-  // Get appropriate system message based on session settings
-  const useWebSearch = session.isWebSearchEnabled;
-  const usePageContent = session.isPageScrapingEnabled && pageContent;
-  const systemPrompt = getSystemPrompt(
-    session.url, 
-    usePageContent, 
-    useWebSearch
-  );
-  
-  // Replace system message if it exists, or add a new one
-  const messages = [...session.messages];
-  const systemIndex = messages.findIndex(m => m.role === 'system');
-  
-  if (systemIndex !== -1) {
-    messages[systemIndex] = createSystemMessage(systemPrompt);
-  } else {
-    messages.unshift(createSystemMessage(systemPrompt));
-  }
-  
-  // Add page content as a system message if available
-  if (usePageContent && pageContent) {
-    const contentMessage = createSystemMessage(
-      `Here is the content of the web page: ${pageContent}`
-    );
-    messages.push(contentMessage);
-  }
-  
-  // Send the request to OpenAI
+export async function handleChatMessage(request) {
   try {
-    const apiResponse = await sendRequest({
-      apiKey,
+    console.log('Chat service processing message:', request);
+    
+    const { messages, apiKey, pageContent } = request;
+    if (!messages || !Array.isArray(messages)) {
+      throw new Error('Invalid messages provided');
+    }
+    
+    // Get user preferences for API calls
+    const userPreferences = await storageService.getUserPreferences();
+    
+    // Prepare API request options
+    const options = {
+      apiKey: apiKey,
       messages: messages,
-      model: session.modelName,
-      temperature: session.temperature,
-      useWebSearch: useWebSearch,
-      extraParams: options.extraParams || {}
-    });
+      model: userPreferences.defaultModel || API_CONSTANTS.DEFAULT_MODEL,
+      temperature: parseFloat(userPreferences.temperature || API_CONSTANTS.DEFAULT_TEMPERATURE),
+      useWebSearch: userPreferences.webSearch || false,
+      pageContent: pageContent || ''
+    };
     
-    // Process the response
-    const processedResponse = processApiResponse(apiResponse);
+    // Send request to OpenAI API
+    console.log('Sending request to OpenAI API with options:', JSON.stringify({
+      ...options,
+      apiKey: '***REDACTED***',
+      messages: `[${messages.length} messages]`
+    }));
     
-    // Create the assistant message
-    const assistantMessage = createAssistantMessage(
-      processedResponse.content,
-      {
-        sources: processedResponse.sources,
-        model: processedResponse.model,
-        usage: processedResponse.usage
-      }
-    );
+    const apiResponse = await openaiApi.sendRequest(options);
+    console.log('Received response from API:', JSON.stringify(apiResponse).substring(0, 500) + '...');
     
-    // Add the assistant message to the session
-    session = await addMessage(pageLoadId, assistantMessage);
+    // Process the API response to extract content
+    const processedResponse = openaiApi.processApiResponse(apiResponse);
     
-    return session;
+    // Format the final response with assistant message and metadata
+    return {
+      message: {
+        role: 'assistant',
+        content: processedResponse.content,
+        metadata: processedResponse.metadata || {}
+      },
+      model: apiResponse.model || options.model,
+      timestamp: new Date().toISOString()
+    };
+    
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error('Error in chat service:', error);
     
-    // Add an error message to the session
-    const errorMessage = createAssistantMessage(
-      `Error: ${error.message}`,
-      { error: true }
-    );
-    
-    session = await addMessage(pageLoadId, errorMessage);
-    
-    throw error;
+    // Return an error response that can be displayed to the user
+    return {
+      message: {
+        role: 'assistant',
+        content: `I encountered an error: ${error.message}`,
+        metadata: { error: true }
+      },
+      error: true,
+      errorMessage: error.message
+    };
   }
 }
 
@@ -288,7 +260,7 @@ export default {
   getChatSession,
   getPageLoadId,
   addMessage,
-  sendMessage,
+  handleChatMessage,
   getAllChatSessions,
   deleteChatSession,
   getLastUserMessageForDomain

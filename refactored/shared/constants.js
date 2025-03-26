@@ -69,7 +69,7 @@ export const API_CONSTANTS = {
   CHAT_COMPLETIONS_ENDPOINT: '/chat/completions',
   
   // Request constants
-  DEFAULT_TEMPERATURE: 0.7,
+  DEFAULT_TEMPERATURE: 0,
   MAX_TOKENS: 4096
 };
 

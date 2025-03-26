@@ -96,8 +96,41 @@ export function setApiKey(apiKey) {
  * @return {Promise<Object>} The user preferences
  */
 export async function getUserPreferences() {
-  const rawPreferences = await getValue(STORAGE_KEYS.USER_PREFERENCES, {});
-  return validateSettings(rawPreferences);
+  const defaultPreferences = {
+    theme: 'system',
+    temperature: 0,
+    pageScraping: false,
+    webSearch: false,
+    currentSiteFilter: true,
+    defaultModel: 'gpt-4o-mini'
+  };
+  
+  // Get current preferences from local storage
+  const result = await chrome.storage.local.get(STORAGE_KEYS.USER_PREFERENCES);
+  const rawPreferences = result[STORAGE_KEYS.USER_PREFERENCES] || {};
+  
+  // If preferences don't exist, initialize with defaults
+  if (Object.keys(rawPreferences).length === 0) {
+    await chrome.storage.local.set({ [STORAGE_KEYS.USER_PREFERENCES]: defaultPreferences });
+    return validateSettings(defaultPreferences);
+  }
+  
+  // Check for missing properties and provide defaults
+  const updatedPreferences = { ...defaultPreferences };
+  
+  // Only use known values for each property
+  Object.keys(defaultPreferences).forEach(key => {
+    if (key in rawPreferences) {
+      updatedPreferences[key] = rawPreferences[key];
+    }
+  });
+  
+  // If any missing properties were found, update storage
+  if (Object.keys(updatedPreferences).some(key => !(key in rawPreferences))) {
+    await chrome.storage.local.set({ [STORAGE_KEYS.USER_PREFERENCES]: updatedPreferences });
+  }
+  
+  return validateSettings(updatedPreferences);
 }
 
 /**

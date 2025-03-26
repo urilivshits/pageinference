@@ -21,7 +21,7 @@ import {
 } from '../shared/prompts/website-specific.js';
 
 // Import OpenAI service
-import * as openAiService from './api/openai.js';
+import openaiApi from './api/openai.js';
 
 // Global variables to store service references
 let messageHandler = null;
@@ -656,7 +656,7 @@ function setupMessageListeners() {
             };
             
             // Use the OpenAI API service to make the request
-            const apiResponse = await openAiService.sendRequest({
+            const apiResponse = await openaiApi.sendRequest({
               apiKey,
               messages: apiMessages,
               model: selectedModel,
@@ -665,7 +665,7 @@ function setupMessageListeners() {
             });
             
             // Process the response
-            const processedResponse = openAiService.processApiResponse(apiResponse);
+            const processedResponse = openaiApi.processApiResponse(apiResponse);
             
             // Create AI response object
             const aiResponseObj = {

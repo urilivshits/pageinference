@@ -1,15 +1,19 @@
 /**
- * API Services Index
+ * API Services
  * 
- * Exports all API services from a central location for easier imports.
+ * Exports all API services to interact with external APIs.
  */
 
-import openai from './openai.js';
+import openaiService from './openai.js';
+import webSearchService from './web-search.js';
+import toolExecutorService from './tool-executor.js';
 
-// Re-export all individual exports
-export * from './openai.js';
+export const openai = openaiService;
+export const webSearch = webSearchService;
+export const toolExecutor = toolExecutorService;
 
-// Export default object containing all API services
 export default {
-  openai
+  openai,
+  webSearch,
+  toolExecutor
 }; 
