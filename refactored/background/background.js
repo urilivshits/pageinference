@@ -5,6 +5,24 @@
  * Sets up listeners and manages the extension's lifecycle.
  */
 
+// Import prompts directly
+import { 
+  GENERIC_SYSTEM_PROMPT,
+  NO_PAGE_CONTENT_SYSTEM_PROMPT,
+  WEB_SEARCH_SYSTEM_PROMPT,
+  COMBINED_SYSTEM_PROMPT,
+  generatePageContentPrompt
+} from '../shared/prompts/generic.js';
+
+import {
+  LINKEDIN_SYSTEM_PROMPT,
+  GITHUB_SYSTEM_PROMPT,
+  STACKOVERFLOW_SYSTEM_PROMPT
+} from '../shared/prompts/website-specific.js';
+
+// Import OpenAI service
+import * as openAiService from './api/openai.js';
+
 // Global variables to store service references
 let messageHandler = null;
 let storageService = null;
@@ -192,11 +210,21 @@ async function initialize() {
       }
     };
     
-    // Setup message handler with proper async response handling
+    // Set up message handling
     setupMessageListeners();
-    
-    // Set up extension installation/update handlers
     setupExtensionHandlers();
+    
+    // Check if this is a first install or an update
+    chrome.runtime.onInstalled.addListener(async (details) => {
+      if (details.reason === 'install') {
+        console.log('Extension installed');
+        await handleFirstInstall();
+      } else if (details.reason === 'update') {
+        const previousVersion = details.previousVersion;
+        console.log(`Extension updated from ${previousVersion} to ${chrome.runtime.getManifest().version}`);
+        await handleUpdate(previousVersion);
+      }
+    });
     
     // Initialize debug mode if enabled
     const debugMode = await storageService.getValue(STORAGE_KEYS.DEBUG_MODE, false);
@@ -209,9 +237,11 @@ async function initialize() {
       });
     }
     
-    console.log('Background script initialized successfully');
+    console.log('Background script initialized');
+    return true;
   } catch (error) {
     console.error('Error initializing background script:', error);
+    return false;
   }
 }
 
@@ -577,30 +607,17 @@ function setupMessageListeners() {
           // Create the appropriate system message based on available content and settings
           let systemContent = '';
           
-          if (enablePageScraping && pageContent) {
-            systemContent = `You are an AI assistant that helps with analyzing and answering questions about web pages. 
-You have access to the content of the current webpage that the user is browsing.
-
-CURRENT WEBPAGE INFORMATION:
-Title: ${title || 'No title available'}
-URL: ${url || 'No URL available'}
-
-WEBPAGE CONTENT:
-${pageContent}
-
-When responding:
-1. Focus on information from the webpage content provided above
-2. If the webpage content doesn't contain enough information to fully answer the question, clarify this
-3. Be concise and to the point
-4. When quoting from the page, use quotation marks and be accurate
-5. If you're unsure about something in the page content, acknowledge that uncertainty`;
+          if (enablePageScraping && pageContent && enableWebSearch) {
+            // Combined mode: both page content and web search
+            systemContent = COMBINED_SYSTEM_PROMPT;
+          } else if (enablePageScraping && pageContent) {
+            // Create a page-specific prompt with the actual page content
+            systemContent = generatePageContentPrompt(pageContent, title, url);
           } else if (enableWebSearch) {
-            systemContent = `You are a helpful AI assistant that provides accurate and informative responses. 
-When answering queries, use your knowledge, but note when you're unsure. 
-Be concise and relevant in your responses.`;
+            // Use web search specific prompt
+            systemContent = WEB_SEARCH_SYSTEM_PROMPT;
           } else {
-            systemContent = `You are a helpful AI assistant. Answer questions concisely and accurately based on your knowledge.
-If asked about webpage content, explain that you don't have access to the current webpage.`;
+            systemContent = NO_PAGE_CONTENT_SYSTEM_PROMPT;
           }
           
           const systemMessage = {
@@ -608,98 +625,95 @@ If asked about webpage content, explain that you don't have access to the curren
             content: systemContent
           };
           
+          // Create the messages array for the API call
           const messages = [
             systemMessage,
             ...session.messages || [],
             userMessageObj
           ];
           
-          // Make the actual API call
+          // Add the user message to the session (before API call in case it fails)
+          session.messages = session.messages || [];
+          session.messages.push(userMessageObj);
+          session.lastUpdated = Date.now();
+          await chatService.updateSession(session);
+          
+          // Make the API call using the OpenAI service
+          console.log('Making API call to OpenAI with model:', selectedModel);
+          
           try {
-            console.log('Making API call to OpenAI with model:', selectedModel);
-            console.log('System message length:', systemMessage.content.length);
-            
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify({
-                model: selectedModel,
-                messages: messages.map(m => ({ role: m.role, content: m.content })),
-                temperature: temperature,
-                max_tokens: 2048
-              })
-            });
-            
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}));
-              console.error('API error details:', errorData);
-              throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+            // Format the user message to include page content if needed
+            let formattedUserMessage = userMessage;
+            if (enablePageScraping && pageContent) {
+              formattedUserMessage = `${userMessage}\n\nHere is the content of the webpage (URL: ${url || 'No URL available'}) to help answer my question:\n\n${pageContent}`;
             }
             
-            const data = await response.json();
-            console.log('API response received:', data);
+            // Replace the last message content with the formatted version
+            const apiMessages = [...messages];
+            apiMessages[apiMessages.length - 1] = {
+              ...apiMessages[apiMessages.length - 1],
+              content: formattedUserMessage
+            };
+            
+            // Use the OpenAI API service to make the request
+            const apiResponse = await openAiService.sendRequest({
+              apiKey,
+              messages: apiMessages,
+              model: selectedModel,
+              temperature,
+              useWebSearch: enableWebSearch
+            });
+            
+            // Process the response
+            const processedResponse = openAiService.processApiResponse(apiResponse);
             
             // Create AI response object
             const aiResponseObj = {
               role: 'assistant',
-              content: data.choices[0].message.content,
+              content: processedResponse.content || 'No response generated from the API.',
               timestamp: Date.now(),
-              model: selectedModel
+              sources: processedResponse.sources || []
             };
             
-            // Update session with new messages
-            const updatedMessages = [...(session.messages || []), userMessageObj, aiResponseObj];
+            // Add the AI response to the session
+            session.messages.push(aiResponseObj);
+            session.lastUpdated = Date.now();
+            await chatService.updateSession(session);
             
-            // Update session in storage
-            const updatedSession = await chatService.updateSession({
-              ...session,
-              messages: updatedMessages,
-              lastUpdated: Date.now()
-            });
-            
-            return { 
-              success: true, 
+            // Return the updated session and the AI response
+            return {
+              success: true,
               data: {
-                session: updatedSession,
-                message: aiResponseObj
+                session,
+                aiResponse: aiResponseObj
               }
             };
           } catch (apiError) {
-            console.error('OpenAI API call error:', apiError);
+            console.error('API call failed:', apiError);
             
-            // Fall back to a simulated response if API call fails
-            console.warn('Falling back to simulated response due to API error');
-            const aiResponseObj = {
+            // Add the error to the session so the user can see it
+            const errorResponseObj = {
               role: 'assistant',
-              content: `Sorry, I encountered an error communicating with the OpenAI API: ${apiError.message}\n\nPlease check your API key and network connection or try again later.`,
-              timestamp: Date.now() + 1000,
-              error: apiError.message
+              content: `Error: ${apiError.message || 'API call failed'}`,
+              timestamp: Date.now(),
+              isError: true
             };
             
-            // Update session with new messages including error
-            const updatedMessages = [...(session.messages || []), userMessageObj, aiResponseObj];
+            session.messages.push(errorResponseObj);
+            session.lastUpdated = Date.now();
+            await chatService.updateSession(session);
             
-            // Update session in storage
-            const updatedSession = await chatService.updateSession({
-              ...session,
-              messages: updatedMessages,
-              lastUpdated: Date.now()
-            });
-            
-            return { 
-              success: true, 
+            return {
+              success: false,
+              error: apiError.message,
               data: {
-                session: updatedSession,
-                message: aiResponseObj
+                session,
+                aiResponse: errorResponseObj
               }
             };
           }
         } catch (error) {
-          console.error('Error sending user message:', error);
+          console.error('Error processing user message:', error);
           return { success: false, error: error.message };
         }
       },
@@ -980,7 +994,5 @@ async function injectContentScriptIfNeeded(tabId) {
   }
 }
 
-// Start the initialization
-initialize().catch(error => {
-  console.error('Error initializing background script:', error);
-}); 
+// Start initialization
+initialize(); 

@@ -34,5 +34,13 @@
   "host_permissions": [
     "<all_urls>",
     "https://*.openai.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "shared/prompts/*.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
   ]
 } 

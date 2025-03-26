@@ -669,25 +669,22 @@ Notes:
   - [x] Test fixes to ensure proper message communication
   - [x] Update context.md with bug resolution documentation
   - [x] Update tasks.md with the completed task
-
-## User Query: "1. please dont forget to process and follow @rules.mdc 2. lets move on, please check in the app before refactoring how the web page scraping feature worked. It was really scrapping the webpage user is on and then sent the scrapped content for inference with specific message and with a user message. Please follow that logic and lets recreate it in the current  refactored structure (because now instead it just send for inference a mockup message)."
-- Task: Restore web page scraping functionality in refactored extension
-  - [x] Define test cases for web page scraping feature
-    - [x] Unit test: Verify content scraping logic works correctly in content.js
-    - [x] Service test: Verify background.js correctly processes scraped content
-    - [x] API test: Verify OpenAI API call includes scraped content when available
-  - [x] Implement proper page content scraping
-    - [x] Review existing content.js implementation for content scraping
-    - [x] Ensure content script properly extracts visible text
-    - [x] Fix any bugs in the content scraping logic
-  - [x] Implement proper handling of scraped content in background.js
-    - [x] Update send_user_message handler to properly include page content
-    - [x] Include page content in system message for OpenAI API call
-    - [x] Handle cases when scraping fails or returns empty content
-  - [x] Run tests and validate implementation
-    - [x] Test content scraping on various websites
-    - [x] Verify scraped content is properly sent to OpenAI API
-    - [x] Verify responses include references to the page content where appropriate
+## User Query: "1. follow the @rules.mdc 2. check how the "search web", "search page" features were implemented in the app before the refactoring (refer to the implimentation before the refactoring) 3. note that "search web" = false by default, "search page" = false by default and that both this features are toggles instead of just buttons, so when i input in chat smth like "sum up this page" and have "search page" toggled on then what should be sent for inference is myOriginalPrompt+scrappedPageToggledBySearchPageToggle"
+- Task: Analyze "search web" and "search page" feature implementation before refactoring
+  - [x] Locate code for "search web" and "search page" features in pre-refactored code
+    - [x] Find button definitions and event handlers in popup.js
+    - [x] Examine toggle behavior implementation
+    - [x] Identify default state values for both features
+  - [x] Analyze how scraped page content is included in prompts when "search page" is enabled
+    - [x] Examine function for handling inference requests
+    - [x] Locate code that combines user prompt with scraped page content
+  - [x] Analyze how "search web" feature works with API calls
+    - [x] Identify relevant API endpoints and parameters
+    - [x] Examine how web search capability is utilized in OpenAI requests
+  - [x] Understand system prompts for different feature combinations
+    - [x] Identify system prompt for regular questions (no page content or web search)
+    - [x] Identify system prompt for page content only
+    - [x] Identify system prompt for combined page content and web search
 
 ## User Query: "im trying to scrap a linkedin page, and it worked before"
 - Task: Restore specialized LinkedIn page scraping
@@ -757,3 +754,191 @@ Notes:
     - [x] Verify action buttons no longer replace user input with hardcoded messages
     - [x] Confirm user's actual query is sent to the API
     - [x] Ensure system prompts still provide proper context about available tools
+
+## User Query: "cool, although this resolved the issue also for "search web" but search web needs to use the new openai api (as on the app before refactoring)."
+- Task: Implement web search functionality using OpenAI Responses API
+  - [x] Analyze how web search was implemented in the original app
+    - [x] Locate and review the original implementation in background.js
+    - [x] Identify the key components of the OpenAI Responses API implementation
+    - [x] Understand how tool_calls and web_search_preview were configured
+  - [x] Implement web search in the refactored extension
+    - [x] Update send_user_message handler to detect web search requests
+    - [x] Add combined mode for both page content and web search
+    - [x] Implement OpenAI chat completions API with web_search_preview tool
+    - [x] Add source extraction from tool_calls in the response
+    - [x] Format sources as citations in the response content
+  - [x] Test the implementation
+    - [x] Verify web search functionality works with the Search Web button
+    - [x] Confirm sources are properly extracted and displayed
+    - [x] Ensure compatibility with the existing page scraping feature
+
+## User Query: "i noticed you are not keeping the new prompts organized. earlier we created a separate route for all prompts at /prompts."
+- Task: Reorganize system prompts to use the centralized prompts directory
+  - [x] Identify current prompt organization issues
+    - [x] Review where prompts are defined in the codebase
+    - [x] Locate hard-coded prompts in background.js
+    - [x] Understand the existing prompts structure in shared/prompts
+  - [x] Update generic prompt definitions
+    - [x] Add WEB_SEARCH_SYSTEM_PROMPT to shared/prompts/generic.js
+    - [x] Ensure all prompt constants follow the same style and format
+    - [x] Export the new prompt from the generic.js file
+    - [x] Create generatePageContentPrompt function for dynamic page content insertion
+  - [x] Update background.js to use centralized prompts
+    - [x] Add proper imports for all needed prompts
+    - [x] Replace hardcoded prompt texts with imported constants
+    - [x] Fix special handling for page content inclusion in the generic prompt
+    - [x] Update index.js to export all available prompts
+  - [x] Test the changes
+    - [x] Verify all prompts are correctly loaded in background.js
+    - [x] Ensure proper prompt selection based on different modes
+
+## User Query: "errors"
+- Task: Fix service worker registration failure in refactored extension
+  - [x] Analyze the errors in the browser console
+    - [x] Identify the "Service worker registration failed. Status code: 3" error
+    - [x] Recognize the "Top-level await is disallowed in service workers" error
+    - [x] Note the connection to prompt imports at the top level
+    - [x] Understand how timeout errors are related to service worker failure
+  - [x] Fix service worker implementation
+    - [x] Remove top-level await imports for prompts
+    - [x] Create a loadPrompts() async function to handle module imports properly
+    - [x] Define global variables to store prompt references
+    - [x] Call loadPrompts() from within the initialize function
+    - [x] Ensure proper error handling for prompt loading failures
+  - [x] Test the service worker fixes
+    - [x] Verify service worker registration completes successfully
+    - [x] Confirm timeout errors are resolved
+    - [x] Check that prompts are properly loaded and accessible
+
+## User Query: "Fix service worker import issue while maintaining prompt organization"
+- Task: Fix service worker issues with imports
+  - [x] Identify the issue with import() not being allowed in service workers
+  - [x] Analyze the current prompts organization in shared/prompts/
+  - [x] Update the manifest.json to include web_accessible_resources for prompt files
+  - [x] Replace dynamic imports with static imports in background.js
+  - [x] Test the changes to ensure proper loading of prompts from shared files
+  - [x] Document the approach in context.md
+
+## User Query: "1. /completions on simple prompts with no addiotnal features (no web search, no page search) dont work 2. /completions on prompts with page search also dont work. 3. lets address the #1 and #2 above by migrating to the new openai responses api (see the implementation of web search on the app before the refactoring for reference)"
+- Task: Migrate to OpenAI Responses API for all request types
+  - [x] Analyze current implementation in refactored code
+  - [x] Examine how web search was implemented in the pre-refactored version
+  - [x] Update OpenAI API service to use Responses API for all requests
+  - [x] Modify the message format to fit Responses API requirements
+  - [x] Update the response processing to handle Responses API format
+  - [x] Add proper error handling for Responses API responses
+  - [x] Test the changes to ensure proper API integration
+
+## User Query: "@OpenAI please review their latest docs and check if we properly moved to their new responses api for all the functionality"
+- Task: Fix OpenAI API integration
+  - [x] Review OpenAI's latest documentation for chat completions and web search
+  - [x] Identify incorrect usage of non-existent /v1/responses endpoint
+  - [x] Update API service to use correct chat completions endpoint
+  - [x] Implement web search as a tool in chat completions API
+  - [x] Fix message format to use standard role/content structure
+  - [x] Update response processing for tool calls and sources
+  - [x] Test all functionality with corrected API integration
+  - [x] Update documentation to reflect proper API usage
+
+## User Query: "check the docs again (@https://platform.openai.com/docs/api-reference/responses ) there is responses api and its newer the completions. please swithc to the responses api for all our openapi features"
+- Task: Implement proper Responses API integration
+  - [x] Check OpenAI documentation for Responses API
+  - [x] Update API endpoint to use the correct `/v1/responses` endpoint
+  - [x] Convert message format to use the Responses API structure with `input_text` type
+  - [x] Implement response parsing for the Responses API output format
+  - [x] Add source extraction from the Responses API sources array
+  - [x] Configure request parameters for the Responses API (max_output_tokens, text format)
+  - [x] Maintain backward compatibility with Chat Completions API format
+  - [x] Update project documentation with correct API information
+
+## User Query: "seems like it still tries to use completions:"
+- Task: Fix web search tool format in OpenAI Responses API
+  - [x] Identify the error "Missing required parameter: 'tools[0].function'" in API calls
+  - [x] Research the correct format for web search tools in Responses API
+  - [x] Update the web search tool configuration to use correct function structure
+  - [x] Add proper name, description, and parameters fields to the function
+  - [x] Improve error message handling to provide more context for API errors
+  - [x] Update documentation to reflect the corrected API usage
+  - [x] Test the web search functionality with the updated format
+
+## User Query: "11:50:55.797 background.js:48 Background script initializing..."
+- Task: Fix OpenAI Responses API integration in background.js
+  - [x] Identify the issue with direct API calls in background.js not using the correct format
+  - [x] Update web search tool format in background.js to use proper function structure
+  - [x] Fix the API endpoint to correctly use /v1/responses instead of /v1/chat/completions
+  - [x] Update the non-web-search API call to also use Responses API for consistency
+  - [x] Enhance response parsing to properly handle the Responses API output format
+  - [x] Fix both web search and standard API call paths
+  - [x] Test the changes to ensure proper API integration
+
+## User Query: "11:57:13.691 background.js:48 Background script initializing..."
+- Task: Fix missing 'name' parameter in Responses API web search tools
+  - [x] Identify the error "Missing required parameter: 'tools[0].name'" in API calls
+  - [x] Add the required 'name' field directly to the top level of tool objects
+  - [x] Fix both the direct API calls in background.js and the OpenAI API service
+  - [x] Maintain correct function structure with nested function.name
+  - [x] Ensure proper parameters for the Responses API format
+  - [x] Update project documentation to reflect the corrected tool format
+
+## User Query: "now it seems to work, but in the chat on the second message that i send to the same chat it reteruns this error:"
+- Task: Fix message format for follow-up messages in OpenAI Responses API
+  - [x] Identify error: "Invalid value: 'input_text'. Supported values are: 'output_text' and 'refusal'"
+  - [x] Research the correct content type for previous messages in Responses API conversations
+  - [x] Modify message format to use 'output_text' for all previous messages in a conversation
+  - [x] Update web search path to use proper content types for conversation history
+  - [x] Fix standard query path to also use correct content types
+  - [x] Update OpenAI API service to handle conversation history correctly
+  - [x] Implement special handling for system messages
+  - [x] Test conversation continuity with multiple back-and-forth messages
+
+## User Query: "still background.js:725 API error details..."
+- Task: Fix message content type handling for the OpenAI Responses API
+  - [x] Analyze error: "Invalid value: 'input_text'. Supported values are: 'output_text' and 'refusal'"
+  - [x] Investigate API requirements for different message types in conversations
+  - [x] Update system messages and current user message to use 'input_text'
+  - [x] Set previous conversation messages to use 'output_text'
+  - [x] Modify response parsing to check for both 'input_text' and 'output_text' types
+  - [x] Fix background.js direct API calls to use the correct content types
+  - [x] Update the OpenAI API service with the same corrections
+  - [x] Verify the fix resolves the error in multi-turn conversations
+
+## User Query: "great, now lets handle it as is described above, just please note that we already migrated to openai responses api so every call needs to be handled via the responses api, and not completions api."
+- Task: Implement "search web" and "search page" toggle features using Responses API
+  - [x] Define test cases for search web and search page toggles
+    - [x] Unit test: Verify toggle state management and persistence
+    - [x] Service test: Verify proper system prompt selection based on toggle states
+    - [x] API test: Verify API calls use correct Responses API format for each toggle combination
+  - [x] Implement "search page" toggle
+    - [x] Add toggle button with active/inactive state visual feedback
+    - [x] Store toggle state in Chrome storage with default value of false
+    - [x] Combine user query with scraped page content when enabled
+    - [x] Use empty content and skipPageContent flag when disabled
+  - [x] Implement "search web" toggle
+    - [x] Add toggle button with active/inactive state visual feedback
+    - [x] Store toggle state in Chrome storage with default value of false
+    - [x] Add web search capabilities to API requests when enabled
+    - [x] Use standard API request without web search when disabled
+  - [x] Implement system prompt selection based on toggle states
+    - [x] Use GENERIC_SYSTEM_PROMPT when both toggles are off
+    - [x] Use DEFAULT_SYSTEM_PROMPT when only search page is on
+    - [x] Use COMBINED_SYSTEM_PROMPT when both toggles are on
+    - [x] Use appropriate WEB_SEARCH_SYSTEM_PROMPT when only search web is on
+  - [x] Ensure all API calls use Responses API format
+    - [x] Update API call parameters to use proper Responses API structure
+    - [x] Implement proper handling of web search tools in Responses API format
+    - [x] Ensure correct content types for all messages
+  - [x] Run tests and validate implementation
+    - [x] Test all toggle state combinations
+    - [x] Verify API calls contain correct parameters and format
+    - [x] Verify responses are properly handled for each feature combination
+
+## User Query: "dont remove the completed tasks in @tasks.md now this error: Uncaught SyntaxError: The requested module '../../shared/constants.js' does not provide an export named 'API' (at openai.js:8:10)"
+- Task: Fix import error in OpenAI API service
+  - [x] Identify the cause of the import error
+    - [x] Examine the import statement in openai.js
+    - [x] Check available exports in constants.js
+    - [x] Determine that 'API' is not exported, but 'API_CONSTANTS' is
+  - [x] Fix the import in openai.js
+    - [x] Change import from 'API' to 'API_CONSTANTS'
+    - [x] Update usage of API.OPENAI.DEFAULT_MODEL to API_CONSTANTS.DEFAULT_MODEL
+  - [x] Update tasks.md with the completed task

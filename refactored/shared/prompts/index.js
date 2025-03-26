@@ -15,7 +15,9 @@ import { getDomain } from '../utils/url-utils.js';
 // Generic prompts
 export const GENERIC_SYSTEM_PROMPT = genericPrompts.GENERIC_SYSTEM_PROMPT;
 export const NO_PAGE_CONTENT_SYSTEM_PROMPT = genericPrompts.NO_PAGE_CONTENT_SYSTEM_PROMPT;
+export const WEB_SEARCH_SYSTEM_PROMPT = genericPrompts.WEB_SEARCH_SYSTEM_PROMPT;
 export const COMBINED_SYSTEM_PROMPT = genericPrompts.COMBINED_SYSTEM_PROMPT;
+export const { generatePageContentPrompt } = genericPrompts;
 
 // Website-specific prompts
 export const LINKEDIN_SYSTEM_PROMPT = websiteSpecificPrompts.LINKEDIN_SYSTEM_PROMPT;

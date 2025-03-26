@@ -5,7 +5,7 @@
  * Handles both completions and responses APIs.
  */
 
-import { API } from '../../shared/constants.js';
+import { API_CONSTANTS } from '../../shared/constants.js';
 import { formatMessagesForApi } from '../../shared/models/chat-message.js';
 
 /**
@@ -24,7 +24,7 @@ export async function sendRequest(options) {
   const { 
     apiKey, 
     messages, 
-    model = API.OPENAI.DEFAULT_MODEL, 
+    model = API_CONSTANTS.DEFAULT_MODEL, 
     temperature = 0.7,
     useWebSearch = false,
     extraParams = {}
@@ -38,42 +38,130 @@ export async function sendRequest(options) {
     throw new Error('Messages array is required and must not be empty');
   }
   
-  // Choose the appropriate API endpoint based on whether web search is enabled
-  // and the model supports browsing capabilities
-  const useResponsesApi = useWebSearch && API.OPENAI.BROWSING_CAPABLE_MODELS.includes(model);
+  // Use the right API based on requested features
+  const useResponsesApi = true;
   const apiEndpoint = useResponsesApi 
-    ? 'https://api.openai.com/v1/chat/completions'
+    ? 'https://api.openai.com/v1/responses'
     : 'https://api.openai.com/v1/chat/completions';
   
-  // Prepare the messages for the API
-  const formattedMessages = formatMessagesForApi(messages);
+  // Format depends on which API we're using
+  let payload;
   
-  // Build the request payload
-  const payload = {
-    model,
-    messages: formattedMessages,
-    temperature,
-    ...extraParams
-  };
-  
-  // Add tools configuration for web search if using responses API
   if (useResponsesApi) {
-    payload.tools = [{
-      "type": "web_search_preview",
-      "settings": {}
-    }];
-    payload.tool_choice = "auto";
+    // Convert messages to the Responses API format with correct types
+    const responsesInput = [];
+    
+    // Process messages by role
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
+      
+      // Determine the correct content type:
+      // - System messages use 'input_text'
+      // - The current user message (last message) uses 'input_text'
+      // - All previous messages use 'output_text'
+      const isSystemMessage = message.role === 'system';
+      const isCurrentUserMessage = i === messages.length - 1 && message.role === 'user';
+      const contentType = (isSystemMessage || isCurrentUserMessage) ? 'input_text' : 'output_text';
+      
+      responsesInput.push({
+        role: message.role,
+        content: [
+          {
+            type: contentType,
+            text: message.content
+          }
+        ]
+      });
+    }
+    
+    // Build the request payload for Responses API
+    payload = {
+      model,
+      input: responsesInput,
+      temperature,
+      max_output_tokens: extraParams.max_tokens || 2048,
+      text: {
+        format: {
+          type: 'text'
+        }
+      },
+      reasoning: {}
+    };
+    
+    // Add tools configuration for web search if enabled
+    if (useWebSearch) {
+      payload.tools = [
+        {
+          type: 'function',
+          name: 'web_search',
+          function: {
+            name: 'web_search',
+            description: 'Search the web for real-time information',
+            parameters: {
+              type: 'object',
+              properties: {
+                query: {
+                  type: 'string',
+                  description: 'The search query'
+                }
+              },
+              required: ['query']
+            }
+          }
+        }
+      ];
+    }
+  } else {
+    // Format for Chat Completions API (fallback)
+    const formattedMessages = messages.map(message => ({
+      role: message.role,
+      content: message.content
+    }));
+    
+    payload = {
+      model,
+      messages: formattedMessages,
+      temperature,
+      max_tokens: extraParams.max_tokens || 2048
+    };
+    
+    // Add tools configuration for web search
+    if (useWebSearch) {
+      payload.tools = [
+        {
+          type: 'function',
+          name: 'web_search',
+          function: {
+            name: 'web_search',
+            description: 'Search the web for real-time information',
+            parameters: {
+              type: 'object',
+              properties: {
+                query: {
+                  type: 'string',
+                  description: 'The search query'
+                }
+              },
+              required: ['query']
+            }
+          }
+        }
+      ];
+      payload.tool_choice = "auto";
+    }
   }
   
   try {
-    console.log(`Sending request to OpenAI ${useResponsesApi ? 'Responses' : 'Completions'} API`);
+    console.log(`Sending request to OpenAI ${useResponsesApi ? 'Responses' : 'Chat Completions'} API`);
+    console.log('Request payload:', JSON.stringify(payload).substring(0, 500) + '...');
     
     // Make the API request
     const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json'
       },
       body: JSON.stringify(payload)
     });
@@ -82,11 +170,12 @@ export async function sendRequest(options) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.error?.message || `HTTP error ${response.status}`;
-      throw new Error(`OpenAI API Error: ${errorMessage}`);
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorMessage}`);
     }
     
     // Parse the response
     const data = await response.json();
+    console.log('Response data:', JSON.stringify(data).substring(0, 500) + '...');
     return data;
     
   } catch (error) {
@@ -102,65 +191,79 @@ export async function sendRequest(options) {
  * @return {Object} Processed response with content and sources
  */
 export function processApiResponse(apiResponse) {
-  if (!apiResponse || !apiResponse.choices || !apiResponse.choices[0]) {
-    throw new Error('Invalid API response');
+  // Check if we have a valid response
+  if (!apiResponse) {
+    throw new Error('Invalid API response: response is empty');
   }
   
-  const choice = apiResponse.choices[0];
-  const message = choice.message;
-  
-  if (!message || !message.content) {
-    throw new Error('Invalid message in API response');
-  }
-  
-  // Extract content
-  const content = message.content;
-  
-  // Extract sources if available (from tool usage)
+  let content = '';
   let sources = [];
-  if (message.tool_calls && Array.isArray(message.tool_calls)) {
-    message.tool_calls.forEach(toolCall => {
-      if (toolCall.type === 'web_search' && toolCall.web_search && toolCall.web_search.search_results) {
-        sources = toolCall.web_search.search_results.map(result => ({
-          title: result.title || '',
-          url: result.url || '',
-          snippet: result.snippet || ''
-        }));
-      }
-    });
-  }
   
-  // Extract source attributions from annotations
-  if (message.annotations && Array.isArray(message.annotations)) {
-    const sourceMap = new Map();
-    
-    message.annotations.forEach(annotation => {
-      if (annotation.type === 'web_search' && annotation.web_search) {
-        const index = annotation.web_search.index;
-        const source = annotation.web_search.source;
-        
-        if (index !== undefined && source) {
-          sourceMap.set(index, {
-            title: source.title || '',
-            url: source.url || '',
-            snippet: source.snippet || ''
-          });
+  // For Responses API format
+  if (apiResponse.output && Array.isArray(apiResponse.output)) {
+    // Extract text content from output
+    for (const output of apiResponse.output) {
+      if (output.content && Array.isArray(output.content)) {
+        for (const contentItem of output.content) {
+          // Check for both input_text and output_text types
+          if ((contentItem.type === 'input_text' || contentItem.type === 'output_text') && contentItem.text) {
+            content += contentItem.text;
+          }
         }
       }
-    });
-    
-    // Convert the map to an array, preserving order
-    if (sourceMap.size > 0) {
-      sources = Array.from(sourceMap.values());
     }
+    
+    // Extract sources from the sources array
+    if (apiResponse.sources && Array.isArray(apiResponse.sources)) {
+      sources = apiResponse.sources.map(source => ({
+        title: source.title || 'Unknown source',
+        url: source.url || '#',
+        snippet: source.snippet || ''
+      }));
+    }
+    
+    return {
+      content,
+      sources,
+      model: apiResponse.model || '',
+      usage: apiResponse.usage || null
+    };
   }
   
-  return {
-    content,
-    sources,
-    model: apiResponse.model || '',
-    usage: apiResponse.usage || null
-  };
+  // Fallback to chat completions format (for backward compatibility)
+  else if (apiResponse.choices && apiResponse.choices[0] && apiResponse.choices[0].message) {
+    const message = apiResponse.choices[0].message;
+    content = message.content || '';
+    
+    // Extract sources from tool calls if available
+    if (message.tool_calls && Array.isArray(message.tool_calls)) {
+      message.tool_calls.forEach(toolCall => {
+        if (toolCall.function && toolCall.function.name === 'web_search' && toolCall.function.arguments) {
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            if (args && args.results && Array.isArray(args.results)) {
+              sources = args.results.map(result => ({
+                title: result.title || 'Unknown Title',
+                url: result.url || '#',
+                snippet: result.snippet || ''
+              }));
+            }
+          } catch (e) {
+            console.error('Error parsing tool call arguments:', e);
+          }
+        }
+      });
+    }
+    
+    return {
+      content,
+      sources,
+      model: apiResponse.model || '',
+      usage: apiResponse.usage || null
+    };
+  }
+  
+  throw new Error('Invalid API response format');
 }
 
 export default {

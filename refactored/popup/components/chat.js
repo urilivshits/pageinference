@@ -70,40 +70,34 @@ let sessionState = {
 export function initializeChatComponent() {
   // Get DOM elements
   chatContainer = document.getElementById('chat-container');
+  chatMessages = document.getElementById('chat-messages');
   messageInput = document.getElementById('message-input');
   sendButton = document.getElementById('send-button');
-  chatMessages = document.getElementById('chat-messages');
-  loadingIndicator = document.getElementById('loading-indicator');
-  errorMessage = document.getElementById('error-message');
-  doubleClickArea = document.getElementById('double-click-area');
   currentConversationInfo = document.getElementById('current-conversation-info');
   currentConversationTitle = document.getElementById('current-conversation-title');
   currentConversationTimestamp = document.getElementById('current-conversation-timestamp');
-  
-  // Get action buttons
   newChatButton = document.getElementById('new-chat-button');
   reasonButton = document.getElementById('reason-button');
   searchPageButton = document.getElementById('search-page-button');
   searchWebButton = document.getElementById('search-web-button');
+  doubleClickArea = document.getElementById('double-click-area');
+  loadingIndicator = document.getElementById('loading-indicator');
+  errorMessage = document.getElementById('error-message');
   
-  // Add event listeners
+  // Set up event listeners
   setupEventListeners();
   
-  // Listen for session-related events
-  window.addEventListener('show-session', handleShowSession);
-  window.addEventListener('chat-settings-changed', handleSettingsChanged);
-  
-  // Load current session
+  // Load current chat session
   loadCurrentSession();
   
-  // Load saved input text
-  loadSavedInputText();
+  // Auto-resize input field
+  setupInputAutoResize();
   
-  // Setup double-click handlers
-  setupDoubleClickHandlers();
+  // Check for command to execute
+  checkForCommandToExecute();
   
-  // Check for pending Ctrl+Click
-  checkForCommandOrCtrlClick();
+  // Initialize button states from settings
+  initializeButtonStates();
 }
 
 /**
@@ -194,9 +188,78 @@ async function handleNewChat() {
  * Handle action button clicks
  */
 async function handleActionButton(action) {
-  // Use the input message as-is instead of replacing it with predefined templates
-  // Let the system prompt guide the model's understanding of the context
-  handleSendMessage();
+  if (action === 'searchPage') {
+    // Get current settings
+    const settings = await getSettings();
+    // Toggle the page scraping setting
+    const pageScraping = !settings.pageScraping;
+    // Update UI
+    searchPageButton.classList.toggle('active', pageScraping);
+    // Save the setting
+    await updateSettings({ pageScraping });
+    console.log('Page scraping is now', pageScraping ? 'enabled' : 'disabled');
+  } else if (action === 'searchWeb') {
+    // Get current settings
+    const settings = await getSettings();
+    // Toggle the web search setting
+    const webSearch = !settings.webSearch;
+    // Update UI
+    searchWebButton.classList.toggle('active', webSearch);
+    // Save the setting
+    await updateSettings({ webSearch });
+    console.log('Web search is now', webSearch ? 'enabled' : 'disabled');
+  } else if (action === 'reason') {
+    // Use the input message as-is instead of replacing it with predefined templates
+    // Let the system prompt guide the model's understanding of the context
+    handleSendMessage();
+  }
+}
+
+/**
+ * Get current settings from storage
+ */
+async function getSettings() {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: MESSAGE_TYPES.GET_USER_PREFERENCES
+    });
+    
+    if (response && response.success) {
+      return response.data || {};
+    }
+    
+    // Fallback to direct storage access
+    const result = await chrome.storage.local.get('userPreferences');
+    return result.userPreferences || {};
+  } catch (error) {
+    console.error('Error getting settings:', error);
+    return {};
+  }
+}
+
+/**
+ * Update settings in storage
+ */
+async function updateSettings(newSettings) {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: MESSAGE_TYPES.UPDATE_USER_PREFERENCES,
+      data: newSettings
+    });
+    
+    if (response && response.success) {
+      return response.data;
+    }
+    
+    // Fallback to direct storage access
+    const result = await chrome.storage.local.get('userPreferences');
+    const updatedSettings = { ...(result.userPreferences || {}), ...newSettings };
+    await chrome.storage.local.set({ userPreferences: updatedSettings });
+    return updatedSettings;
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    return null;
+  }
 }
 
 /**
@@ -775,6 +838,39 @@ function preventDuplicateSubmission() {
   sessionState.isSubmitting = true;
   sessionState.lastSubmittedQuestion = currentQuestion;
   return false;
+}
+
+/**
+ * Initialize button states based on saved settings
+ */
+async function initializeButtonStates() {
+  try {
+    const settings = await getSettings();
+    
+    // Initialize search page button state
+    const pageScraping = settings.pageScraping !== undefined ? settings.pageScraping : true;
+    searchPageButton.classList.toggle('active', pageScraping);
+    
+    // Initialize search web button state
+    const webSearch = settings.webSearch !== undefined ? settings.webSearch : true;
+    searchWebButton.classList.toggle('active', webSearch);
+    
+    console.log('Button states initialized:', { pageScraping, webSearch });
+  } catch (error) {
+    console.error('Error initializing button states:', error);
+  }
+}
+
+/**
+ * Set up auto-resize for the input field
+ */
+function setupInputAutoResize() {
+  // Auto-resize textarea as user types
+  messageInput.addEventListener('input', () => {
+    // Reset height to calculate actual content height
+    messageInput.style.height = 'auto';
+    messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+  });
 }
 
 // Export the chat component

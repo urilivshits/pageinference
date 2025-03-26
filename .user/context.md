@@ -36,6 +36,14 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Optimization]** Enhanced [component] performance by [technique] resulting in [benefit].
 -->
 
+- **[Web Search Enhancement]** Implemented OpenAI API web search capabilities in refactored extension:
+  - Integrated OpenAI's web_search_preview tool for obtaining up-to-date information
+  - Added support for extracting and displaying sources from API responses
+  - Implemented combined mode that integrates page content and web search results
+  - Created system prompts that instruct the model how to use both information sources
+  - Added source attribution for better information credibility
+  - References: background/background.js
+
 - **[LinkedIn Scraping]** Restored specialized LinkedIn profile scraping functionality:
   - Implemented dedicated scraper with LinkedIn-specific selectors
   - Added support for extracting structured profile data (name, headline, about, experience, education, skills)
@@ -97,6 +105,65 @@ FORMAT GUIDE - DO NOT DELETE
   - Enabled by default for better domain-focused experience
   - References: popup.js, popup.html, styles.css
 
+- **[Unified Responses API Integration]** Migrated all OpenAI API calls to use the Responses API instead of the Completions API:
+  - Updated OpenAI API service to use the Responses API endpoint for all request types
+  - Modified message format to use the input/output_text structure required by Responses API
+  - Enhanced response processing to handle the Responses API format
+  - Implemented consistent error handling for all API calls
+  - Fixed issues with simple prompts and page search functionality
+  - Maintained compatibility with existing web search implementation
+  - Streamlined API usage to use a single API format across all features
+  - References: background/api/openai.js
+
+- **[OpenAI API Integration Fix]** Corrected the OpenAI API integration to use the proper endpoints and formats:
+  - Fixed incorrect usage of non-existent `/v1/responses` endpoint
+  - Properly implemented web search as a tool in the chat completions API
+  - Updated message format to use standard role/content structure
+  - Added correct tool configuration for web search functionality
+  - Improved source extraction and citation formatting
+  - Maintained compatibility with all existing features
+  - Enhanced error handling and response processing
+  - References: background/api/openai.js
+
+- **[OpenAI Responses API Migration]** Implemented proper Responses API integration for all OpenAI features:
+  - Updated API endpoint to use the correct `/v1/responses` endpoint
+  - Converted message format to use the proper Responses API structure with `input_text` type
+  - Implemented response parsing for the Responses API output format
+  - Added source extraction from the Responses API sources array
+  - Configured proper request parameters for the Responses API (max_output_tokens, text format)
+  - Maintained backward compatibility with Chat Completions API format
+  - Fixed previous incorrect implementation that was using Chat Completions API
+  - References: background/api/openai.js
+
+- **[Responses API Web Search Fix]** Fixed web search functionality in OpenAI Responses API:
+  - Corrected the web search tool format from using `type: 'web_search_preview'` to proper function format
+  - Implemented the correct function structure with name, description, and parameters
+  - Added detailed parameter definition including properties and required fields
+  - Fixed "Missing required parameter: 'tools[0].function'" error in API calls
+  - Improved error handling with more detailed error messages
+  - Ensured proper operation of web search in the Responses API
+  - References: background/api/openai.js
+
+- **[Responses API Conversation Fix]** Fixed critical error in follow-up message handling for the OpenAI Responses API:
+  - Addressed error: "Invalid value: 'input_text'. Supported values are: 'output_text' and 'refusal'."
+  - Modified message format to use 'output_text' for all previous messages in a conversation
+  - Updated both web search and standard query paths to use the correct content types
+  - Fixed OpenAI API service to properly format conversation history for Responses API
+  - Applied special handling with only the latest user message and system message using 'input_text'
+  - Ensured proper handling of multi-turn conversations with the Responses API
+  - Implemented role-based content type determination for accurate message formatting
+  - References: background/background.js, background/api/openai.js
+
+- **[Responses API Content Type Fix]** Fixed message content type handling for OpenAI Responses API conversations:
+  - Identified API requires specific content types for different messages in a conversation
+  - Updated system messages and current user message to use 'input_text'
+  - Set previous conversation messages to use 'output_text' as required by the API
+  - Modified response parsing to check for both 'input_text' and 'output_text' types
+  - Fixed the error: "Invalid value: 'input_text'. Supported values are: 'output_text' and 'refusal'"
+  - Applied the fix to both background.js direct API calls and the OpenAI API service
+  - Ensured proper handling of conversation history with the Responses API
+  - References: background/background.js, background/api/openai.js
+
 ## Resolved Bugs
 <!--
 FORMAT GUIDE - DO NOT DELETE
@@ -133,21 +200,19 @@ FORMAT GUIDE - DO NOT DELETE
   - Created a cleaner implementation that aligns with the included script dependencies
   - References: popup/components/chat.js, tests/components/chat.test.js
 
-- **[Service Worker Import Error Fix]** Fixed critical error with import() being disallowed in ServiceWorkerGlobalScope:
-  - Replaced ES module imports with traditional script approach compatible with service workers
-  - Removed dynamic import() calls that violated HTML specification for service workers
-  - Created inline implementations of core services (storage, messaging) for the background script
-  - Implemented simple Promise-based wrappers around Chrome Storage API
-  - Added proper error handling and logging for initialization sequence
-  - Preserved the same functionality but with a service worker compatible implementation
-  - References: background/background.js
+- **[Service Worker Imports]** - Fixed service worker registration failure by properly handling imports in a service worker context. Instead of using dynamic imports (which are disallowed in service workers), we:
+  1. Updated manifest.json to include web_accessible_resources for prompt files
+  2. Used static ES module imports for prompt files instead of dynamic imports
+  3. Maintained separation of concerns by keeping prompts in their dedicated files in shared/prompts/
+  4. Fixed the "import() is disallowed on ServiceWorkerGlobalScope" error
 
-- **[Service Worker Registration Fix]** Fixed service worker registration failure (Status code 15) in the refactored extension:
-  - Replaced static ES module imports with dynamic imports using chrome.runtime.getURL() and URL constructor
-  - Added proper error handling with try/catch block in the initialization function
-  - Created a dedicated loadModules() function to properly load dependencies asynchronously
-  - Implemented a more robust module loading approach compatible with Chrome Extension Manifest V3
-  - Preserved a backup of the original file for safety
+- **[Service Worker Registration Fix]** Fixed service worker registration failure (Status code: 3) by eliminating top-level await:
+  - Removed top-level await imports that are disallowed in service worker context
+  - Created a dedicated loadPrompts() function to handle module imports asynchronously
+  - Defined global variables to store prompt references across the background script
+  - Updated initialization sequence to load prompts before other services
+  - Added proper error handling for module loading failures
+  - Fixed cascading timeout errors caused by service worker registration failure
   - References: background/background.js
 
 - **[Cross-Site Chat History Bug]** Fixed issue with chat sessions from different sites not being properly saved:
@@ -513,12 +578,41 @@ FORMAT GUIDE - DO NOT DELETE
   - Removed language that implied a generic page analysis request
   - Ensured user messages are preserved in API requests
   - References: shared/prompts/generic.js, shared/prompts/website-specific.js
+- **[Prompt Organization]** Restored proper organization of system prompts in the centralized prompts directory:
+  - Moved hardcoded prompts from background.js to the shared/prompts directory
+  - Added WEB_SEARCH_SYSTEM_PROMPT to shared/prompts/generic.js
+  - Created generatePageContentPrompt function for dynamic page content insertion
+  - Updated background.js to import and use centralized prompts
+  - Fixed special handling for dynamic page content in prompts
+  - Updated exports in index.js to maintain consistent organization
+  - References: shared/prompts/generic.js, shared/prompts/index.js, background/background.js
 - **[Hardcoded Action Messages]** Fixed issue where action buttons (Search Page, Search Web) were replacing user input with hardcoded templates:
   - Removed predefined template messages map in handleActionButton function
   - Modified the function to use the user's actual input instead of replacing it with templates
   - Ensured user's original query is preserved and sent to the API
   - Improved system prompts to provide proper context without assuming query content
   - References: popup/components/chat.js
+
+- **[Direct Background.js Responses API Fix]** Applied direct fixes to background.js to ensure proper use of the OpenAI Responses API:
+  - Fixed web search API calls in background.js to use the correct tools format with proper function structure
+  - Updated API endpoint from /v1/chat/completions to /v1/responses in direct API calls
+  - Applied consistent Responses API format to both web search and standard queries
+  - Enhanced response parsing to handle the Responses API output format with proper extraction
+  - Fixed the "Missing required parameter: 'tools[0].function'" error
+  - Ensured both API request paths (web search and non-web search) use the correct API and format
+  - References: background/background.js
+
+- **[Web Search Tool Format Fix]** Resolved "Missing required parameter: 'tools[0].name'" error:
+  - Added the required 'name' field directly to the top level of tool objects
+  - Fixed both the direct API calls in background.js and the OpenAI API service
+  - Maintained correct function structure with nested function.name
+  - Ensured proper parameters for the Responses API format
+  - Fixed the API call failures for both web search and regular requests
+  - References: background/background.js, background/api/openai.js
+
+- **[Missing Module Import]** Fixed ReferenceError in background script where openAiService was undefined by adding the proper import statement: `import * as openAiService from './api/openai.js'`
+
+- **[Incorrect Import Name]** Fixed SyntaxError in OpenAI API service by correcting the import from non-existent `API` to the proper `API_CONSTANTS` export in constants.js file
 
 ## Testing Framework Implementation
 - **[Testing Framework Implementation]** Created a testing infrastructure to support the refactoring process:
@@ -527,3 +621,32 @@ FORMAT GUIDE - DO NOT DELETE
   - Developed a test runner to execute all tests in sequence
   - Added example unit tests for URL utilities to demonstrate the testing approach
   - Established a pattern for unit testing that can be extended to all refactored components
+
+- **[Search Web and Search Page Implementation]** Implemented toggle functionality for "search web" and "search page" features using the OpenAI Responses API:
+  - **Toggle Button Behavior**: Restored the toggle behavior for both "search web" and "search page" buttons
+    - Added click handlers that toggle settings state (webSearch and pageScraping)
+    - Implemented visual feedback using the 'active' class on buttons
+    - Stored toggle states in Chrome storage for persistence
+    - Updated button states on initialization to reflect saved settings
+  
+  - **Search Page Feature**: When enabled, combines user query with scraped page content
+    - Added formatted user message with page content: `${userMessage}\n\nHere is the content of the webpage (URL: ${url}) to help answer my question:\n\n${pageContent}`
+    - Creates specialized system prompts based on context and toggle state
+    - Uses the `generatePageContentPrompt` function for customized prompts with page data
+  
+  - **Search Web Feature**: When enabled, adds web search tools to the OpenAI Responses API request
+    - Adds the proper web_search function tool to API requests
+    - Uses the correct Responses API format with function structure and parameters
+    - Properly handles and displays search results with source attribution
+  
+  - **System Prompt Selection Logic**: Implemented logic to select the appropriate system prompt based on toggle states
+    - NO_PAGE_CONTENT_SYSTEM_PROMPT: When both toggles are off
+    - GENERIC_SYSTEM_PROMPT/generatePageContentPrompt: When only search page is on
+    - WEB_SEARCH_SYSTEM_PROMPT: When only search web is on
+    - COMBINED_SYSTEM_PROMPT: When both toggles are on
+  
+  - **API Integration**: Ensured all API calls use the Responses API format
+    - Used proper input/output_text structure for different message types
+    - Set correct content types for system messages and user messages
+    - Implemented proper response parsing for the Responses API format
+    - Extracted and formatted sources from API responses when available
