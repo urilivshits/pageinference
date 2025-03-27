@@ -172,6 +172,8 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Bug ID/Description]** Resolved [issue description] affecting [component/feature]
 -->
 
+- **[History Domain Filter Navigation Bug]** Fixed bug where history domain filter wasn't being reapplied when returning to the history tab after viewing a chat. Updated tab navigation handling to properly reload sessions with current filter settings when the history tab is shown.
+
 - **[History Domain Filter Initial State]** Fixed bug with "Only show {baseUrl}" toggle in history view where the toggle was ON by default but still showed chats from all domains until manually toggled. Updated loadSessions function to properly apply the domain filter based on the initial toggle state in refactored/popup/components/history.js.
 
 - **[Message Channel Timeout Fix]** Resolved asynchronous message handling errors in refactored extension:

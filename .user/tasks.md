@@ -678,7 +678,7 @@ Notes:
   - [x] Create summary of work done on "search web" and "search page" features
   - [x] Update tasks.md with completed summary task
 
-## User Query: "1. follow and process the @rules.mdc before processing any of my query 2. fix the bug with history > "only show {baseUrl}": - currently history opens with the default "only show {baseUrl}" toggled on by default  - but it still shows all the chats of all the different baseUrls in the list until i then manually toggle off and on the toggle - so the feature works well but does not respect the initial state"
+## User Query: "1. follow and process the @rules.mdc before processing any of my query 2. fix the bug with history > "only show {baseUrl}" - currently history opens with the default "only show {baseUrl}" toggled on by default  - but it still shows all the chats of all the different baseUrls in the list until i then manually toggle off and on the toggle - so the feature works well but does not respect the initial state"
 - Task: Fix initial state bug in history domain filter
   - [x] Define test cases for history domain filter
     - [x] Test case: Verify the UI shows the toggle as ON by default
@@ -694,3 +694,19 @@ Notes:
     - [x] Verify initial filtering works correctly
     - [x] Verify toggling continues to work as expected
     - [x] Check other history functionality still works properly
+
+## User Query: "1. i did some changes to code - reindex, refresh artifacts and make sure you follow the rules before processing any of my requests 2. there is a bug remained in the fix for the bug with history > "only show {baseUrl}" - when i open a chat item from history and then go to history once again I again see all the history items unfiltered even though the toggle to"only show {baseUrl}" remains on"
+- Task: Fix remaining bug in history domain filter
+  - [x] Define test cases for history tab navigation
+    - [x] Test case: Verify domain filter remains applied when returning to history tab
+    - [x] Test case: Verify domain filter state is maintained when switching between tabs
+    - [x] Test case: Verify filter is correctly applied when returning from chat view
+  - [x] Implement tab navigation fix for history domain filter
+    - [x] Identify where the filter state is lost when navigating back to history
+    - [x] Find appropriate event handler or function to reload sessions when tab is shown
+    - [x] Implement solution to reapply filtering when returning to history tab
+    - [x] Ensure changes don't interfere with other history functionality
+  - [x] Run tests and validate implementation
+    - [x] Verify domain filter works correctly after navigating between tabs
+    - [x] Verify filter toggle functionality still works properly
+    - [x] Check for any regressions in history functionality

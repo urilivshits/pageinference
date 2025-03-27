@@ -127,6 +127,16 @@ function setupEventListeners() {
     const { session } = event.detail;
     updateSession(session);
   });
+  
+  // Listen for tab changes to reload sessions when history tab is shown
+  window.addEventListener('tab-changed', (event) => {
+    const { tabId } = event.detail;
+    if (tabId === 'history') {
+      console.log('History tab shown, reloading sessions');
+      // Reload sessions with current filter state applied
+      loadSessions();
+    }
+  });
 }
 
 /**
