@@ -677,3 +677,20 @@ Notes:
   - [x] Examine .user/context.md for documented changes
   - [x] Create summary of work done on "search web" and "search page" features
   - [x] Update tasks.md with completed summary task
+
+## User Query: "1. follow and process the @rules.mdc before processing any of my query 2. fix the bug with history > "only show {baseUrl}": - currently history opens with the default "only show {baseUrl}" toggled on by default  - but it still shows all the chats of all the different baseUrls in the list until i then manually toggle off and on the toggle - so the feature works well but does not respect the initial state"
+- Task: Fix initial state bug in history domain filter
+  - [x] Define test cases for history domain filter
+    - [x] Test case: Verify the UI shows the toggle as ON by default
+    - [x] Test case: Verify the initial list only shows items for current domain
+    - [x] Test case: Verify toggling OFF shows all domains
+    - [x] Test case: Verify toggling back ON filters to current domain only
+  - [x] Implement fix for history domain filter initial state
+    - [x] Identify where filtering logic is not being applied properly
+    - [x] Apply the domain filter during initial list loading
+    - [x] Ensure toggle state and actual filtering are synchronized
+    - [x] Maintain existing toggle functionality
+  - [x] Run tests and validate implementation
+    - [x] Verify initial filtering works correctly
+    - [x] Verify toggling continues to work as expected
+    - [x] Check other history functionality still works properly

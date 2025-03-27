@@ -244,10 +244,23 @@ async function loadSessions() {
     // Hide no sessions message
     noSessionsMessage.style.display = 'none';
     
-    // Apply current filter if any
+    // Apply filtering based on current state
     if (filterInput.value) {
+      // Apply text filter if there's search input
       filterSessions(filterInput.value.toLowerCase());
+    } else if (filteringByCurrentDomain && currentDomain) {
+      // Apply domain filter if enabled and we have a current domain
+      const filteredSessions = allSessions.filter(session => {
+        try {
+          const sessionDomain = new URL(session.url).hostname;
+          return sessionDomain === currentDomain;
+        } catch (e) {
+          return false;
+        }
+      });
+      renderSessions(filteredSessions);
     } else {
+      // Otherwise show all sessions
       renderSessions(allSessions);
     }
   } catch (error) {
