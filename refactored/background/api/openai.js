@@ -60,15 +60,16 @@ export async function sendRequest(options) {
       
       // Determine the correct content type:
       // - System messages use 'input_text'
-      // - The current user message (last message) uses 'input_text'
-      // - All previous messages use 'output_text'
+      // - User messages use 'input_text'
+      // - Assistant messages use 'output_text'
       const isSystemMessage = message.role === 'system';
-      const isCurrentUserMessage = i === messages.length - 1 && message.role === 'user';
-      const contentType = (isSystemMessage || isCurrentUserMessage) ? 'input_text' : 'output_text';
+      const isUserMessage = message.role === 'user';
+      const isAssistantMessage = message.role === 'assistant';
+      const contentType = isAssistantMessage ? 'output_text' : 'input_text';
       
       // If this is the current user message and we have page content, combine them
       let messageContent = message.content;
-      if (isCurrentUserMessage && pageContent) {
+      if (isUserMessage && i === messages.length - 1 && pageContent) {
         messageContent = `${message.content}\n\nHere is the content of the webpage to help answer your question:\n\n${pageContent}`;
       }
       
@@ -385,7 +386,7 @@ function processApiResponse(apiResponse) {
           // Handle message type content (common in newer responses)
           if (Array.isArray(item.content)) {
             for (const contentItem of item.content) {
-              if (contentItem.type === 'output_text') {
+              if (contentItem.type === 'input_text' || contentItem.type === 'output_text') {
                 content += contentItem.text + "\n";
                 
                 // Look for URL citations in annotations
