@@ -13,6 +13,105 @@ if (window.popupJsInitialized) {
   console.log('===== FIRST INITIALIZATION OF POPUP.JS =====');
 }
 
+// Generate a unique ID for this popup instance
+const popupInstanceId = Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+console.log(`Popup instance ID: ${popupInstanceId}`);
+
+// Store our ID in local storage to detect and close old popups
+(async function checkAndCloseOldPopups() {
+  try {
+    // Get the current active popup ID
+    const { activePopupId } = await chrome.storage.local.get('activePopupId');
+    
+    // If there's already an active popup, and it's not us, we should close
+    if (activePopupId && activePopupId !== popupInstanceId) {
+      console.log(`Another popup (${activePopupId}) is already active. This popup (${popupInstanceId}) will close.`);
+      window.close();
+      return; // Stop initialization
+    }
+    
+    // Set ourselves as the active popup
+    await chrome.storage.local.set({ activePopupId: popupInstanceId });
+    console.log(`Set this popup (${popupInstanceId}) as the active popup`);
+    
+    // Clean up when this popup is closed
+    window.addEventListener('unload', async () => {
+      try {
+        // Only clear if we're still the active popup
+        const { activePopupId: currentActiveId } = await chrome.storage.local.get('activePopupId');
+        if (currentActiveId === popupInstanceId) {
+          await chrome.storage.local.remove('activePopupId');
+          console.log(`Removed this popup (${popupInstanceId}) as the active popup`);
+        }
+      } catch (error) {
+        console.error('Error during popup unload cleanup:', error);
+      }
+    });
+  } catch (error) {
+    console.error('Error checking for old popups:', error);
+  }
+})();
+
+// Establish a connection with the background script for popup tracking
+let backgroundConnection;
+try {
+  backgroundConnection = chrome.runtime.connect({ name: 'popup' });
+  console.log('Connected to background script for popup tracking');
+  
+  // Send our instance ID to the background script
+  backgroundConnection.postMessage({ 
+    action: 'registerPopup', 
+    popupId: popupInstanceId 
+  });
+  
+  // Listen for messages from the background script
+  backgroundConnection.onMessage.addListener((message) => {
+    console.log('Received message from background script:', message);
+    
+    // If the background script tells us to close, do so
+    if (message.action === 'closePopup') {
+      console.log('Closing popup at background script request:', message.reason);
+      window.close();
+    }
+  });
+  
+  // Handle disconnection
+  backgroundConnection.onDisconnect.addListener(() => {
+    console.log('Disconnected from background script');
+    backgroundConnection = null;
+  });
+} catch (error) {
+  console.error('Failed to connect to background script:', error);
+}
+
+// Also periodically check if we're still the active popup (in case storage-based approach fails)
+const activePopupCheck = setInterval(async () => {
+  try {
+    const { activePopupId } = await chrome.storage.local.get('activePopupId');
+    if (activePopupId !== popupInstanceId) {
+      console.log(`No longer the active popup. Current active: ${activePopupId}, this popup: ${popupInstanceId}`);
+      window.close();
+    }
+  } catch (error) {
+    console.error('Error during active popup check:', error);
+  }
+}, 2000); // Check every 2 seconds
+
+// Clear interval on unload
+window.addEventListener('unload', () => {
+  clearInterval(activePopupCheck);
+  
+  // Clean up background connection
+  console.log('Popup window unloading, cleaning up connections');
+  if (backgroundConnection) {
+    try {
+      backgroundConnection.disconnect();
+    } catch (error) {
+      console.error('Error disconnecting from background script:', error);
+    }
+  }
+});
+
 // Log information about scripts for debugging
 console.log('Currently loaded scripts:', Array.from(document.scripts).map(s => s.src || 'inline script'));
 
@@ -43,74 +142,50 @@ import settingsComponent from './components/settings.js';
 import historyComponent from './components/history.js';
 import controlsComponent from './components/controls.js';
 
-// This is a self-executing function that runs immediately to set up persistent state
-// before any DOMContentLoaded events occur
-(async function setupPersistentState() {
-  console.log('INIT: Early initialization running before DOM is ready');
+// Track initialization status
+let popupInitialized = false;
+
+/**
+ * Early initialization function that runs immediately
+ * Notifies background script as early as possible about popup opening
+ */
+(function earlyInitialize() {
+  console.log('Performing early popup initialization');
   try {
-    // Get current tab (this will work even before DOM is loaded)
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs && tabs[0]) {
-      // Get basic tab information
-      const tabId = tabs[0].id;
-      const url = tabs[0].url;
-      const tabStorageKey = `page_load_${tabId}_${url}`;
-      
-      console.log('INIT: Early tab detection:', tabId, url);
-      
-      // Check for existing page load ID - we just want to ensure it exists
-      // but won't process it yet (that happens in DOMContentLoaded)
-      const { [tabStorageKey]: existingTabPageLoadId } = await chrome.storage.local.get(tabStorageKey);
-      
-      if (existingTabPageLoadId) {
-        console.log('INIT: Found existing page load ID early:', existingTabPageLoadId);
-      } else {
-        console.log('INIT: No existing page load ID found during early initialization');
-      }
-    } else {
-      console.warn('INIT: No active tab found during early initialization');
-    }
+    // Notify background script immediately that popup is open
+    chrome.runtime.sendMessage({
+      type: 'popupInitialized',
+      action: 'popupInitialized',
+      timestamp: Date.now()
+    }, (response) => {
+      console.log('Background acknowledged early popup initialization:', response);
+    });
   } catch (error) {
-    console.error('INIT: Error during early initialization:', error);
+    console.error('Error during early popup initialization:', error);
   }
 })();
 
 /**
  * Main initialization function for the popup
  */
-async function initializePopup() {
-  console.log('Initializing popup...');
-  
-  try {
-    // Initialize UI components
-    console.log('Initializing UI components...');
-    
-    // Controls must be initialized first (tabs, buttons)
-    controlsComponent.initializeControlsComponent();
-    
-    // Initialize other components
-    chatComponent.initializeChatComponent();
-    settingsComponent.initializeSettingsComponent();
-    historyComponent.initializeHistoryComponent();
-    
-    // Log successful initialization
-    console.log('Popup components initialized successfully');
-    
-    // Listen for custom events between components
-    setupComponentCommunication();
-    
-    // Check for API key
-    await checkApiKey();
-  } catch (error) {
-    console.error('Error initializing popup:', error);
-    document.body.innerHTML = `
-      <div class="error-message">
-        <h2>Initialization Error</h2>
-        <p>${error.message}</p>
-        <button onclick="window.close()">Close</button>
-      </div>
-    `;
+function initializePopup() {
+  if (popupInitialized) {
+    console.warn('Popup already initialized, skipping');
+    return;
   }
+  
+  console.log('Initializing popup');
+  
+  // Initialize all components
+  chatComponent.initializeChatComponent();
+  settingsComponent.initializeSettingsComponent();
+  historyComponent.initializeHistoryComponent();
+  controlsComponent.initializeControlsComponent();
+  
+  // Mark as initialized
+  popupInitialized = true;
+  
+  console.log('Popup initialization complete');
 }
 
 /**
@@ -201,4 +276,10 @@ async function checkApiKey() {
 }
 
 // Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initializePopup); 
+document.addEventListener('DOMContentLoaded', initializePopup);
+
+// Also try to initialize immediately if document is already complete
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  console.log('Document already ready, initializing popup immediately');
+  initializePopup();
+} 

@@ -174,6 +174,8 @@ FORMAT GUIDE - DO NOT DELETE
   - Used correct Responses API format with function structure and parameters
   - References: popup.js, background.js, background/api/openai.js
 
+- **[Inter-Tab Communication Refinement]** Enhanced messaging system between background script and content scripts to ensure reliable information exchange with improved error handling and retry mechanisms.
+
 ## Resolved Bugs
 <!--
 FORMAT GUIDE - DO NOT DELETE
@@ -481,3 +483,11 @@ FORMAT GUIDE - DO NOT DELETE
   - References: background/background.js, background/api/openai.js
 - **[Missing Module Import]** Fixed ReferenceError in background script where openAiService was undefined by adding the proper import statement: `import * as openAiService from './api/openai.js'`
 - **[Incorrect Import Name]** Fixed SyntaxError in OpenAI API service by correcting the import from non-existent `API` to the proper `API_CONSTANTS` export in constants.js file
+- **[Background Tab Tracking]** Developed advanced tab tracking system that monitors window focus events and tracks which tab opened the popup.
+- **[Smart Content Scraping]** Implemented intelligent content scraping that targets the correct page regardless of current window focus.
+- **[Single Popup Enforcement]** Created multi-layered system to ensure only one popup can be open at a time across all Chrome windows.
+- **[Improved History Navigation]** Enhanced history item navigation to properly switch to the correct tab when clicking history items from different pages.
+- **[Focus-Related Scraping Bug]** Fixed issue where page scraping would fail when popup was focused without first clicking on the source page.
+- **[Wrong Page Content Bug]** Resolved bug where content from previously focused page would be scraped instead of the popup's source page.
+- **[Cross-Window History Bug]** Fixed issue where clicking history item from one tab would incorrectly open that chat in current tab instead of navigating to the original tab.
+- **[Multiple Popups Bug]** Resolved issue where multiple popups could be opened simultaneously, leading to confusion and incorrect content scraping.

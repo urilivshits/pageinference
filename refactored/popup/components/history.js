@@ -535,18 +535,49 @@ async function openSession(session) {
       throw new Error('Invalid session data: missing pageLoadId');
     }
     
-    // If the session has a URL, open that tab and navigate to it
+    // Check if we need to navigate to the session's URL
     if (session.url) {
-      // Find if the URL is already open in a tab
-      const tabs = await chrome.tabs.query({});
-      const existingTab = tabs.find(tab => tab.url === session.url);
+      // Get the current tab
+      const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const currentUrl = currentTab?.url;
       
-      if (existingTab) {
-        // Switch to the existing tab
-        await chrome.tabs.update(existingTab.id, { active: true });
-      } else {
-        // Open a new tab with the URL
-        await chrome.tabs.create({ url: session.url });
+      console.log('Current tab URL:', currentUrl);
+      console.log('Session URL:', session.url);
+      
+      // Check if the current tab URL exactly matches the session URL
+      const urlsMatch = currentUrl === session.url;
+      
+      if (!urlsMatch) {
+        console.log('URLs do not match exactly, navigating to session URL');
+        
+        // Check if the session URL is open in any tab
+        const allTabs = await chrome.tabs.query({});
+        const exactMatchTab = allTabs.find(tab => tab.url === session.url);
+        
+        if (exactMatchTab) {
+          // Switch to the exact match tab
+          console.log('Found exact matching tab:', exactMatchTab.id);
+          await chrome.tabs.update(exactMatchTab.id, { active: true });
+          
+          // If the tab is in a different window, focus that window
+          if (exactMatchTab.windowId !== currentTab.windowId) {
+            await chrome.windows.update(exactMatchTab.windowId, { focused: true });
+          }
+          
+          // Close the popup since we're switching to another tab
+          // The user will need to click the extension icon in the target tab
+          window.close();
+          return;
+        } else {
+          // Open a new tab with the session URL
+          console.log('No matching tab found, creating new tab');
+          await chrome.tabs.create({ url: session.url });
+          
+          // Since we're opening a new tab, we'll let the user manually open the popup
+          // on that tab to see the chat history
+          window.close();
+          return;
+        }
       }
     }
     
@@ -557,7 +588,6 @@ async function openSession(session) {
     }
     
     // Notify chat component to show this session
-    // We pass the pageLoadId to the event to ensure the chat component can find it
     window.dispatchEvent(new CustomEvent('open-session', { 
       detail: { pageLoadId: session.pageLoadId }
     }));

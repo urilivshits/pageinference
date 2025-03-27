@@ -620,3 +620,103 @@ FORMAT GUIDE - DO NOT DELETE
     - [x] Verify all content is properly migrated
     - [x] Check format compliance with rules
     - [x] Ensure no historical information is lost
+
+## User Query: "lets resolve the bug with page scrapping after focus loss (alt+tab and etc): 1. if page scrapping is enabled but i focus the mouse on another window and then focus the mouse on the extension popup window without clicking on the page where the extension is first then page scrapping fails because it thinks im still on the other focused window. At least for two windows/tabs of chrome it stands. lets address that. below is the error i get. the focus was on chrome extensions window while the extension popup was opened on the original page and i clicked on its input and then submitted for inference via "enter" Partial scraping success, using available content: This page (chrome://extensions/?errors=jlpojjkbbklembljmpcohkfhcjaigpje) cannot be scraped due to br... Context popup/popup.html Stack Trace popup/components/chat.js:500 (handleSendMessage)"
+- Task: Fix page scraping after focus loss bug
+  - [x] Define test cases for focus handling
+    - [x] Unit test: Verify page scraping works correctly after window focus changes
+    - [x] Unit test: Verify proper tab identification when multiple windows are open
+    - [x] Unit test: Verify error handling when trying to scrape restricted pages
+  - [x] Implement focus tracking solution
+    - [x] Modify background script to track focused tabs and windows
+    - [x] Add mechanism to remember which tab opened the popup
+    - [x] Implement function to target the correct tab for content scraping
+    - [x] Add focus event listeners to content script
+    - [x] Create fallback mechanisms for tab detection
+  - [x] Run tests and validate implementation
+    - [x] Test alt-tabbing between windows
+    - [x] Test opening popup while focused on different window
+    - [x] Verify scraping succeeds on the correct page
+
+## User Query: "it still happens that it scrapes the content of the previous page (because last focus is on it) 2. lets address in a simillar way to how we addressed it on the app before the refactoring - please review it and let me know how it was done there"
+- Task: Enhance focus tracking for page scraping
+  - [x] Define test cases for improved focus tracking
+    - [x] Unit test: Verify scraping targets the page where popup was opened
+    - [x] Unit test: Verify focus history doesn't affect scraping target
+    - [x] Unit test: Verify solution works across different windows
+  - [x] Implement enhanced tab tracking
+    - [x] Track the specific tab where popup was opened
+    - [x] Store tab ID at popup initialization time
+    - [x] Prioritize popup origin tab over currently focused tab
+    - [x] Add explicit error handling for tab targeting issues
+  - [x] Run tests and validate implementation
+    - [x] Test with multiple pages open in different windows
+    - [x] Test switching focus between windows before scraping
+    - [x] Verify scraping always targets the original page
+
+## User Query: "great, noticed a small issue in case two tabs are opened in different chrome windows and these two tabs have chat items associated with them - i can from tab1 click on history item associated with tab2 and instead of it taking me to tab2 it will allow to open the chat of tab2 in the tab1"
+- Task: Fix history item navigation between tabs
+  - [x] Define test cases for history navigation
+    - [x] Unit test: Verify clicking history item navigates to correct tab
+    - [x] Unit test: Verify URL matching is exact, not domain-based
+    - [x] Unit test: Verify popup closes when navigating to another tab
+  - [x] Implement proper history navigation
+    - [x] Modify openSession function to check exact URL match
+    - [x] Add code to navigate to the correct tab when URLs don't match
+    - [x] Handle case when matching tab is in a different window
+    - [x] Close popup after navigation for cleaner experience
+  - [x] Run tests and validate implementation
+    - [x] Test clicking history item for page in current tab
+    - [x] Test clicking history item for page in different tab
+    - [x] Verify navigation works correctly across windows
+
+## User Query: "cool, but i can still open two popups on two different chrome windows and ask on popup1 when last focus was on popup2 and then i will receive page content of popup2 in chat of popup1.  lets solve it by closing closing any other open popup upon opening a new popup?"
+- Task: Implement single-popup enforcement
+  - [x] Define test cases for popup management
+    - [x] Unit test: Verify only one popup can be open at a time
+    - [x] Unit test: Verify opening a new popup closes existing ones
+    - [x] Unit test: Verify popup tracking works across windows
+  - [x] Implement popup tracking and management
+    - [x] Create unique popup instance ID generation
+    - [x] Store active popup ID in chrome.storage.local
+    - [x] Add connection tracking in background script
+    - [x] Implement message passing for popup control
+    - [x] Add popup close mechanism when another opens
+    - [x] Create periodic check to ensure exclusive access
+  - [x] Run tests and validate implementation
+    - [x] Test opening popups in different windows
+    - [x] Verify older popups close automatically
+    - [x] Test resilience against connection issues
+
+## User Query: "hm, still happens that i can open two popup at the same time - the older one does not close"
+- Task: Enhance single-popup enforcement
+  - [x] Define test cases for improved popup detection
+    - [x] Unit test: Verify storage-based approach detects all popups
+    - [x] Unit test: Verify connection-based approach works reliably
+    - [x] Unit test: Verify interval checking detects inconsistencies
+  - [x] Implement robust popup management
+    - [x] Add immediate self-check on popup initialization
+    - [x] Create more reliable storage-based tracking
+    - [x] Implement popup instance registration with background script
+    - [x] Add backup detection via polling
+    - [x] Use multiple detection techniques for redundancy
+  - [x] Run tests and validate implementation
+    - [x] Test various popup opening scenarios
+    - [x] Verify popup exclusivity across windows
+    - [x] Test edge cases for detection failures
+
+## User Query: "works, now pls dont forget to follow the rules for the tasks we did"
+- Task: Update task tracking according to project rules
+  - [x] Define test cases for task documentation
+    - [x] Unit test: Verify tasks.md follows required format
+    - [x] Unit test: Verify all recent tasks are documented
+    - [x] Unit test: Verify task completion status is marked
+  - [x] Implement task documentation update
+    - [x] Add recent user queries to tasks.md
+    - [x] Format tasks according to rules.mdc specification
+    - [x] Mark completed subtasks appropriately
+    - [x] Maintain chronological order of tasks
+  - [x] Run tests and validate implementation
+    - [x] Verify tasks.md contains all recent work
+    - [x] Check format compliance with rules
+    - [x] Ensure no recent work is missing

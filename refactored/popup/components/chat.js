@@ -69,6 +69,10 @@ let sessionState = {
  * Initialize the chat component
  */
 export function initializeChatComponent() {
+  // First, immediately notify the background script that the popup is opening 
+  // This must be done before any other operations to ensure proper tab tracking
+  notifyBackgroundScriptOfPopupOpen();
+  
   // Get DOM elements
   chatContainer = document.getElementById('chat-container');
   chatMessages = document.getElementById('chat-messages');
@@ -100,6 +104,25 @@ export function initializeChatComponent() {
   
   // Initialize button states and toggles based on saved preferences
   checkToggleState();
+}
+
+/**
+ * Notify the background script that the popup has been opened
+ * This is critical for proper tab tracking when there's focus loss
+ */
+function notifyBackgroundScriptOfPopupOpen() {
+  console.log('Notifying background script that popup is open');
+  try {
+    chrome.runtime.sendMessage({
+      type: 'popupInitialized',
+      action: 'popupInitialized',
+      timestamp: Date.now()
+    }, (response) => {
+      console.log('Background script acknowledged popup initialization:', response);
+    });
+  } catch (error) {
+    console.error('Error notifying background script of popup open:', error);
+  }
 }
 
 /**
@@ -499,7 +522,18 @@ async function handleSendMessage() {
           pageContent = scrapeResponse.data.content;
           console.warn('Partial scraping success, using available content:', pageContent.substring(0, 100) + '...');
         } else {
+          // Handle focus-related issues here
           console.warn('Failed to scrape content:', scrapeResponse?.error || 'Unknown error');
+          
+          // If the error message contains chrome:// or extension page references, it's likely a focus issue
+          const errorMsg = scrapeResponse?.error || '';
+          const errorContent = scrapeResponse?.data?.content || '';
+          
+          if (errorContent.includes('chrome://') || errorContent.includes('chrome-extension://') || 
+              errorMsg.includes('chrome://') || errorMsg.includes('chrome-extension://')) {
+            // Display a more helpful error to the user about focus issues
+            displayErrorMessage('Content scraping failed. The extension is trying to scrape a Chrome settings page instead of your actual tab. Please click on the webpage you want to scrape first, then reopen the extension.');
+          }
         }
       } catch (error) {
         console.warn('Error during page content scraping:', error);

@@ -34,6 +34,20 @@ let ctrlClickPending = false;
 let lastCtrlKeyState = false;
 let ctrlClickTimeoutId = null;
 
+// Track the focused windows and tabs
+let focusedTabs = {};
+let lastFocusedWindowId = null;
+let lastFocusedTabId = null;
+
+// Track which tab the popup was opened from
+let popupOpenedFromTabId = null;
+let popupOpenedFromWindowId = null;
+let popupOpenedFromUrl = null;
+
+// Track active popups
+let activePopupPorts = [];
+let lastActivePopupId = null;
+
 // Initialize storage keys
 const STORAGE_KEYS_CONSTANTS = {
   USER_PREFERENCES: 'userPreferences',
@@ -249,11 +263,78 @@ async function initialize() {
  * Set up message listeners with proper async response handling
  */
 function setupMessageListeners() {
+  // Setup long-lived connections to track popup instances
+  chrome.runtime.onConnect.addListener(port => {
+    if (port.name === 'popup') {
+      console.log(`New popup connected with ID: ${port.sender.contextId}`);
+      let registeredPopupId = null;
+      
+      // Listen for registration message from the popup
+      port.onMessage.addListener((message) => {
+        if (message.action === 'registerPopup' && message.popupId) {
+          registeredPopupId = message.popupId;
+          console.log(`Popup registered with ID: ${registeredPopupId}`);
+          
+          // Close any other open popups
+          closeOtherPopups(port.sender.contextId, registeredPopupId);
+          
+          // Store this ID in local storage as well for backup detection
+          chrome.storage.local.set({ activePopupId: registeredPopupId });
+        }
+      });
+      
+      // Add this popup to the tracked popups
+      activePopupPorts.push(port);
+      lastActivePopupId = port.sender.contextId;
+      
+      // Listen for disconnect to remove from tracked popups
+      port.onDisconnect.addListener(() => {
+        console.log(`Popup disconnected: ${port.sender.contextId}, registered ID: ${registeredPopupId}`);
+        activePopupPorts = activePopupPorts.filter(p => p !== port);
+        
+        if (lastActivePopupId === port.sender.contextId) {
+          lastActivePopupId = activePopupPorts.length > 0 ? 
+            activePopupPorts[activePopupPorts.length - 1].sender.contextId : null;
+        }
+        
+        // Clear activePopupId in storage if it matches the one that's disconnecting
+        if (registeredPopupId) {
+          chrome.storage.local.get('activePopupId', ({activePopupId}) => {
+            if (activePopupId === registeredPopupId) {
+              chrome.storage.local.remove('activePopupId');
+              console.log(`Cleared disconnected popup ID from storage: ${registeredPopupId}`);
+            }
+          });
+        }
+      });
+    }
+  });
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Received message:', message);
     
     // Support both message.type and message.action for backwards compatibility
     const messageType = message.type || message.action;
+    
+    // Special handling for popup initialization event
+    if (messageType === 'popupInitialized') {
+      // When popup is opened, immediately capture the tab it was opened from
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs.length > 0) {
+          const currentTab = tabs[0];
+          popupOpenedFromTabId = currentTab.id;
+          popupOpenedFromWindowId = currentTab.windowId;
+          popupOpenedFromUrl = currentTab.url;
+          console.log(`Popup opened from tab: ${popupOpenedFromTabId}, window: ${popupOpenedFromWindowId}, URL: ${popupOpenedFromUrl}`);
+          
+          // Send response indicating we captured the tab
+          if (sendResponse) {
+            sendResponse({ success: true, message: 'Popup initialization captured' });
+          }
+        }
+      });
+      return true; // Keep the message channel open for async response
+    }
     
     // Handle message based on type or action
     const handlers = {
@@ -743,97 +824,55 @@ function setupMessageListeners() {
         try {
           console.log('Handling scrapeContent request');
           
-          // Get the active tab
+          // Option 1: If we know which tab the popup was opened from, use that
+          if (popupOpenedFromTabId) {
+            console.log(`Using stored popup origin tab ID: ${popupOpenedFromTabId}`);
+            try {
+              // Make sure the tab still exists
+              const tab = await chrome.tabs.get(popupOpenedFromTabId);
+              if (tab) {
+                console.log(`Found popup origin tab still exists: ${tab.id}, ${tab.url}`);
+              }
+              // Process this tab directly instead of querying for active tab
+              return await processScrapeTabRequest(tab);
+            } catch (e) {
+              console.error(`Error getting popup origin tab: ${e.message}`);
+              // If we can't get the stored tab, fall back to normal behavior
+              console.log('Falling back to regular tab detection...');
+            }
+          }
+          
+          // Option 2: Get the active tab from current window specifically
           const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
           if (!tabs || tabs.length === 0) {
-            throw new Error('No active tab found');
-          }
-          
-          const tab = tabs[0];
-          console.log('Found active tab:', tab.id, tab.url);
-          
-          // Check if we can scrape this URL (avoid chrome:// urls etc.)
-          if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-            console.warn('Cannot scrape content from this type of URL:', tab.url);
-            return { 
-              success: false, 
-              error: 'Cannot scrape content from this type of URL',
-              data: {
-                content: `This page (${tab.url}) cannot be scraped due to browser security restrictions.`,
-                title: tab.title || '',
-                url: tab.url || ''
-              }
-            };
-          }
-          
-          // Try to send a message to the content script
-          try {
-            console.log('Sending scrapeContent message to tab:', tab.id);
-            const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
-            
-            if (!response || !response.content) {
-              console.warn('Content script returned empty or invalid response');
-              return { 
-                success: false, 
-                error: 'Failed to retrieve content from page',
-                data: {
-                  content: '',
-                  title: tab.title || '',
-                  url: tab.url || ''
+            // Option 3: If we can't find the active tab in current window, try getting the last focused window's active tab
+            console.log('No active tab found in current window, trying lastFocusedWindow');
+            const lastFocusedTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+            if (!lastFocusedTabs || lastFocusedTabs.length === 0) {
+              // Option 4: If still no tabs found, try using our tracked focus information
+              console.log('No active tab found in lastFocusedWindow, trying tracked focus data');
+              if (lastFocusedWindowId && lastFocusedTabId) {
+                console.log(`Using tracked focus data: Window ${lastFocusedWindowId}, Tab ${lastFocusedTabId}`);
+                try {
+                  const trackedTab = await chrome.tabs.get(lastFocusedTabId);
+                  if (trackedTab) {
+                    console.log('Successfully retrieved tracked tab:', trackedTab.id, trackedTab.url);
+                    return await processScrapeTabRequest(trackedTab);
+                  }
+                } catch (e) {
+                  console.error('Error retrieving tracked tab:', e);
                 }
-              };
-            }
-            
-            console.log(`Successfully scraped ${response.content.length} characters from page`);
-            return { 
-              success: true, 
-              data: {
-                content: response.content,
-                title: tab.title || '',
-                url: tab.url || ''
-              }
-            };
-          } catch (error) {
-            console.error('Error communicating with content script:', error);
-            
-            // Since content script communication failed, try injecting the content script
-            console.log('Attempting to inject content script and retry...');
-            try {
-              await injectContentScriptIfNeeded(tab.id);
-              
-              // Wait a moment for the script to initialize
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
-              // Try again after injection
-              console.log('Retrying scrapeContent after script injection');
-              const retryResponse = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
-              
-              if (!retryResponse || !retryResponse.content) {
-                throw new Error('Content script returned empty response after injection');
               }
               
-              console.log(`Successfully scraped ${retryResponse.content.length} characters after script injection`);
-              return { 
-                success: true, 
-                data: {
-                  content: retryResponse.content,
-                  title: tab.title || '',
-                  url: tab.url || ''
-                }
-              };
-            } catch (retryError) {
-              console.error('Failed to scrape content after script injection:', retryError);
-              return { 
-                success: false, 
-                error: 'Failed to scrape page content after script injection',
-                data: {
-                  content: `Failed to extract content from ${tab.url}. Please refresh the page and try again.`,
-                  title: tab.title || '',
-                  url: tab.url || ''
-                }
-              };
+              // If we still don't have a tab, throw the error
+              throw new Error('No active tab found in any window');
+            } else {
+              return await processScrapeTabRequest(lastFocusedTabs[0]);
             }
           }
+          
+          // Process the active tab from the current window
+          return await processScrapeTabRequest(tabs[0]);
         } catch (error) {
           console.error('Error in scrapeContent handler:', error);
           return { 
@@ -845,6 +884,36 @@ function setupMessageListeners() {
               url: ''
             }
           };
+        }
+      },
+      
+      // Track popup initialization
+      'popupInitialized': async () => {
+        try {
+          // Store information about which tab opened the popup
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (tabs && tabs.length > 0) {
+            const currentTab = tabs[0];
+            popupOpenedFromTabId = currentTab.id;
+            popupOpenedFromWindowId = currentTab.windowId;
+            popupOpenedFromUrl = currentTab.url;
+            console.log(`Popup initialized from tab: ${popupOpenedFromTabId}, window: ${popupOpenedFromWindowId}, URL: ${popupOpenedFromUrl}`);
+            
+            // If we have the contextId, use it to check if this is a new popup opening
+            // but we won't close other popups here - that happens when the long-lived connection is established
+            if (sender.contextId) {
+              console.log(`Popup has contextId: ${sender.contextId}`);
+              if (lastActivePopupId && lastActivePopupId !== sender.contextId) {
+                console.log(`New popup is opening, previous active popup: ${lastActivePopupId}`);
+              }
+              lastActivePopupId = sender.contextId;
+            }
+          }
+          
+          return { success: true };
+        } catch (error) {
+          console.error('Error handling popup initialization:', error);
+          return { success: false, error: error.message };
         }
       },
       
@@ -868,6 +937,39 @@ function setupMessageListeners() {
           return response;
         } catch (error) {
           console.error('Error checking ctrl+click:', error);
+          return { success: false, error: error.message };
+        }
+      },
+      
+      // Track window focus changes
+      'windowFocusChanged': async () => {
+        try {
+          const tabId = sender.tab?.id;
+          const tabUrl = sender.tab?.url || message.url;
+          const windowId = sender.tab?.windowId;
+          const isFocused = message.focused;
+          
+          console.log(`Focus change detected: Window ${windowId}, Tab ${tabId}, URL ${tabUrl}, Focused: ${isFocused}`);
+          
+          if (isFocused && tabId && windowId) {
+            // Update our record of the focused tab for this window
+            focusedTabs[windowId] = tabId;
+            lastFocusedWindowId = windowId;
+            lastFocusedTabId = tabId;
+            
+            console.log(`Updated focused tabs record: Window ${windowId} now has Tab ${tabId} focused`);
+            console.log('Current focused tabs record:', focusedTabs);
+          } else if (!isFocused && tabId && windowId) {
+            // If the current window/tab combination is what we had as focused, clear it
+            if (focusedTabs[windowId] === tabId) {
+              console.log(`Tab ${tabId} in window ${windowId} lost focus`);
+              // We don't delete the entry as it's still the last known focused tab in that window
+            }
+          }
+          
+          return { success: true };
+        } catch (error) {
+          console.error('Error tracking window focus:', error);
           return { success: false, error: error.message };
         }
       },
@@ -1012,6 +1114,126 @@ async function injectContentScriptIfNeeded(tabId) {
     console.error('Error injecting content script:', error);
     throw error;
   }
+}
+
+/**
+ * Helper function to process a tab for content scraping
+ * @param {object} tab - The tab to scrape content from
+ * @returns {object} - Response object with scraped content or error
+ */
+async function processScrapeTabRequest(tab) {
+  console.log('Processing scrape request for tab:', tab.id, tab.url, 'in window:', tab.windowId);
+  
+  // Check if we can scrape this URL (avoid chrome:// urls etc.)
+  if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+    console.warn('Cannot scrape content from this type of URL:', tab.url);
+    return { 
+      success: false, 
+      error: 'Cannot scrape content from this type of URL',
+      data: {
+        content: `This page (${tab.url}) cannot be scraped due to browser security restrictions.`,
+        title: tab.title || '',
+        url: tab.url || ''
+      }
+    };
+  }
+  
+  // Try to send a message to the content script
+  try {
+    console.log('Sending scrapeContent message to tab:', tab.id);
+    const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
+    
+    if (!response || !response.content) {
+      console.warn('Content script returned empty or invalid response');
+      return { 
+        success: false, 
+        error: 'Failed to retrieve content from page',
+        data: {
+          content: '',
+          title: tab.title || '',
+          url: tab.url || ''
+        }
+      };
+    }
+    
+    console.log(`Successfully scraped ${response.content.length} characters from page`);
+    return { 
+      success: true, 
+      data: {
+        content: response.content,
+        title: tab.title || '',
+        url: tab.url || ''
+      }
+    };
+  } catch (error) {
+    console.error('Error communicating with content script:', error);
+    
+    // Since content script communication failed, try injecting the content script
+    console.log('Attempting to inject content script and retry...');
+    try {
+      await injectContentScriptIfNeeded(tab.id);
+      
+      // Wait a moment for the script to initialize
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Try again after injection
+      console.log('Retrying scrapeContent after script injection');
+      const retryResponse = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
+      
+      if (!retryResponse || !retryResponse.content) {
+        throw new Error('Content script returned empty response after injection');
+      }
+      
+      console.log(`Successfully scraped ${retryResponse.content.length} characters after script injection`);
+      return { 
+        success: true, 
+        data: {
+          content: retryResponse.content,
+          title: tab.title || '',
+          url: tab.url || ''
+        }
+      };
+    } catch (retryError) {
+      console.error('Failed to scrape content after script injection:', retryError);
+      return { 
+        success: false, 
+        error: 'Failed to scrape page content after script injection',
+        data: {
+          content: `Failed to extract content from ${tab.url}. Please refresh the page and try again.`,
+          title: tab.title || '',
+          url: tab.url || ''
+        }
+      };
+    }
+  }
+}
+
+/**
+ * Close all popups except the one with the given ID
+ * @param {string} currentContextId - The contextId of the popup to keep open
+ * @param {string} currentPopupId - The unique popup ID to keep open
+ */
+function closeOtherPopups(currentContextId, currentPopupId) {
+  console.log(`Closing all popups except: contextId=${currentContextId}, popupId=${currentPopupId}`);
+  
+  // Update the active popup ID in storage
+  chrome.storage.local.set({ activePopupId: currentPopupId });
+  
+  // Send message to all active popups to close if they're not the current one
+  activePopupPorts.forEach(port => {
+    if (port.sender.contextId !== currentContextId) {
+      try {
+        console.log(`Sending close message to popup: ${port.sender.contextId}`);
+        port.postMessage({ 
+          action: 'closePopup', 
+          reason: 'Another popup was opened',
+          newActivePopupId: currentPopupId
+        });
+      } catch (error) {
+        console.error(`Error sending close message to popup: ${port.sender.contextId}`, error);
+      }
+    }
+  });
 }
 
 // Start initialization

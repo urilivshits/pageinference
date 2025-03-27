@@ -97,6 +97,9 @@ function setupContentScript() {
   
   // Set up keyboard event listeners (for Ctrl key state)
   setupKeyListeners();
+  
+  // Set up window focus event listeners
+  setupFocusListeners();
 }
 
 /**
@@ -449,6 +452,61 @@ function setupKeyListeners() {
     action: 'ctrlKeyState', 
     isPressed: false 
   });
+}
+
+/**
+ * Set up event listeners for window focus and blur events
+ * This helps track when the user switches between windows/tabs
+ */
+function setupFocusListeners() {
+  window.addEventListener('focus', () => {
+    console.log('Window gained focus, notifying background script');
+    try {
+      chrome.runtime.sendMessage({
+        type: 'windowFocusChanged',
+        action: 'windowFocusChanged',
+        url: window.location.href,
+        windowId: null, // Content scripts don't have direct access to windowId
+        focused: true,
+        timestamp: Date.now()
+      });
+    } catch (e) {
+      console.warn('Failed to send focus notification:', e);
+    }
+  });
+  
+  window.addEventListener('blur', () => {
+    console.log('Window lost focus');
+    try {
+      chrome.runtime.sendMessage({
+        type: 'windowFocusChanged',
+        action: 'windowFocusChanged',
+        url: window.location.href,
+        windowId: null,
+        focused: false,
+        timestamp: Date.now()
+      });
+    } catch (e) {
+      console.warn('Failed to send blur notification:', e);
+    }
+  });
+  
+  // Send initial focus state
+  if (document.hasFocus()) {
+    console.log('Document has focus on initial load, notifying background script');
+    try {
+      chrome.runtime.sendMessage({
+        type: 'windowFocusChanged',
+        action: 'windowFocusChanged',
+        url: window.location.href,
+        windowId: null,
+        focused: true,
+        timestamp: Date.now()
+      });
+    } catch (e) {
+      console.warn('Failed to send initial focus notification:', e);
+    }
+  }
 }
 
 // Start initialization
