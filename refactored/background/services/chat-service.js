@@ -254,6 +254,61 @@ export async function getLastUserMessageForDomain(domain) {
   return getLastUserMessage(newestSession);
 }
 
+/**
+ * Update an existing chat session
+ * 
+ * @param {string} pageLoadId - The ID of the session to update
+ * @param {Object} sessionData - The updated session data
+ * @return {Promise<Object>} The updated session
+ */
+export async function updateChatSession(pageLoadId, sessionData) {
+  if (!pageLoadId) {
+    throw new Error('pageLoadId is required for updating a session');
+  }
+  
+  // Get existing session
+  const sessions = await storageService.getChatSessions();
+  const sessionIndex = sessions.findIndex(s => s.pageLoadId === pageLoadId);
+  
+  if (sessionIndex === -1) {
+    console.warn(`Session with ID ${pageLoadId} not found, creating new session`);
+    return await createChatSession(sessionData.tabId, sessionData.url, sessionData.title, sessionData);
+  }
+  
+  // Get the full session data
+  const existingSession = await getFullSession(pageLoadId);
+  
+  if (!existingSession) {
+    throw new Error('Full session data not found in storage');
+  }
+  
+  // Preserve page content if it exists and isn't being updated
+  if (existingSession.pageContent && !sessionData.pageContent) {
+    sessionData.pageContent = existingSession.pageContent;
+  }
+  
+  // Update the session in storage
+  const updatedSession = {
+    ...existingSession, 
+    ...sessionData,
+    lastUpdated: Date.now()
+  };
+  
+  await storageService.setValue(getSessionKey(pageLoadId), updatedSession);
+  
+  // Update the session list entry
+  sessions[sessionIndex] = {
+    ...sessions[sessionIndex],
+    lastUpdated: updatedSession.lastUpdated,
+    title: updatedSession.title,
+    url: updatedSession.url
+  };
+  
+  await storageService.setValue(STORAGE_KEYS.CHAT_SESSIONS, sessions);
+  
+  return updatedSession;
+}
+
 export default {
   generatePageLoadId,
   createChatSession,
@@ -263,5 +318,6 @@ export default {
   handleChatMessage,
   getAllChatSessions,
   deleteChatSession,
-  getLastUserMessageForDomain
+  getLastUserMessageForDomain,
+  updateChatSession
 }; 

@@ -590,7 +590,22 @@ function setupMessageListeners() {
             throw new Error('Chat session not found and sessionData not provided');
           }
           
-          // Add user message to session
+          // Get page content, either from new scrape or existing session
+          let activePageContent = pageContent;
+          
+          // If page scraping is enabled but no new content was provided,
+          // use the existing content stored in the session if available
+          if (enablePageScraping && !activePageContent && session.pageContent) {
+            activePageContent = session.pageContent;
+            console.log(`Using existing page content from session: ${activePageContent.length} characters`);
+          }
+          
+          // Store the page content in the session if available (but not in messages)
+          if (enablePageScraping && activePageContent) {
+            session.pageContent = activePageContent;
+          }
+          
+          // Add user message to session (without page content)
           const userMessageObj = {
             role: 'user',
             content: userMessage,
@@ -607,12 +622,12 @@ function setupMessageListeners() {
           // Create the appropriate system message based on available content and settings
           let systemContent = '';
           
-          if (enablePageScraping && pageContent && enableWebSearch) {
+          if (enablePageScraping && activePageContent && enableWebSearch) {
             // Combined mode: both page content and web search
             systemContent = COMBINED_SYSTEM_PROMPT;
-          } else if (enablePageScraping && pageContent) {
+          } else if (enablePageScraping && activePageContent) {
             // Create a page-specific prompt with the actual page content
-            systemContent = generatePageContentPrompt(pageContent, title, url);
+            systemContent = generatePageContentPrompt(activePageContent, title, url);
           } else if (enableWebSearch) {
             // Use web search specific prompt
             systemContent = WEB_SEARCH_SYSTEM_PROMPT;
@@ -644,11 +659,11 @@ function setupMessageListeners() {
           try {
             // Format the user message to include page content if needed
             let formattedUserMessage = userMessage;
-            if (enablePageScraping && pageContent) {
-              formattedUserMessage = `${userMessage}\n\nHere is the content of the webpage (URL: ${url || 'No URL available'}) to help answer my question:\n\n${pageContent}`;
+            if (enablePageScraping && activePageContent) {
+              formattedUserMessage = `${userMessage}\n\nHere is the content of the webpage (URL: ${url || 'No URL available'}) to help answer my question:\n\n${activePageContent}`;
             }
             
-            // Replace the last message content with the formatted version
+            // Replace the last message content with the formatted version for API call only
             const apiMessages = [...messages];
             apiMessages[apiMessages.length - 1] = {
               ...apiMessages[apiMessages.length - 1],
@@ -661,7 +676,8 @@ function setupMessageListeners() {
               messages: apiMessages,
               model: selectedModel,
               temperature,
-              useWebSearch: enableWebSearch
+              useWebSearch: enableWebSearch,
+              pageContent: enablePageScraping ? activePageContent : '' // Pass page content separately to API service
             });
             
             // Process the response

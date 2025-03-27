@@ -35,6 +35,7 @@ let doubleClickArea;
 let currentConversationInfo;
 let currentConversationTitle;
 let currentConversationTimestamp;
+let modelSelect;
 
 // Action buttons
 let newChatButton;
@@ -83,6 +84,7 @@ export function initializeChatComponent() {
   doubleClickArea = document.getElementById('double-click-area');
   loadingIndicator = document.getElementById('loading-indicator');
   errorMessage = document.getElementById('error-message');
+  modelSelect = document.getElementById('model-select');
   
   // Set up event listeners
   setupEventListeners();
@@ -365,38 +367,42 @@ async function handleSendMessage() {
     return;
   }
   
-  // Get the message from the input
-  const message = messageInput.value.trim();
-  if (!message) {
+  // Get the message content
+  const messageText = messageInput.value.trim();
+  if (!messageText) {
+    console.warn('Cannot send empty message');
     return;
   }
   
-  // Show loading indicator
-  setLoading(true);
-  
-  // Clear the input and saved input
-  messageInput.value = '';
-  await clearSavedInputText();
-  
-  // Store the message for possible reuse
-  lastQuery = message;
-  
   try {
-    // Get current tab info
+    // Mark as processing
+    isLoading = true;
+    setLoading(true);
+    
+    // Clear the input
+    messageInput.value = '';
+    
+    // Save the cleared input text
+    await saveInputText();
+    
+    // Get current tab information
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) {
-      throw new Error('Could not determine current tab');
+      throw new Error('Could not detect current tab');
     }
     
-    // Get user preferences
+    // Get user preferences from storage first
     const preferences = await getUserPreferences();
-    const pageScraping = preferences.pageScraping !== undefined ? preferences.pageScraping : false;
-    const webSearch = preferences.webSearch !== undefined ? preferences.webSearch : false;
-    const temperature = preferences.temperature !== undefined ? preferences.temperature : 0;
-    const defaultModel = preferences.defaultModel || 'gpt-4o-mini';
     
-    // Try to get page content if page scraping is enabled
-    let pageContent = null;
+    // Use preferences from storage, fallback to UI toggles if needed
+    const pageScraping = document.getElementById('page-scraping-toggle').checked;
+    const webSearch = document.getElementById('web-search-toggle').checked;
+    const selectedModel = modelSelect ? modelSelect.value : preferences.defaultModel || 'gpt-4o-mini';
+    const temperature = preferences.temperature !== undefined ? preferences.temperature : 0;
+    
+    let pageContent = '';
+    
+    // Only scrape the page content if page scraping is enabled
     if (pageScraping) {
       try {
         console.log('Page scraping is enabled, attempting to scrape content');
@@ -443,24 +449,28 @@ async function handleSendMessage() {
       console.log('Created new session:', currentSession);
     }
     
-    // Send the message to the background script
-    console.log('Sending message with pageLoadId:', currentSession.pageLoadId);
-    console.log('Page content included:', pageContent ? 'Yes' : 'No');
-    console.log('Using temperature:', temperature);
+    // Add the user message to the UI
+    appendMessage({
+      role: 'user',
+      content: messageText
+    });
     
+    // Store page content in the session data, but don't include it in the message history
+    console.log('Sending message to API with page content length:', pageScraping ? (pageContent.length || 0) : 'disabled');
+    
+    // Make the API call
     const response = await chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.SEND_USER_MESSAGE,
       data: {
         pageLoadId: currentSession.pageLoadId,
-        message: message,
+        message: messageText,
         url: tab.url,
         title: tab.title,
-        sessionData: currentSession,
-        pageContent: pageContent,
+        pageContent: pageContent,  // Send page content to be stored in session but not in history
         enablePageScraping: pageScraping,
         enableWebSearch: webSearch,
-        selectedModel: defaultModel,
-        temperature: temperature
+        selectedModel,
+        temperature  // Add temperature from preferences
       }
     });
     
