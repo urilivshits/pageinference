@@ -275,8 +275,59 @@ async function checkApiKey() {
   }
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initializePopup);
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('Popup DOMContentLoaded event fired');
+  
+  // Check if this is a first or second click within the fade-in period
+  const popupContainer = document.querySelector('.popup-container');
+  popupContainer.classList.add('popup-fade-in');
+  
+  // Check if there's a pending click timestamp in storage
+  try {
+    const { first_click_timestamp } = await chrome.storage.local.get('first_click_timestamp');
+    const currentTime = Date.now();
+    
+    if (first_click_timestamp && (currentTime - first_click_timestamp < 1000)) {
+      // This is a second click within the fade-in period
+      console.log('Second click detected during fade-in, executing last input');
+      
+      // Remove the timestamp so we don't trigger on next popup open
+      await chrome.storage.local.remove('first_click_timestamp');
+      
+      // Set flag to execute last input
+      const { global_last_user_input } = await chrome.storage.local.get('global_last_user_input');
+      
+      if (global_last_user_input) {
+        // Set up execute_last_input that the chat component will check
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tabs && tabs.length) {
+          const currentTab = tabs[0];
+          await chrome.storage.local.set({
+            'execute_last_input': {
+              input: global_last_user_input,
+              tabId: currentTab.id,
+              url: currentTab.url,
+              timestamp: currentTime
+            }
+          });
+        }
+      }
+    } else {
+      // This is the first click, store the timestamp
+      await chrome.storage.local.set({ 'first_click_timestamp': currentTime });
+      
+      // After the fade-in period, clear the timestamp if not used
+      setTimeout(async () => {
+        await chrome.storage.local.remove('first_click_timestamp');
+      }, 1000);
+    }
+  } catch (error) {
+    console.error('Error checking click state:', error);
+  }
+  
+  // Continue with normal initialization
+  initializePopup();
+});
 
 // Also try to initialize immediately if document is already complete
 if (document.readyState === 'complete' || document.readyState === 'interactive') {

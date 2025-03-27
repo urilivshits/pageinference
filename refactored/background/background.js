@@ -48,12 +48,19 @@ let popupOpenedFromUrl = null;
 let activePopupPorts = [];
 let lastActivePopupId = null;
 
+// Double-click detection variables
+let lastClickTime = 0;
+const doubleClickThreshold = 300; // ms between clicks to count as double-click
+let clickCount = 0;
+let clickTimer = null;
+
 // Initialize storage keys
 const STORAGE_KEYS_CONSTANTS = {
   USER_PREFERENCES: 'userPreferences',
   CHAT_SESSIONS: 'chatSessions',
   DEBUG_MODE: 'debugMode',
   API_KEY: 'openai_api_key',
+  GLOBAL_LAST_USER_INPUT: 'global_last_user_input', // New storage key for the last user input
   // Add other storage keys as needed
 };
 
@@ -1236,5 +1243,66 @@ function closeOtherPopups(currentContextId, currentPopupId) {
   });
 }
 
+/**
+ * Handle clicks on the browser action (extension icon)
+ * Modified to work with the new fade-in approach in popup.js
+ */
+function setupBrowserActionClickHandler() {
+  // With our new approach, we no longer need to detect double-clicks in the background script
+  // The popup.js will handle detecting if it's a first or second click within the fade-in period
+  // However, we still need this function to ensure popup.html is opened normally
+  
+  // We'll keep this function for backward compatibility and to ensure popup.html is properly loaded
+  chrome.action.onClicked.addListener(async (tab) => {
+    console.log('Browser action clicked, letting Chrome handle popup opening');
+    
+    // No longer need to detect double clicks here
+    // We're now using the first_click_timestamp approach in popup.js
+    
+    // Remove any old execution data to prevent issues
+    await chrome.storage.local.remove('execute_last_input');
+  });
+}
+
+/**
+ * Handle a double-click on the browser action
+ * This is kept for backward compatibility but no longer used directly
+ * Instead, popup.js will now handle the double-click detection
+ */
+async function handleDoubleClick(tab) {
+  // This function is kept for backward compatibility
+  // but is no longer directly used with our new approach
+  
+  try {
+    console.log('Handling double-click action (legacy function)');
+    
+    // Get the stored last user input
+    const { [STORAGE_KEYS_CONSTANTS.GLOBAL_LAST_USER_INPUT]: lastUserInput } = 
+      await chrome.storage.local.get(STORAGE_KEYS_CONSTANTS.GLOBAL_LAST_USER_INPUT);
+    
+    if (!lastUserInput) {
+      console.log('No last user input found, cannot execute inference');
+      return;
+    }
+    
+    console.log('Executing last user input:', lastUserInput);
+    
+    // Store execution data that the popup will check when it opens
+    await chrome.storage.local.set({
+      'execute_last_input': {
+        input: lastUserInput,
+        tabId: tab.id,
+        url: tab.url,
+        timestamp: Date.now()
+      }
+    });
+  } catch (error) {
+    console.error('Error handling double-click:', error);
+  }
+}
+
 // Start initialization
-initialize(); 
+initialize();
+
+// Set up browser action click handler
+setupBrowserActionClickHandler(); 

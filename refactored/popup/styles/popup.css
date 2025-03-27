@@ -691,4 +691,19 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 
 .error-message.hidden {
   display: none;
+}
+
+/* Popup fade in animation */
+.popup-fade-in {
+  animation: fadeIn 1s ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
 } 

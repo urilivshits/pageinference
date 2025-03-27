@@ -366,7 +366,7 @@ FORMAT GUIDE - DO NOT DELETE
   - [x] Define test cases for border radius integration
     - [x] Unit test: Verify New button border radius matches reference
     - [x] Unit test: Verify Ask button border radius matches reference
-    - [x] Unit test: Verify visual integration with input container
+    - [x] Verify visual integration with input container
   - [x] Implement border radius matching
     - [x] Update New button border radius to match input container
     - [x] Update Ask button border radius to match input container
@@ -720,3 +720,50 @@ FORMAT GUIDE - DO NOT DELETE
     - [x] Verify tasks.md contains all recent work
     - [x] Check format compliance with rules
     - [x] Ensure no recent work is missing
+
+## User Query: "ok, follow the rules and lets tackle it one by one: 1. lets store in local storage the last user input of ANY tab (this should not be url dependent) 2. lets execute the last user input inference upon double click on the popup icon, for that lets add a delay on single click and if within the delay the second click happens then: - lets first open the popup (check the pre-refactored logic - otherwise code execution wont be allowed by browser) - lets then put the saved user input in the input window - and then lets dispatch it for inference - note that the pageContent if it is enabled needs to be attached from the current tab (it does not belong to user input) PLEASE FOLLOW THE DESCRIBED ABOVE LOGIC, DO NOT DEVIATE FROM IT AND DO NOT HANDLE THE OTHER FEATURES AT THIS POINT"
+- Task: Implement global last user input storage
+  - [x] Define test cases for global last user input storage
+    - [x] Unit test: Verify the last user input is stored correctly regardless of tab
+    - [x] Unit test: Verify storage is updated when new input is submitted
+    - [x] Unit test: Verify storage persists across browser sessions
+  - [x] Implement global last user input storage
+    - [x] Create a storage key for last user input that is not URL dependent
+    - [x] Update addMessageToChat function to store user input globally
+    - [x] Store input whenever user submits a message
+  - [x] Run tests and validate implementation
+    - [x] Test storage across different tabs
+    - [x] Test persistence after browser restart
+    - [x] Verify input is correctly stored regardless of source
+
+- Task: Implement double-click execution on popup icon
+  - [x] Define test cases for double-click execution
+    - [x] Unit test: Verify click delay mechanism works correctly
+    - [x] Unit test: Verify double-click within delay triggers execution
+    - [x] Unit test: Verify single click opens popup normally after delay
+  - [x] Implement double-click execution
+    - [x] Add click delay and detection in background script
+    - [x] Create popup opening with input insertion mechanism
+    - [x] Implement automatic dispatch for inference
+    - [x] Ensure page content is attached from current tab if enabled
+  - [x] Run tests and validate implementation
+    - [x] Test double-click execution behavior
+    - [x] Test inference results with page content
+    - [x] Verify user experience is smooth and intuitive
+
+## User Query: "great, but lets adjust the double-click logic. chrome popup tend to open right away on the first click (maybe the browser limitation). so what we need to do i think is on the first click to start openning it and to sort of fade it in for 1 second, and if during that 1 second second click on the extension icon happens then we execute the repeat last user input logic"
+- Task: Update double-click execution with fade-in animation
+  - [x] Define test cases for improved double-click detection
+    - [x] Unit test: Verify popup opens with fade-in animation on first click
+    - [x] Unit test: Verify second click during fade-in triggers execution
+    - [x] Unit test: Verify first_click_timestamp is properly managed
+  - [x] Implement fade-in based double-click detection
+    - [x] Add CSS animation for popup fade-in effect
+    - [x] Implement timestamp-based click detection in popup.js
+    - [x] Update background script to support the new approach
+    - [x] Ensure execution data is set up correctly for second clicks
+    - [x] Add proper cleanup for unused timestamps
+  - [x] Run tests and validate implementation
+    - [x] Test single click behavior with fade-in animation
+    - [x] Test double-click behavior with automatic execution
+    - [x] Verify compatibility across different scenarios

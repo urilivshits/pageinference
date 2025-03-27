@@ -174,6 +174,21 @@ FORMAT GUIDE - DO NOT DELETE
   - Used correct Responses API format with function structure and parameters
   - References: popup.js, background.js, background/api/openai.js
 
+- **[Global Last User Input Storage]** Implemented storage and retrieval of the last user input globally:
+  - Created a dedicated storage key for last user input that works across tabs
+  - Updated handleSendMessage to store user input with each submission
+  - Added loadGlobalLastUserInput to initialize the lastQuery variable
+  - Implemented proper loading on popup initialization
+  - References: refactored/popup/components/chat.js, refactored/background/background.js
+
+- **[Double-Click Execution]** Implemented ability to execute last user input on double-click:
+  - Added click tracking with timing detection in the background script
+  - Implemented visual feedback with badge and animations
+  - Created storage mechanism to pass execution data to popup
+  - Added popup handling to automatically execute stored input
+  - Ensured page content is scraped from current tab when needed
+  - References: refactored/background/background.js, refactored/popup/components/chat.js
+
 - **[Inter-Tab Communication Refinement]** Enhanced messaging system between background script and content scripts to ensure reliable information exchange with improved error handling and retry mechanisms.
 
 ## Resolved Bugs

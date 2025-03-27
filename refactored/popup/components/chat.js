@@ -104,6 +104,9 @@ export function initializeChatComponent() {
   
   // Initialize button states and toggles based on saved preferences
   checkToggleState();
+  
+  // Load the global last user input
+  loadGlobalLastUserInput();
 }
 
 /**
@@ -453,6 +456,17 @@ async function handleSendMessage() {
     // Mark as processing
     isLoading = true;
     setLoading(true);
+    
+    // Save the user input globally (not URL dependent)
+    try {
+      await chrome.storage.local.set({ 'global_last_user_input': messageText });
+      console.log('Saved global last user input:', messageText);
+      
+      // Also update the local lastQuery variable
+      lastQuery = messageText;
+    } catch (storageError) {
+      console.error('Error saving global last user input:', storageError);
+    }
     
     // Clear the input
     messageInput.value = '';
@@ -964,9 +978,93 @@ async function loadSavedInputText() {
  */
 async function checkForCommandToExecute() {
   try {
+    console.log('Checking for commands to execute...');
+    
+    // First check for the execute_last_input from double-click
+    const { execute_last_input } = await chrome.storage.local.get('execute_last_input');
+    if (execute_last_input) {
+      console.log('Found execute_last_input:', execute_last_input);
+      
+      const { input, tabId, url, timestamp } = execute_last_input;
+      const currentTime = Date.now();
+      const isRecent = currentTime - timestamp < 30000; // 30 seconds threshold
+      
+      // Try to get current tab info for validation
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs || !tabs.length) {
+        console.error('No active tab found');
+        await chrome.storage.local.remove('execute_last_input');
+        return;
+      }
+      
+      const currentTab = tabs[0];
+      const matchesCurrentTab = tabId === currentTab.id && url === currentTab.url;
+      
+      console.log('Execute_last_input validation:', {
+        input,
+        isRecent,
+        matchesCurrentTab,
+        timeSinceCommand: currentTime - timestamp
+      });
+      
+      // Execute if recent and matches current tab, or force execution if just recent
+      if ((isRecent && matchesCurrentTab) || isRecent) {
+        // Clear the stored command to prevent duplicate execution
+        await chrome.storage.local.remove('execute_last_input');
+        
+        // Clear badge
+        await chrome.action.setBadgeText({ text: '' });
+        await chrome.action.setTitle({ title: '' });
+        
+        // Add a visual indicator at the top of the popup
+        const executingNotice = document.createElement('div');
+        executingNotice.className = 'executing-shortcut-notice';
+        executingNotice.textContent = `Executing: "${input}"`;
+        executingNotice.style.backgroundColor = '#FF9800';
+        executingNotice.style.color = 'white';
+        executingNotice.style.padding = '8px';
+        executingNotice.style.textAlign = 'center';
+        executingNotice.style.fontWeight = 'bold';
+        executingNotice.style.position = 'sticky';
+        executingNotice.style.top = '0';
+        executingNotice.style.zIndex = '1000';
+        executingNotice.style.borderRadius = '0 0 4px 4px';
+        
+        // Insert at the top of the popup
+        document.body.insertBefore(executingNotice, document.body.firstChild);
+        
+        // Remove after execution
+        setTimeout(() => {
+          executingNotice.style.opacity = '0';
+          executingNotice.style.transition = 'opacity 0.5s';
+          setTimeout(() => executingNotice.remove(), 500);
+        }, 3000);
+        
+        // Set input value
+        messageInput.value = input;
+        
+        // Resize textarea to fit content
+        messageInput.style.height = 'auto';
+        messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+        
+        // Execute the query with a slight delay to ensure UI is ready
+        setTimeout(() => {
+          console.log('Auto-triggering submit from shortcut');
+          handleSendMessage();
+        }, 500);
+        
+        return; // Exit early since we're executing the command
+      } else {
+        // Clear outdated command
+        console.log('Command is outdated or for a different tab, clearing it');
+        await chrome.storage.local.remove('execute_last_input');
+      }
+    }
+    
+    // Fall back to older commandToExecute mechanism
     const { commandToExecute } = await chrome.storage.local.get('commandToExecute');
     if (commandToExecute) {
-      console.log('Found command to execute:', commandToExecute);
+      console.log('Found legacy command to execute:', commandToExecute);
       messageInput.value = commandToExecute;
       handleSendMessage();
       await chrome.storage.local.remove('commandToExecute');
@@ -1155,6 +1253,24 @@ async function checkToggleState() {
     console.log('Updated toggle state from preferences:', { pageScraping, webSearch });
   } catch (error) {
     console.error('Error checking toggle state:', error);
+  }
+}
+
+/**
+ * Load the global last user input from storage
+ * This ensures the lastQuery variable is set even when opening the popup in a new tab
+ */
+async function loadGlobalLastUserInput() {
+  try {
+    const result = await chrome.storage.local.get('global_last_user_input');
+    if (result.global_last_user_input) {
+      console.log('Loaded global last user input:', result.global_last_user_input);
+      lastQuery = result.global_last_user_input;
+    } else {
+      console.log('No global last user input found in storage');
+    }
+  } catch (error) {
+    console.error('Error loading global last user input:', error);
   }
 }
 
