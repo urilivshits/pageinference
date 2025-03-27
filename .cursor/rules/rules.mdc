@@ -6,14 +6,6 @@ alwaysApply: true
 # Cursor AI Guidelines
 <!-- Comprehensive coding standards and workflow guidelines to be applied to all interactions. -->
 
-## Naming Conventions
-- Variables: camelCase
-- Functions: camelCase
-- Classes: PascalCase
-- Components: PascalCase
-- Constants: UPPER_SNAKE_CASE
-- Files: kebab-case
-
 ## Code Organization
 - Imports: grouped by source (standard library, third-party, local)
 - Component structure: props, state, effects, handlers, render

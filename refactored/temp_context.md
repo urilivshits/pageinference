@@ -164,16 +164,6 @@ FORMAT GUIDE - DO NOT DELETE
   - Ensured proper handling of conversation history with the Responses API
   - References: background/background.js, background/api/openai.js
 
-- **[Search Web and Search Page Implementation]** Implemented toggle functionality for "search web" and "search page" features using the OpenAI Responses API:
-  - Added click handlers that toggle settings state (webSearch and pageScraping)
-  - Implemented visual feedback using the 'active' class on buttons
-  - Stored toggle states in Chrome storage for persistence
-  - Created specialized system prompts based on context and toggle state
-  - Implemented logic to select the appropriate system prompt based on toggle states
-  - Added proper web_search function tool to API requests
-  - Used correct Responses API format with function structure and parameters
-  - References: popup.js, background.js, background/api/openai.js
-
 ## Resolved Bugs
 <!--
 FORMAT GUIDE - DO NOT DELETE
@@ -214,11 +204,11 @@ FORMAT GUIDE - DO NOT DELETE
   - Created a cleaner implementation that aligns with the included script dependencies
   - References: popup/components/chat.js, tests/components/chat.test.js
 
-- **[Service Worker Imports]** Fixed service worker registration failure by properly handling imports in a service worker context. Instead of using dynamic imports (which are disallowed in service workers), we:
-  - Updated manifest.json to include web_accessible_resources for prompt files
-  - Used static ES module imports for prompt files instead of dynamic imports
-  - Maintained separation of concerns by keeping prompts in their dedicated files in shared/prompts/
-  - Fixed the "import() is disallowed on ServiceWorkerGlobalScope" error
+- **[Service Worker Imports]** - Fixed service worker registration failure by properly handling imports in a service worker context. Instead of using dynamic imports (which are disallowed in service workers), we:
+  1. Updated manifest.json to include web_accessible_resources for prompt files
+  2. Used static ES module imports for prompt files instead of dynamic imports
+  3. Maintained separation of concerns by keeping prompts in their dedicated files in shared/prompts/
+  4. Fixed the "import() is disallowed on ServiceWorkerGlobalScope" error
 
 - **[Service Worker Registration Fix]** Fixed service worker registration failure (Status code: 3) by eliminating top-level await:
   - Removed top-level await imports that are disallowed in service worker context
@@ -254,6 +244,27 @@ FORMAT GUIDE - DO NOT DELETE
   - Created consistent scrollbar appearance throughout the entire interface
   - Ensured compatibility with various browser implementations
 
+- **[Comprehensive Scrollbar Arrow Fix]** Completely eliminated scrollbar arrows in chat history:
+  - Applied !important to all CSS properties to ensure browser defaults are overridden
+  - Added pointer-events: none to make buttons completely non-clickable
+  - Used -webkit-appearance: none to reset default button appearance
+  - Combined multiple hiding techniques (display: none, visibility: hidden, opacity: 0)
+  - Targeted all possible button states (hover, active, vertical, horizontal)
+  - Removed all space allocation with zero borders, margins, and padding
+  - Created a clean, modern scrollbar free from navigation elements
+
+- **[Enhanced Scrollbar Arrow Fix]** Improved scrollbar arrow removal in chat history:
+  - Added multiple CSS properties (height: 0, width: 0, background: transparent) for more comprehensive hiding
+  - Implemented specific selectors targeting start:decrement and end:increment buttons
+  - Created a more robust approach to ensure arrows are hidden across different browser implementations
+  - Maintained consistent scrollbar functionality while eliminating all visual buttons
+
+- **[Scrollbar Arrows Fix]** Removed scrollbar arrows in chat history scrollbar in styles.css:
+  - Added CSS rule to hide the scrollbar buttons using ::-webkit-scrollbar-button selector
+  - Created a cleaner, more modern scrollbar appearance consistent with contemporary UI design
+  - Improved visual aesthetics by removing unnecessary navigation elements
+  - Maintained consistent scrolling functionality while enhancing the interface
+
 - **[Scrollbar Standardization]** Unified scrollbar styling across interface elements in styles.css:
   - Updated chat-history scrollbar to match the pastConversationsView appearance
   - Removed absolute positioning that was causing alignment issues
@@ -267,6 +278,20 @@ FORMAT GUIDE - DO NOT DELETE
   - Further reduced height calculation to prevent overlap
   - Added padding-bottom to content-area for consistent spacing
   - Ensured scrollbar remains fully visible throughout the UI
+
+- **[Scrollbar Boundary Fix]** Improved scrollbar containment in chat interface in styles.css:
+  - Replaced padding-bottom with a pseudo-element for spacing
+  - Prevented scrollbar from extending into the padding area
+  - Removed mask-image gradient in favor of a cleaner solution
+  - Created better visual separation between content area and input
+  - Maintained same spacing while fixing scrollbar positioning
+
+- **[Scrollbar Containment Fix]** Fixed scrollbar positioning in the chat interface in styles.css:
+  - Implemented CSS mask-image gradient to fade out scrollbar at the bottom
+  - Prevented scrollbar from extending into the input button area
+  - Adjusted content area overflow behavior for proper containment
+  - Ensured consistent scrollbar behavior across different browsers
+  - Maintained proper scrolling functionality while improving visual appearance
 
 - **[Message Visibility Fix]** Improved last message visibility in styles.css:
   - Increased padding-bottom of chat-history from 18px to 35px
@@ -322,6 +347,12 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Tooltip Alignment]** Corrected button tooltip positioning to properly center labels below buttons by adding text-align, width:max-content, and position:relative properties in styles.css
 - **[Dark Mode Border Enhancement]** Improved border visibility in dark mode by using input-border color and stronger box-shadow for better contrast in styles.css
 - **[Theme Persistence]** Fixed theme persistence issue by ensuring themePreference is consistently saved and loaded in popup.js, including adding auto-save to applyTheme function
+- **[UI Enhancement]** Modified button interface in popup.html to use text-based buttons instead of icons for improved clarity and usability. Changes include:
+  - Added new "Search Page" button
+  - Converted "Search Web" and "Reason" buttons to text-based display
+  - Updated button styling for consistent appearance in both light and dark themes
+  - Improved button spacing and alignment
+  - References: popup.html, styles.css
 - **[Width Precision Fix]** Improved width consistency between elements:
   - Updated both conversation-info and input-wrapper to use identical width calculations
   - Applied consistent box-sizing to ensure borders are included in width calculations
@@ -342,6 +373,11 @@ FORMAT GUIDE - DO NOT DELETE
   - Fixed input area to bottom of popup window
   - Added independent scrolling for chat history
   - Implemented proper spacing to prevent content overlap
+  - References: styles.css
+- **[Message Visibility Enhancement]** Improved readability of chat messages by:
+  - Increased padding between last message and input area to 120px
+  - Removed redundant message margins in favor of flex gap
+  - Added subtle shadow to input container for better visual separation
   - References: styles.css
 - **[History View Enhancement]** Improved chat history list display by:
   - Extended chat sessions container to use full popup height
@@ -401,6 +437,17 @@ FORMAT GUIDE - DO NOT DELETE
   - Added extensive debug logging with CRITICAL prefix for troubleshooting
   - Ensured consistent behavior across all popup opening scenarios
   - References: popup.js
+- **[Comprehensive Chat Persistence Fix]** Addressed stubborn chat session reset issue with a systematic solution:
+  - Implemented early initialization phase that runs before DOM is ready
+  - Added synchronization message between popup.js and background.js
+  - Enhanced loadChatHistory with direct storage access as fallback
+  - Made checkOrCreatePageLoadId more robust with explicit returns
+  - Restructured DOMContentLoaded handling to prevent duplicate initialization
+  - Added detailed logging with ROBUST and INIT prefixes
+  - Implemented extensive null/undefined checking for race conditions
+  - Enhanced chat history display to prevent duplicate messages
+  - Created comprehensive solution to handle all popup lifecycle edge cases
+  - References: popup.js, background.js
 - **[Input Persistence Fix]** Resolved issue with user input being restored when reopening the extension after successful inference:
   - Added new clearSavedInputText function to remove stored input from Chrome storage
   - Called clearSavedInputText after successful inference in both inference paths
@@ -415,6 +462,43 @@ FORMAT GUIDE - DO NOT DELETE
   - Ensured shortcuts are user-configurable through Chrome's extension settings
   - Enhanced user experience with faster access to the extension functionality
   - References: manifest.json, background.js, popup.js
+- **[Enhanced Keyboard Shortcut Experience]** Improved the keyboard shortcut functionality to provide better user guidance:
+  - Added persistent visual badge indicator when a command is ready to execute
+  - Implemented animated badge flashing to draw user attention to required action
+  - Added tooltip instructions via chrome.action.setTitle to clarify next steps
+  - Created sticky notification banner in the popup showing the command being executed
+  - Extended time window for command execution from 10 to 30 seconds
+  - Implemented override to execute commands even when tab context changes
+  - Fixed issues with chat history key format inconsistencies
+  - Created a two-step process (press shortcut → click icon) that works reliably within Chrome's limitations
+  - References: background.js, popup.js
+- **[Double-Click Extension Icon Functionality]** Implemented intuitive double-click execution of previous commands:
+  - Added timestamp tracking to detect double-clicks on the extension icon
+  - Created logic to find the most recent user message for the current domain
+  - Implemented visual feedback with badge and tooltip for clear user guidance
+  - Automatically opens popup after double-click to execute the stored command
+  - Maintained compatibility with normal single-click popup opening
+  - Provides fallback messages when no previous chat or message exists
+  - Created a more intuitive interaction model compared to keyboard shortcuts
+  - References: background.js
+- **[In-Popup Double-Click Implementation]** Created an alternative double-click interface directly in the popup:
+  - Added a transparent double-click area at the top of the popup
+  - Implemented double-click detection in popup.js based on click timestamps
+  - Added direct access to chat history from within the popup context
+  - Created visual notification banner showing the command being executed
+  - Added error handling and user feedback for edge cases
+  - Works regardless of browser extension API limitations
+  - Provides immediate visual feedback when executing previous commands
+  - References: popup.html, popup.js
+- **[Ctrl+Click Quick Execution]** Implemented Ctrl+Click shortcut to automatically run the last message:
+  - Added listeners to track Ctrl key state in background script
+  - Stores Ctrl key state when extension icon is clicked
+  - Automatically executes the last message for the current domain when popup opens
+  - Shows green notification banner with the command being executed
+  - Creates a more intuitive modifier-based interaction pattern
+  - Requires minimal user effort (single Ctrl+Click) to repeat previous commands
+  - Works within Chrome's extension architecture constraints
+  - References: background.js, popup.js
 - **[Service Worker Compatibility Fix]** Resolved critical service worker error causing extension failure:
   - Removed document event listeners from background script (service workers have no DOM access)
   - Moved Ctrl key detection logic to popup.js where document object is available
@@ -435,6 +519,45 @@ FORMAT GUIDE - DO NOT DELETE
   - Created a workflow that works reliably across all Chrome extension contexts
   - Functions without relying on popup's ability to detect keypress events
   - References: content.js, background.js, popup.js
+- **[Ctrl Key Race Condition Fix]** Resolved timing issues with Ctrl+Click detection:
+  - Identified race condition where Ctrl key up events were being processed before click handling completed
+  - Added prevention logic in background script to ignore key up events during click processing window (500ms)
+  - Implemented debouncing in content script to prevent excessive message passing
+  - Added longer delay (500ms) on window blur events to ensure click completes before state reset
+  - Improved event logging for better troubleshooting of message passing sequence
+  - Enhanced reliability of modifier key detection during extension icon clicks
+  - Created a more robust system for capturing key state at the exact moment of interaction
+  - References: background.js, content.js
+- **[Delayed Command Execution]** Enhanced reliability of Ctrl+Click functionality with timing improvements:
+  - Added 500ms delay to command execution in popup to allow for proper initialization
+  - Implemented state capture at the beginning of click handler to prevent race conditions
+  - Extended the detection window for recent clicks from 2s to 3s for better reliability
+  - Added comprehensive logging to track key state and timing for easier troubleshooting
+  - Used local variable in background script to preserve Ctrl state at exact moment of click
+  - Made popup check for any recent click and then evaluate stored Ctrl state separately
+  - Added awaits to storage operations to ensure completion before continuing execution
+  - Created a more resilient system that handles the rapid key state changes when clicking
+  - References: popup.js, background.js
+- **[Direct Ctrl+Click Detection]** Implemented more reliable method for Ctrl+Click detection:
+  - Added persistent ctrlClickPending flag in background script to track pending Ctrl+Click operations
+  - Integrated flag directly with popup initialization sequence for guaranteed detection
+  - Created direct communication channel between background and popup during critical initialization
+  - Used a "tell-and-respond" pattern where popup asks background script about pending Ctrl+Clicks
+  - Eliminated timing-dependent race conditions that were causing unreliable behavior
+  - Added explicit popup execution that waits for full UI initialization
+  - Created a system that works regardless of key state changes during popup opening
+  - Transformed key timing problem into a persistent flag-based approach
+  - References: background.js, popup.js
+- **[Improved Ctrl+Click Flag Handling]** Enhanced reliability of Ctrl+Click detection with immediate flag setting:
+  - Added direct ctrlClickPending flag setting when Ctrl key is first pressed
+  - Implemented zero-delay message passing for Ctrl keydown events for immediate state updates
+  - Added auto-clearing timeout (5 seconds) to prevent flag from staying active indefinitely
+  - Implemented secondary check mechanism shortly after popup initialization
+  - Created specialized message handler for delayed Ctrl+Click status verification
+  - Used separate delays for key press (0ms) and key release (10ms) to prioritize activation
+  - Added multiple logging points for comprehensive debugging and tracing
+  - Implemented redundant checking to ensure command execution despite race conditions
+  - References: background.js, content.js, popup.js
 - **[UI Notification Cleanup]** Enhanced user experience with cleaner interface:
   - Removed intrusive error and status notifications for failed or completed operations
   - Eliminated "No previous user request found" error messages in favor of silent failure
@@ -444,6 +567,15 @@ FORMAT GUIDE - DO NOT DELETE
   - Removed related animation and timer code for notice creation/removal
   - Created a cleaner, less distracting UI focused on content rather than status indicators
   - References: background.js, popup.js
+- **[Domain Validation Enhancement]** Improved Ctrl+Click domain validation with stricter checks:
+  - Added comprehensive domain validation to ensure messages are only replayed for the exact matching domain
+  - Implemented multiple validation checkpoints to prevent cross-domain message execution
+  - Added validation of message content to ensure only valid, non-empty strings are executed
+  - Implemented detailed logging for domain matching to aid in troubleshooting
+  - Added double verification of session domain both during filtering and before execution
+  - Prevented unintended execution of messages from different domains or tabs
+  - Created a more secure approach that respects domain isolation in the chat history
+  - References: popup.js, background.js
 - **[User Message Substitution]** Fixed issue where user's actual query was being ignored when using LinkedIn page scraping:
   - Updated GENERIC_SYSTEM_PROMPT to not assume users want page content analysis
   - Modified LINKEDIN_SYSTEM_PROMPT to respond directly to user queries
@@ -464,6 +596,7 @@ FORMAT GUIDE - DO NOT DELETE
   - Ensured user's original query is preserved and sent to the API
   - Improved system prompts to provide proper context without assuming query content
   - References: popup/components/chat.js
+
 - **[Direct Background.js Responses API Fix]** Applied direct fixes to background.js to ensure proper use of the OpenAI Responses API:
   - Fixed web search API calls in background.js to use the correct tools format with proper function structure
   - Updated API endpoint from /v1/chat/completions to /v1/responses in direct API calls
@@ -472,6 +605,7 @@ FORMAT GUIDE - DO NOT DELETE
   - Fixed the "Missing required parameter: 'tools[0].function'" error
   - Ensured both API request paths (web search and non-web search) use the correct API and format
   - References: background/background.js
+
 - **[Web Search Tool Format Fix]** Resolved "Missing required parameter: 'tools[0].name'" error:
   - Added the required 'name' field directly to the top level of tool objects
   - Fixed both the direct API calls in background.js and the OpenAI API service
@@ -479,5 +613,44 @@ FORMAT GUIDE - DO NOT DELETE
   - Ensured proper parameters for the Responses API format
   - Fixed the API call failures for both web search and regular requests
   - References: background/background.js, background/api/openai.js
+
 - **[Missing Module Import]** Fixed ReferenceError in background script where openAiService was undefined by adding the proper import statement: `import * as openAiService from './api/openai.js'`
+
 - **[Incorrect Import Name]** Fixed SyntaxError in OpenAI API service by correcting the import from non-existent `API` to the proper `API_CONSTANTS` export in constants.js file
+
+## Testing Framework Implementation
+- **[Testing Framework Implementation]** Created a testing infrastructure to support the refactoring process:
+  - Implemented a lightweight test framework with assertion utilities (assertEqual, assertTrue, assertFalse)
+  - Created a test directory structure that mirrors the codebase organization
+  - Developed a test runner to execute all tests in sequence
+  - Added example unit tests for URL utilities to demonstrate the testing approach
+  - Established a pattern for unit testing that can be extended to all refactored components
+
+- **[Search Web and Search Page Implementation]** Implemented toggle functionality for "search web" and "search page" features using the OpenAI Responses API:
+  - **Toggle Button Behavior**: Restored the toggle behavior for both "search web" and "search page" buttons
+    - Added click handlers that toggle settings state (webSearch and pageScraping)
+    - Implemented visual feedback using the 'active' class on buttons
+    - Stored toggle states in Chrome storage for persistence
+    - Updated button states on initialization to reflect saved settings
+  
+  - **Search Page Feature**: When enabled, combines user query with scraped page content
+    - Added formatted user message with page content: `${userMessage}\n\nHere is the content of the webpage (URL: ${url}) to help answer my question:\n\n${pageContent}`
+    - Creates specialized system prompts based on context and toggle state
+    - Uses the `generatePageContentPrompt` function for customized prompts with page data
+  
+  - **Search Web Feature**: When enabled, adds web search tools to the OpenAI Responses API request
+    - Adds the proper web_search function tool to API requests
+    - Uses the correct Responses API format with function structure and parameters
+    - Properly handles and displays search results with source attribution
+  
+  - **System Prompt Selection Logic**: Implemented logic to select the appropriate system prompt based on toggle states
+    - NO_PAGE_CONTENT_SYSTEM_PROMPT: When both toggles are off
+    - GENERIC_SYSTEM_PROMPT/generatePageContentPrompt: When only search page is on
+    - WEB_SEARCH_SYSTEM_PROMPT: When only search web is on
+    - COMBINED_SYSTEM_PROMPT: When both toggles are on
+  
+  - **API Integration**: Ensured all API calls use the Responses API format
+    - Used proper input/output_text structure for different message types
+    - Set correct content types for system messages and user messages
+    - Implemented proper response parsing for the Responses API format
+    - Extracted and formatted sources from API responses when available
