@@ -11,7 +11,7 @@ import {
   NO_PAGE_CONTENT_SYSTEM_PROMPT,
   WEB_SEARCH_SYSTEM_PROMPT,
   COMBINED_SYSTEM_PROMPT,
-  generatePageContentPrompt
+  generatePageAwarePrompt
 } from '../shared/prompts/generic.js';
 
 import {
@@ -603,6 +603,10 @@ function setupMessageListeners() {
           // Store the page content in the session if available (but not in messages)
           if (enablePageScraping && activePageContent) {
             session.pageContent = activePageContent;
+          } else if (!enablePageScraping) {
+            // When page scraping is disabled, ensure we don't use any page content
+            activePageContent = null;
+            console.log('Page scraping is disabled, ignoring any stored page content');
           }
           
           // Add user message to session (without page content)
@@ -626,8 +630,8 @@ function setupMessageListeners() {
             // Combined mode: both page content and web search
             systemContent = COMBINED_SYSTEM_PROMPT;
           } else if (enablePageScraping && activePageContent) {
-            // Create a page-specific prompt with the actual page content
-            systemContent = generatePageContentPrompt(activePageContent, title, url);
+            // Create a page-specific prompt WITHOUT the actual page content
+            systemContent = generatePageAwarePrompt(title, url);
           } else if (enableWebSearch) {
             // Use web search specific prompt
             systemContent = WEB_SEARCH_SYSTEM_PROMPT;

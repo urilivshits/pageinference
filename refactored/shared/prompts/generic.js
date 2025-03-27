@@ -47,6 +47,31 @@ The user's message reflects their actual query - respond to what they're asking,
 }
 
 /**
+ * Generate a page-specific prompt without including the actual page content
+ * The page content will be appended to user messages instead
+ * 
+ * @param {string} title - The page title
+ * @param {string} url - The page URL
+ * @returns {string} - The system prompt without page content
+ */
+export function generatePageAwarePrompt(title, url) {
+  return `You are a helpful AI assistant that has access to the content of the web page the user is currently viewing. The page content will be included in the user's messages.
+
+Your role is to:
+1. Answer the user's actual query directly
+2. Use the page content provided in their messages as context
+3. Only reference the page when it's relevant to the user's specific question
+4. Don't assume the user wants a summary of the page unless they explicitly ask for one
+5. Be helpful and concise in your responses
+
+CURRENT WEBPAGE INFORMATION:
+Title: ${title || 'No title available'}
+URL: ${url || 'No URL available'}
+
+The user's message reflects their actual query - respond to what they're asking, not to a generic request to analyze the page.`;
+}
+
+/**
  * Generic system prompt used when page scraping is disabled
  */
 export const NO_PAGE_CONTENT_SYSTEM_PROMPT = `You are a helpful AI assistant. The user is browsing the web but has chosen not to share the page content with you. Help them with their questions as best you can based only on general knowledge.
@@ -89,5 +114,6 @@ export default {
   NO_PAGE_CONTENT_SYSTEM_PROMPT,
   WEB_SEARCH_SYSTEM_PROMPT,
   COMBINED_SYSTEM_PROMPT,
-  generatePageContentPrompt
+  generatePageContentPrompt,
+  generatePageAwarePrompt
 }; 

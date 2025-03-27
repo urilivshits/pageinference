@@ -98,8 +98,8 @@ export function initializeChatComponent() {
   // Check for command to execute
   checkForCommandToExecute();
   
-  // Initialize button states from settings
-  initializeButtonStates();
+  // Initialize button states and toggles based on saved preferences
+  checkToggleState();
 }
 
 /**
@@ -152,6 +152,30 @@ function setupEventListeners() {
       displayErrorMessage('Cannot open session: Invalid data');
     }
   });
+  
+  // Comprehensive listener for settings changes
+  window.addEventListener('settings-updated', async (event) => {
+    console.log('Settings updated event received:', event.detail);
+    
+    // Always refresh toggle state from storage when settings change
+    await checkToggleState();
+    
+    // If we have specific settings in the event detail, use them
+    if (event.detail && event.detail.settings) {
+      const { settings } = event.detail;
+      
+      // Update UI based on specific settings
+      if (settings.pageScraping !== undefined && searchPageButton) {
+        searchPageButton.classList.toggle('active', settings.pageScraping);
+      }
+      
+      if (settings.webSearch !== undefined && searchWebButton) {
+        searchWebButton.classList.toggle('active', settings.webSearch);
+      }
+      
+      console.log('Updated UI from settings event:', settings);
+    }
+  });
 }
 
 /**
@@ -195,20 +219,48 @@ async function handleActionButton(action) {
     const settings = await getSettings();
     // Toggle the page scraping setting
     const pageScraping = !settings.pageScraping;
-    // Update UI
+    
+    // Update UI button
     searchPageButton.classList.toggle('active', pageScraping);
+    
+    // Update toggle element if it exists
+    const pageScrapingToggle = document.getElementById('page-scraping-toggle');
+    if (pageScrapingToggle) {
+      pageScrapingToggle.checked = pageScraping;
+    }
+    
     // Save the setting
     await updateSettings({ pageScraping });
+    
+    // Notify other components of the settings change
+    window.dispatchEvent(new CustomEvent('settings-updated', {
+      detail: { settings: { pageScraping } }
+    }));
+    
     console.log('Page scraping is now', pageScraping ? 'enabled' : 'disabled');
   } else if (action === 'searchWeb') {
     // Get current settings
     const settings = await getSettings();
     // Toggle the web search setting
     const webSearch = !settings.webSearch;
-    // Update UI
+    
+    // Update UI button
     searchWebButton.classList.toggle('active', webSearch);
+    
+    // Update toggle element if it exists
+    const webSearchToggle = document.getElementById('web-search-toggle');
+    if (webSearchToggle) {
+      webSearchToggle.checked = webSearch;
+    }
+    
     // Save the setting
     await updateSettings({ webSearch });
+    
+    // Notify other components of the settings change
+    window.dispatchEvent(new CustomEvent('settings-updated', {
+      detail: { settings: { webSearch } }
+    }));
+    
     console.log('Web search is now', webSearch ? 'enabled' : 'disabled');
   } else if (action === 'reason') {
     // Use the input message as-is instead of replacing it with predefined templates
@@ -391,14 +443,41 @@ async function handleSendMessage() {
       throw new Error('Could not detect current tab');
     }
     
-    // Get user preferences from storage first
-    const preferences = await getUserPreferences();
+    // CRITICAL: Check toggle state BEFORE sending message to ensure latest state is used
+    await checkToggleState();
     
-    // Use preferences from storage, fallback to UI toggles if needed
-    const pageScraping = document.getElementById('page-scraping-toggle').checked;
-    const webSearch = document.getElementById('web-search-toggle').checked;
-    const selectedModel = modelSelect ? modelSelect.value : preferences.defaultModel || 'gpt-4o-mini';
-    const temperature = preferences.temperature !== undefined ? preferences.temperature : 0;
+    // Read settings directly from storage for most reliable state
+    const result = await chrome.storage.local.get('userPreferences');
+    const preferences = result.userPreferences || {};
+    
+    console.log('Retrieved user preferences for sending message:', preferences);
+    
+    // Read toggle states directly from the UI elements AFTER synchronizing
+    const pageScrapingToggle = document.getElementById('page-scraping-toggle');
+    const webSearchToggle = document.getElementById('web-search-toggle');
+    
+    // Use direct storage values first, then fall back to UI elements if available
+    const pageScraping = preferences.pageScraping !== undefined 
+                       ? preferences.pageScraping 
+                       : (pageScrapingToggle ? pageScrapingToggle.checked : false);
+    
+    const webSearch = preferences.webSearch !== undefined 
+                    ? preferences.webSearch 
+                    : (webSearchToggle ? webSearchToggle.checked : false);
+    
+    // Get selected model and temperature from preferences
+    const selectedModel = modelSelect ? modelSelect.value : 
+                         (preferences.defaultModel || 'gpt-4o-mini');
+    
+    const temperature = preferences.temperature !== undefined ? 
+                       preferences.temperature : 0;
+    
+    console.log('Using settings for message:', {
+      pageScraping,
+      webSearch,
+      selectedModel,
+      temperature
+    });
     
     let pageContent = '';
     
@@ -564,44 +643,37 @@ async function loadCurrentSession() {
           currentSession = chatSessions.find(s => s.pageLoadId === pageLoadId);
           
           if (currentSession) {
-            console.log('Fallback: Retrieved session from storage', currentSession);
-            renderMessages(currentSession.messages || []);
-            updateConversationInfo();
-            return;
-          } else {
-            console.warn('Session with ID not found in storage:', pageLoadId);
+            console.log('Found current session from fallback:', currentSession);
           }
         }
       } catch (storageError) {
-        console.error('Fallback storage access failed:', storageError);
+        console.error('Storage fallback failed:', storageError);
       }
-      
-      // If all else fails, show empty chat
-      console.log('All session retrieval methods failed, showing empty chat');
-      currentConversationInfo.classList.add('hidden');
-      return;
     }
     
     if (response && response.success && response.data) {
+      // Store the session
       currentSession = response.data;
-      console.log('Session loaded successfully:', currentSession.pageLoadId);
+      console.log('Current session:', currentSession);
       
-      // Ensure messages array exists
-      if (!currentSession.messages) {
-        console.warn('Session has no messages array, initializing empty array');
-        currentSession.messages = [];
+      // Render messages
+      if (currentSession.messages && currentSession.messages.length > 0) {
+        console.log('Rendering', currentSession.messages.length, 'messages');
+        renderMessages(currentSession.messages);
       }
       
-      renderMessages(currentSession.messages);
+      // Update conversation info
       updateConversationInfo();
-    } else {
-      // No session yet, show empty chat
-      console.log('No chat session found for the current tab');
-      currentConversationInfo.classList.add('hidden');
     }
+    
+    // Check and update toggle states after session load
+    await checkToggleState();
+    
+    // Focus the input field
+    messageInput.focus();
   } catch (error) {
-    console.error('Error loading chat session:', error);
-    displayErrorMessage('Failed to load chat session');
+    console.error('Error loading current session:', error);
+    displayErrorMessage(error.message);
   }
 }
 
@@ -1005,6 +1077,50 @@ export async function getUserPreferences() {
   } catch (error) {
     console.error('Error getting user preferences:', error);
     return {};
+  }
+}
+
+/**
+ * Check the state of page scraping and web search toggles in settings and update UI
+ */
+async function checkToggleState() {
+  try {
+    // Get the latest user preferences directly from storage
+    const result = await chrome.storage.local.get('userPreferences');
+    const preferences = result.userPreferences || {};
+    
+    console.log('Retrieved user preferences for toggle state:', preferences);
+    
+    // Apply default values for missing preferences
+    const pageScraping = preferences.pageScraping !== undefined ? preferences.pageScraping : false;
+    const webSearch = preferences.webSearch !== undefined ? preferences.webSearch : false;
+    
+    // Update the toggle UI based on stored preferences
+    const pageScrapingToggle = document.getElementById('page-scraping-toggle');
+    const webSearchToggle = document.getElementById('web-search-toggle');
+    
+    if (pageScrapingToggle) {
+      pageScrapingToggle.checked = pageScraping;
+      console.log('Set page scraping toggle to:', pageScraping);
+    }
+    
+    if (webSearchToggle) {
+      webSearchToggle.checked = webSearch;
+      console.log('Set web search toggle to:', webSearch);
+    }
+    
+    // Also update button states
+    if (searchPageButton) {
+      searchPageButton.classList.toggle('active', pageScraping);
+    }
+    
+    if (searchWebButton) {
+      searchWebButton.classList.toggle('active', webSearch);
+    }
+    
+    console.log('Updated toggle state from preferences:', { pageScraping, webSearch });
+  } catch (error) {
+    console.error('Error checking toggle state:', error);
   }
 }
 
