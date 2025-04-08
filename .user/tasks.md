@@ -783,3 +783,36 @@ FORMAT GUIDE - DO NOT DELETE
     - [x] Test automatic execution behavior
     - [x] Verify content scraping works correctly
     - [x] Test error handling and edge cases
+
+## User Query: "lets continue: 1. lets make it so on ctrl+click the popup opens without executing the last input inference 2. lets remove the message that says inference is being executed that appears if popup opens on single click"
+- Task: Implement Ctrl+Click option and remove inference message
+  - [x] Define test cases for Ctrl+Click functionality
+    - [x] Unit test: Verify Ctrl+Click opens popup without executing inference
+    - [x] Unit test: Verify normal click still executes inference
+    - [x] Unit test: Verify Ctrl key state detection is reliable
+  - [x] Implement Ctrl+Click detection and handling
+    - [x] Create content script to detect Ctrl key state
+    - [x] Add background script support for storing Ctrl key state
+    - [x] Update popup.js to check Ctrl key state before executing
+    - [x] Remove inference execution message from UI
+    - [x] Update manifest to include new content script
+  - [x] Run tests and validate implementation
+    - [x] Test Ctrl+Click behavior opens popup without execution
+    - [x] Test regular click behavior still works correctly
+    - [x] Verify UI is cleaner without the inference message
+
+## User Query: "spotted a bug: on single click it works ok but only until if you reloaded the the page before. if you create a new chat and make first manual input inference and then close the popup and try to open by single click - last input inference wont happen. it will only happen next if you also reload the page and try to open the popup with single click once again"
+- Task: Fix bug with automatic execution after creating a new chat
+  - [x] Define test cases for the bug
+    - [x] Verify the bug occurs when creating a new chat and making first manual input
+    - [x] Verify the bug does not occur after reloading the page
+    - [x] Verify global_last_user_input storage is maintained correctly
+  - [x] Implement the fix for automatic execution
+    - [x] Update clearSavedInputText() to not remove global_last_user_input
+    - [x] Fix input text saving to use correct clearSavedInputText() function
+    - [x] Reset textarea height when clearing input
+    - [x] Add logging to track global_last_user_input persistence
+  - [x] Run tests and validate implementation
+    - [x] Test automatic execution after creating a new chat
+    - [x] Test automatic execution after manual input without page reload
+    - [x] Verify fix works reliably across different scenarios

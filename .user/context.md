@@ -506,3 +506,6 @@ FORMAT GUIDE - DO NOT DELETE
 - **[Wrong Page Content Bug]** Resolved bug where content from previously focused page would be scraped instead of the popup's source page.
 - **[Cross-Window History Bug]** Fixed issue where clicking history item from one tab would incorrectly open that chat in current tab instead of navigating to the original tab.
 - **[Multiple Popups Bug]** Resolved issue where multiple popups could be opened simultaneously, leading to confusion and incorrect content scraping.
+- **[Ctrl+Click Popup Opening]** Implemented a feature that allows users to open the popup without automatically executing the last user input by holding the Ctrl key while clicking the extension icon.
+- **[Inference Message Removal]** Removed the notification message that appeared when inference was being executed on popup open, resulting in a cleaner UI experience.
+- **[Automatic Execution Bug]** Fixed a bug where automatic execution wouldn't work after creating a new chat and making the first manual input without reloading the page. The issue was caused by the clearSavedInputText() function inadvertently removing the global_last_user_input storage. Modified the function to preserve the global user input while only clearing session-specific input data.

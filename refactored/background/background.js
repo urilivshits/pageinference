@@ -48,6 +48,9 @@ let popupOpenedFromUrl = null;
 let activePopupPorts = [];
 let lastActivePopupId = null;
 
+// Track Ctrl key state for popup opening
+let wasCtrlKeyPressed = false;
+
 // Double-click detection variables
 let lastClickTime = 0;
 const doubleClickThreshold = 300; // ms between clicks to count as double-click
@@ -1245,18 +1248,43 @@ function closeOtherPopups(currentContextId, currentPopupId) {
 
 /**
  * Handle clicks on the browser action (extension icon)
- * Modified to work with automatic execution on popup open
+ * Modified to work with automatic execution on popup open and detect Ctrl key
  */
 function setupBrowserActionClickHandler() {
-  // With our new approach, we no longer need to detect clicks in the background script
-  // The popup.js will automatically execute the last input when opened
-  
-  // We'll keep this function for backward compatibility
+  // We'll add a listener for the onClicked event that Chrome provides for browser actions
+  // This won't fire when popup is present, but will help us track Ctrl key state
   chrome.action.onClicked.addListener(async (tab) => {
     console.log('Browser action clicked, letting Chrome handle popup opening');
+  });
+  
+  // Add listeners to detect key states (these will track keydown events globally in the browser)
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'ctrlKeyPressed') {
+      wasCtrlKeyPressed = true;
+      console.log('Ctrl key press detected, storing state');
+      // Store in local storage so popup can detect it
+      chrome.storage.local.set({ 'ctrlKeyPressed': true });
+      sendResponse({ success: true });
+      
+      // Reset after a short delay
+      setTimeout(() => {
+        wasCtrlKeyPressed = false;
+        chrome.storage.local.remove('ctrlKeyPressed');
+      }, 2000); // Reset after 2 seconds
+      
+      return true; // Keep the message channel open for async response
+    }
     
-    // No need for any click detection now
-    // Popup.js will handle automatic execution when it opens
+    if (message.action === 'getCtrlKeyState') {
+      console.log('Popup requested Ctrl key state:', wasCtrlKeyPressed);
+      sendResponse({ ctrlKeyPressed: wasCtrlKeyPressed });
+      
+      // Reset after popup has requested the state
+      wasCtrlKeyPressed = false;
+      chrome.storage.local.remove('ctrlKeyPressed');
+      
+      return true; // Keep the message channel open for async response
+    }
   });
 }
 

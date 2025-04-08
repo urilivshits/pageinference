@@ -282,34 +282,58 @@ document.addEventListener('DOMContentLoaded', async () => {
   const popupContainer = document.querySelector('.popup-container');
   popupContainer.classList.add('popup-fade-in');
   
-  // Automatically execute the last input on popup open
+  // Check if Ctrl key was pressed when opening the popup
+  let ctrlKeyPressed = false;
   try {
-    // Get the last user input from storage
-    const { global_last_user_input } = await chrome.storage.local.get('global_last_user_input');
-    
-    if (global_last_user_input) {
-      console.log('Last input found, setting up for automatic execution:', global_last_user_input);
-      
-      // Get current tab information
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tabs && tabs.length) {
-        const currentTab = tabs[0];
-        
-        // Set up execute_last_input that the chat component will check
-        await chrome.storage.local.set({
-          'execute_last_input': {
-            input: global_last_user_input,
-            tabId: currentTab.id,
-            url: currentTab.url,
-            timestamp: Date.now()
-          }
-        });
-      }
+    // Check storage first (set by content script)
+    const { ctrlKeyPressed: storedCtrlKey } = await chrome.storage.local.get('ctrlKeyPressed');
+    if (storedCtrlKey) {
+      ctrlKeyPressed = true;
+      console.log('Ctrl key was pressed (from storage), skipping auto-execution');
     } else {
-      console.log('No last input found, normal popup opening');
+      // Also ask the background script directly
+      const response = await chrome.runtime.sendMessage({ action: 'getCtrlKeyState' });
+      if (response && response.ctrlKeyPressed) {
+        ctrlKeyPressed = true;
+        console.log('Ctrl key was pressed (from background), skipping auto-execution');
+      }
     }
   } catch (error) {
-    console.error('Error setting up automatic execution:', error);
+    console.error('Error checking Ctrl key state:', error);
+  }
+  
+  // Only automatically execute if Ctrl key was NOT pressed
+  if (!ctrlKeyPressed) {
+    try {
+      // Get the last user input from storage
+      const { global_last_user_input } = await chrome.storage.local.get('global_last_user_input');
+      
+      if (global_last_user_input) {
+        console.log('Last input found, setting up for automatic execution:', global_last_user_input);
+        
+        // Get current tab information
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tabs && tabs.length) {
+          const currentTab = tabs[0];
+          
+          // Set up execute_last_input that the chat component will check
+          await chrome.storage.local.set({
+            'execute_last_input': {
+              input: global_last_user_input,
+              tabId: currentTab.id,
+              url: currentTab.url,
+              timestamp: Date.now()
+            }
+          });
+        }
+      } else {
+        console.log('No last input found, normal popup opening');
+      }
+    } catch (error) {
+      console.error('Error setting up automatic execution:', error);
+    }
+  } else {
+    console.log('Ctrl+Click detected, opening popup without auto-execution');
   }
   
   // Continue with normal initialization

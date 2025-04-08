@@ -470,9 +470,11 @@ async function handleSendMessage() {
     
     // Clear the input
     messageInput.value = '';
+    // Reset textarea height
+    messageInput.style.height = 'auto';
     
-    // Save the cleared input text
-    await saveInputText();
+    // Save the cleared input text (in this case, we're setting it to empty)
+    await clearSavedInputText();
     
     // Get current tab information
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -948,7 +950,14 @@ async function saveInputText() {
  */
 async function clearSavedInputText() {
   try {
-    await chrome.storage.local.remove(`input_text_${currentSession?.pageLoadId}`);
+    // Only clear the session-specific input if we have a session
+    if (currentSession?.pageLoadId) {
+      await chrome.storage.local.remove(`input_text_${currentSession.pageLoadId}`);
+    }
+    
+    // Note: We do NOT clear global_last_user_input here, as it needs to persist
+    // for automatic execution when reopening the popup
+    console.log('Cleared saved input text, global_last_user_input preserved for future use');
   } catch (error) {
     console.error('Error clearing input text:', error);
   }
@@ -1015,30 +1024,6 @@ async function checkForCommandToExecute() {
         // Clear badge
         await chrome.action.setBadgeText({ text: '' });
         await chrome.action.setTitle({ title: '' });
-        
-        // Add a visual indicator at the top of the popup
-        const executingNotice = document.createElement('div');
-        executingNotice.className = 'executing-shortcut-notice';
-        executingNotice.textContent = `Executing: "${input}"`;
-        executingNotice.style.backgroundColor = '#FF9800';
-        executingNotice.style.color = 'white';
-        executingNotice.style.padding = '8px';
-        executingNotice.style.textAlign = 'center';
-        executingNotice.style.fontWeight = 'bold';
-        executingNotice.style.position = 'sticky';
-        executingNotice.style.top = '0';
-        executingNotice.style.zIndex = '1000';
-        executingNotice.style.borderRadius = '0 0 4px 4px';
-        
-        // Insert at the top of the popup
-        document.body.insertBefore(executingNotice, document.body.firstChild);
-        
-        // Remove after execution
-        setTimeout(() => {
-          executingNotice.style.opacity = '0';
-          executingNotice.style.transition = 'opacity 0.5s';
-          setTimeout(() => executingNotice.remove(), 500);
-        }, 3000);
         
         // Set input value
         messageInput.value = input;
