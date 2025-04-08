@@ -181,13 +181,13 @@ FORMAT GUIDE - DO NOT DELETE
   - Implemented proper loading on popup initialization
   - References: refactored/popup/components/chat.js, refactored/background/background.js
 
-- **[Double-Click Execution]** Implemented ability to execute last user input on double-click:
-  - Added click tracking with timing detection in the background script
-  - Implemented visual feedback with badge and animations
+- **[Automatic Input Execution]** Implemented ability to automatically execute last user input on popup open:
+  - Added automatic execution logic in popup initialization
+  - Implemented fade-in animation for visual smoothness
   - Created storage mechanism to pass execution data to popup
   - Added popup handling to automatically execute stored input
   - Ensured page content is scraped from current tab when needed
-  - References: refactored/background/background.js, refactored/popup/components/chat.js
+  - References: refactored/popup/popup.js, refactored/popup/components/chat.js
 
 - **[Inter-Tab Communication Refinement]** Enhanced messaging system between background script and content scripts to ensure reliable information exchange with improved error handling and retry mechanisms.
 

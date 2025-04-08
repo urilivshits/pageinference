@@ -767,3 +767,19 @@ FORMAT GUIDE - DO NOT DELETE
     - [x] Test single click behavior with fade-in animation
     - [x] Test double-click behavior with automatic execution
     - [x] Verify compatibility across different scenarios
+
+## User Query: "note i updated the rules. lets now adjust this logic a bit: 1. instead of the second click on the extension icon (which does not seem to pass through persistently in crome) lets open and rerun the last input on single click."
+- Task: Simplify execution logic to run on single click
+  - [x] Define test cases for simplified execution
+    - [x] Unit test: Verify automatic execution on popup open
+    - [x] Unit test: Verify proper tab detection for content scraping
+    - [x] Unit test: Verify error handling for missing input
+  - [x] Implement single-click automatic execution
+    - [x] Remove double-click detection logic
+    - [x] Add automatic execution on popup initialization
+    - [x] Keep fade-in animation for visual smoothness
+    - [x] Update background script for compatibility
+  - [x] Run tests and validate implementation
+    - [x] Test automatic execution behavior
+    - [x] Verify content scraping works correctly
+    - [x] Test error handling and edge cases
