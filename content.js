@@ -67,7 +67,16 @@ function setupMessageListener() {
           content: `Error extracting content from ${window.location.href}. ${error.message}`
         });
       }
+      return true; // Keep the message channel open for async responses
     }
+    
+    // Add support for ping action
+    if (request.action === 'ping') {
+      console.log('Responding to ping from popup');
+      sendResponse({ pong: true, initialized: true });
+      return true;
+    }
+    
     return true; // Keep the message channel open for async responses
   });
 

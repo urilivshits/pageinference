@@ -928,50 +928,17 @@ function setupMessageListeners() {
       // Add handler for check_ctrl_key message type
       'check_ctrl_key': async () => {
         const tabId = message.tabId;
-        console.log(`Received check_ctrl_key message for tab ${tabId}`);
+        console.log(`Checking Ctrl key state for tab ${tabId || 'global'}`);
         
-        let ctrlKeyPressed = false;
+        const isPending = tabId && tabCtrlKeyStates[tabId] ? 
+          tabCtrlKeyStates[tabId].pending : 
+          ctrlClickPending;
+          
+        const ctrlKeyPressed = tabId && tabCtrlKeyStates[tabId] ? 
+          tabCtrlKeyStates[tabId].pressed || isPending : 
+          ctrlKeyPressed || isPending;
         
-        try {
-          // Check tab-specific Ctrl key state first
-          if (tabId) {
-            // Get the stored state
-            const tabStorageKey = `ctrlKeyPressed_tab_${tabId}`;
-            const result = await chrome.storage.local.get(tabStorageKey);
-            
-            ctrlKeyPressed = result[tabStorageKey] === true;
-            
-            // Also check in-memory state
-            if (!ctrlKeyPressed && tabCtrlKeyStates[tabId] && tabCtrlKeyStates[tabId].pressed === true) {
-              ctrlKeyPressed = true;
-            }
-          }
-          
-          // Fallback to global state if needed
-          if (!ctrlKeyPressed) {
-            const globalResult = await chrome.storage.local.get('ctrlKeyPressed');
-            ctrlKeyPressed = globalResult.ctrlKeyPressed === true;
-            
-            // Check in-memory global state as well
-            if (!ctrlKeyPressed && lastCtrlKeyState === true) {
-              ctrlKeyPressed = true;
-            }
-          }
-          
-          console.log(`Ctrl key state for tab ${tabId}: ${ctrlKeyPressed}`);
-          
-          return {
-            ctrlKeyPressed: ctrlKeyPressed,
-            success: true
-          };
-        } catch (error) {
-          console.error('Error checking Ctrl key state:', error);
-          return {
-            ctrlKeyPressed: false,
-            success: false,
-            error: error.message
-          };
-        }
+        return { ctrlKeyPressed };
       },
       
       // Add handler for ctrlKeyState message type
@@ -1294,6 +1261,35 @@ function setupMessageListeners() {
             data: { content: '' }
           };
         }
+      },
+      
+      'injectContentScript': async () => {
+        try {
+          const { tabId } = message;
+          
+          if (!tabId) {
+            throw new Error('tabId is required for content script injection');
+          }
+          
+          console.log(`Handling request to inject content script into tab ${tabId}`);
+          
+          await injectContentScriptIfNeeded(tabId);
+          
+          return { 
+            success: true, 
+            message: `Content script injected into tab ${tabId}` 
+          };
+        } catch (error) {
+          console.error('Error injecting content script:', error);
+          return { 
+            success: false, 
+            error: error.message 
+          };
+        }
+      },
+      
+      'ping': async () => {
+        return { success: true, message: 'Content script is running' };
       }
     };
     

@@ -518,3 +518,12 @@ FORMAT GUIDE - DO NOT DELETE
   - Added improved state management to ensure last input persistence 
   - Ensured reliable execution across various user workflows without requiring page reload
   - References: popup/components/chat.js, background/background.js
+- **[Enhanced Automatic Inference Execution]** Improved reliability of automatic inference execution when popup opens:
+  - Implemented content script verification before executing commands
+  - Added ping mechanism to detect if content script is properly initialized
+  - Created content script injection request capability in popup
+  - Enhanced retry logic with exponential backoff for failed execution attempts
+  - Extended timeout periods and increased retry counts to handle focus-related issues
+  - Ensured proper content script initialization even when page is out of focus
+  - Added error handling and recovery for various edge cases
+  - References: refactored/popup/popup.js, content.js, refactored/background/background.js

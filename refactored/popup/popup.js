@@ -599,11 +599,11 @@ async function autoExecuteIfNeeded() {
       let retryCount = 0;
       const maxRetries = 5; // Increased from 3 to 5 for more retries
       const retryInterval = 200; // 200ms between retries
-      const maxWaitTime = 2000; // Maximum 2 seconds total wait time
+      const maxWaitTime = 3000; // Increased from 2000ms to 3000ms for more time to initialize
       
       const startTime = Date.now();
       
-      const tryExecute = () => {
+      const tryExecute = async () => {
         // Check if we've been trying too long regardless of retry count
         if (Date.now() - startTime > maxWaitTime) {
           console.error(`Timeout reached waiting for chat module initialization after ${maxWaitTime}ms`);
@@ -623,11 +623,44 @@ async function autoExecuteIfNeeded() {
         }
         
         try {
+          // Ensure the content script is properly loaded in the tab by sending a test message
+          try {
+            // Try a ping to see if the content script is ready
+            const pingResponse = await chrome.tabs.sendMessage(tabId, { action: 'ping' })
+              .catch(error => {
+                console.debug('Content script not ready yet:', error);
+                return null;
+              });
+              
+            if (!pingResponse || !pingResponse.pong) {
+              console.debug('Content script needs initialization, asking background script to reinject');
+              // Ask background script to inject the content script if needed
+              await chrome.runtime.sendMessage({ 
+                action: 'injectContentScript', 
+                tabId: tabId 
+              });
+              
+              // Wait a bit for the injection to complete
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } else {
+              console.debug('Content script already initialized');
+            }
+          } catch (scriptError) {
+            console.debug('Error checking content script status:', scriptError);
+            // Continue anyway as we'll retry execution
+          }
+          
           // Execute the stored command
           console.debug('Chat module ready, executing command');
           window.chat.executeCommand();
         } catch (execError) {
           console.error('Error during command execution:', execError);
+          // If execution failed, try one more time after a delay
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.debug(`Command execution failed, retrying in ${retryInterval * 2}ms (attempt ${retryCount}/${maxRetries})`);
+            setTimeout(tryExecute, retryInterval * 2);
+          }
         }
       };
       

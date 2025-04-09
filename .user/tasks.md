@@ -831,3 +831,20 @@ FORMAT GUIDE - DO NOT DELETE
     - [x] Verify tasks.md formatting is correct
     - [x] Verify context.md contains accurate project information
     - [x] Ensure documentation is comprehensive and aligned with rules
+
+## User Query: "now lets address another issue that remained with last input inference autorun on single click on extension icon when the popuup opens. it generally works well, but sometimes (if page out of focus i assume) it does not execute the inference. see how we handle such cases in other places in the project and lets apply a simillar solution here"
+- Task: Improve reliability of automatic inference execution
+  - [x] Define test cases for focus-related execution issues
+    - [x] Validation test: Verify execution failures are related to content script not being ready
+    - [x] Validation test: Verify current approach for handling similar issues in scrape requests
+    - [x] Validation test: Test how focus affects content script detection
+  - [x] Implement enhanced retry mechanism
+    - [x] Add more robust retry logic for autoExecuteIfNeeded function
+    - [x] Implement content script ping/verification before execution
+    - [x] Add content script injection request capability to popup
+    - [x] Increase retry counts and timeout periods for better reliability
+    - [x] Ensure content script is initialized before attempting to execute command
+  - [x] Run tests and validate implementation
+    - [x] Test execution when page is in focus
+    - [x] Test execution when page has lost focus
+    - [x] Verify ping and content script injection significantly improves reliability
