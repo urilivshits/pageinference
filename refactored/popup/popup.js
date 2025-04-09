@@ -5,17 +5,20 @@
  * It imports and initializes components from the component directory.
  */
 
+// Import our new logger
+import logger from '../shared/utils/logger.js';
+
 // Prevent multiple initializations with a global flag
 if (window.popupJsInitialized) {
-  console.error('===== DUPLICATE INITIALIZATION DETECTED: popup.js already initialized! =====');
+  logger.error('DUPLICATE INITIALIZATION DETECTED: popup.js already initialized!');
 } else {
   window.popupJsInitialized = true;
-  console.log('===== FIRST INITIALIZATION OF POPUP.JS =====');
+  logger.init('Popup.js initialization started');
 }
 
 // Generate a unique ID for this popup instance
 const popupInstanceId = Date.now() + '-' + Math.random().toString(36).substring(2, 15);
-console.log(`Popup instance ID: ${popupInstanceId}`);
+logger.debug(`Popup instance ID: ${popupInstanceId}`);
 
 // Track if Ctrl key is pressed
 let ctrlKeyPressed = false;
@@ -26,17 +29,10 @@ window.ctrlKeyPressed = false;
 // Function to monitor Ctrl key state changes
 const monitorCtrlKeyState = (newState) => {
   if (newState !== ctrlKeyPressed) {
-    console.log(`POPUP CTRL KEY STATE CHANGED: ${ctrlKeyPressed} → ${newState}`);
+    logger.ctrl(`Ctrl key state changed: ${newState ? 'pressed' : 'released'}`);
     ctrlKeyPressed = newState;
     // Update window variable for other components
     window.ctrlKeyPressed = newState;
-    
-    // Log the state change for better debugging
-    if (newState === true) {
-      console.log('Ctrl key is now pressed - auto-execution will be skipped');
-    } else {
-      console.log('Ctrl key is now released');
-    }
   }
 };
 
@@ -46,7 +42,7 @@ if (typeof window !== 'undefined') {
   // Method 1: Check for Ctrl key using keyboard event
   const checkForCtrl = (e) => {
     if (e.key === 'Control' || e.ctrlKey) {
-      console.log('POPUP: Ctrl key detected on popup open');
+      logger.ctrl('Ctrl key detected on popup open');
       monitorCtrlKeyState(true);
       // Remove this listener once we've detected Ctrl
       document.removeEventListener('keydown', checkForCtrl, true);
@@ -59,7 +55,7 @@ if (typeof window !== 'undefined') {
   // Method 2: Check via mouseup event which might have Ctrl key info
   document.addEventListener('mouseup', (e) => {
     if (e.ctrlKey) {
-      console.log('POPUP: Ctrl key detected via mouseup event');
+      logger.ctrl('Ctrl key detected via mouseup event');
       monitorCtrlKeyState(true);
     }
   }, {once: true, capture: true});
@@ -70,13 +66,13 @@ if (typeof window !== 'undefined') {
     if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
       navigator.keyboard.getLayoutMap().then(keyboardLayoutMap => {
         if (keyboardLayoutMap.has('ControlLeft') || keyboardLayoutMap.has('ControlRight')) {
-          console.log('POPUP: Ctrl key detected via Keyboard API');
+          logger.ctrl('Ctrl key detected via Keyboard API');
           monitorCtrlKeyState(true);
         }
       });
     }
   } catch (e) {
-    console.log('Keyboard API not supported');
+    logger.debug('Keyboard API not supported');
   }
 }
 
@@ -84,26 +80,26 @@ if (typeof window !== 'undefined') {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Control') {
     monitorCtrlKeyState(true);
-    console.debug('Ctrl key down detected in popup');
+    logger.ctrl('Ctrl key down detected');
   }
 });
 
 document.addEventListener('keyup', (event) => {
   if (event.key === 'Control') {
     monitorCtrlKeyState(false);
-    console.debug('Ctrl key up detected in popup');
+    logger.ctrl('Ctrl key up detected');
   }
 });
 
 // Apply theme immediately, before anything else renders
 (function applyThemeImmediately() {
   try {
-    console.debug('Applying theme immediately on script load');
+    logger.theme('Applying theme on script load');
     
     // IMPORTANT: First make sure we don't have an old separate 'theme' key in storage
     // that might conflict with the proper 'userPreferences.theme'
     chrome.storage.local.remove('theme', () => {
-      console.log('THEME DEBUG: Removed any direct "theme" key to avoid conflicts');
+      logger.theme('Removed any direct "theme" key to avoid conflicts');
     });
     
     // Disable all transitions initially
@@ -112,7 +108,7 @@ document.addEventListener('keyup', (event) => {
     
     // 1. First check localStorage for immediate theme application
     const cachedTheme = localStorage.getItem('temp_theme_preference');
-    console.log('THEME DEBUG: cachedTheme from localStorage:', cachedTheme);
+    logger.theme(`Cached theme from localStorage: ${cachedTheme || 'none'}`);
     
     // Initial theme application based on localStorage or system preference
     let initialTheme = cachedTheme;
@@ -122,17 +118,17 @@ document.addEventListener('keyup', (event) => {
       // For system theme or no stored preference or invalid value, detect system theme
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       initialTheme = prefersDark ? 'dark' : 'light';
-      console.log('THEME DEBUG: System preference detected as:', prefersDark ? 'dark' : 'light');
+      logger.theme(`System preference detected as: ${initialTheme}`);
     }
     
     // Always apply an initial theme immediately to prevent flash
-    console.debug(`Initial theme application: ${initialTheme}`);
+    logger.theme(`Applying initial theme: ${initialTheme}`);
     // Apply theme to HTML element instead of body
     document.documentElement.setAttribute('data-theme', initialTheme);
     
     // 2. Then check Chrome storage for the actual user preference
     chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
-      console.log('THEME DEBUG: userPreferences from Chrome storage:', userPreferences);
+      logger.theme(`User preferences from storage: ${JSON.stringify(userPreferences?.theme || 'none')}`);
       
       // Default to system if no preference is set
       let themePreference = (userPreferences && userPreferences.theme) || 'system';
@@ -147,26 +143,23 @@ document.addEventListener('keyup', (event) => {
         // For 'system' or any invalid value, detect system preference
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         effectiveTheme = prefersDark ? 'dark' : 'light';
-        console.log('THEME DEBUG: "system" theme resolved to:', effectiveTheme);
+        logger.theme(`System theme resolved to: ${effectiveTheme}`);
       }
       
       // Only update DOM if the effective theme is different from what's already applied
       const currentTheme = document.documentElement.getAttribute('data-theme');
-      console.log('THEME DEBUG: Current theme in DOM:', currentTheme, 'New effectiveTheme:', effectiveTheme);
       
       if (currentTheme !== effectiveTheme) {
-        console.log('THEME DEBUG: Updating theme from', currentTheme, 'to', effectiveTheme);
+        logger.theme(`Updating theme: ${currentTheme} → ${effectiveTheme}`);
         document.documentElement.setAttribute('data-theme', effectiveTheme);
-      } else {
-        console.log('THEME DEBUG: Theme already correct, no change needed');
       }
       
       // 3. Always update localStorage with the latest preference
       try {
         localStorage.setItem('temp_theme_preference', themePreference); // Store the preference, not the resolved theme
-        console.log('THEME DEBUG: Updated localStorage theme preference to:', themePreference);
+        logger.theme(`Updated localStorage theme preference: ${themePreference}`);
       } catch (e) {
-        console.warn('Could not update cached theme in localStorage:', e);
+        logger.warn('Could not update cached theme in localStorage:', e);
       }
       
       // Add the ready class to signal theme is fully processed and re-enable transitions
@@ -186,17 +179,17 @@ document.addEventListener('keyup', (event) => {
       chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
         if (userPreferences?.theme === 'system') {
           const newTheme = e.matches ? 'dark' : 'light';
-          console.debug(`System theme changed to: ${newTheme}`);
+          logger.theme(`System theme changed to: ${newTheme}`);
           document.documentElement.setAttribute('data-theme', newTheme);
         }
       });
     });
   } catch (error) {
-    console.error('Error in immediate theme application:', error);
+    logger.error('Error in theme application:', error);
     // Fallback to system preference if all else fails
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const fallbackTheme = prefersDark ? 'dark' : 'light';
-    console.log('THEME DEBUG: Error fallback to system theme:', fallbackTheme);
+    logger.theme(`Error fallback to system theme: ${fallbackTheme}`);
     document.documentElement.setAttribute('data-theme', fallbackTheme);
     
     // Re-enable transitions even if there was an error
@@ -216,14 +209,14 @@ document.addEventListener('keyup', (event) => {
     
     // If there's already an active popup, and it's not us, we should close
     if (activePopupId && activePopupId !== popupInstanceId) {
-      console.log(`Another popup (${activePopupId}) is already active. This popup (${popupInstanceId}) will close.`);
+      logger.info(`Another popup (${activePopupId}) is active, closing this popup (${popupInstanceId})`);
       window.close();
       return; // Stop initialization
     }
     
     // Set ourselves as the active popup
     await chrome.storage.local.set({ activePopupId: popupInstanceId });
-    console.log(`Set this popup (${popupInstanceId}) as the active popup`);
+    logger.debug(`Set active popup ID: ${popupInstanceId}`);
     
     // Clean up when this popup is closed
     window.addEventListener('unload', async () => {
@@ -232,14 +225,14 @@ document.addEventListener('keyup', (event) => {
         const { activePopupId: currentActiveId } = await chrome.storage.local.get('activePopupId');
         if (currentActiveId === popupInstanceId) {
           await chrome.storage.local.remove('activePopupId');
-          console.log(`Removed this popup (${popupInstanceId}) as the active popup`);
+          logger.debug(`Removed active popup ID: ${popupInstanceId}`);
         }
       } catch (error) {
-        console.error('Error during popup unload cleanup:', error);
+        logger.error('Error during popup unload cleanup:', error);
       }
     });
   } catch (error) {
-    console.error('Error checking for old popups:', error);
+    logger.error('Error checking for old popups:', error);
   }
 })();
 
@@ -247,7 +240,7 @@ document.addEventListener('keyup', (event) => {
 let backgroundConnection;
 try {
   backgroundConnection = chrome.runtime.connect({ name: 'popup' });
-  console.log('Connected to background script for popup tracking');
+  logger.debug('Connected to background script for popup tracking');
   
   // Send our instance ID to the background script
   backgroundConnection.postMessage({ 
@@ -257,22 +250,22 @@ try {
   
   // Listen for messages from the background script
   backgroundConnection.onMessage.addListener((message) => {
-    console.log('Received message from background script:', message);
+    logger.debug('Background script message:', message.action);
     
     // If the background script tells us to close, do so
     if (message.action === 'closePopup') {
-      console.log('Closing popup at background script request:', message.reason);
+      logger.info(`Closing popup: ${message.reason}`);
       window.close();
     }
   });
   
   // Handle disconnection
   backgroundConnection.onDisconnect.addListener(() => {
-    console.log('Disconnected from background script');
+    logger.debug('Disconnected from background script');
     backgroundConnection = null;
   });
 } catch (error) {
-  console.error('Failed to connect to background script:', error);
+  logger.error('Failed to connect to background script:', error);
 }
 
 // Also periodically check if we're still the active popup (in case storage-based approach fails)
@@ -280,11 +273,11 @@ const activePopupCheck = setInterval(async () => {
   try {
     const { activePopupId } = await chrome.storage.local.get('activePopupId');
     if (activePopupId !== popupInstanceId) {
-      console.log(`No longer the active popup. Current active: ${activePopupId}, this popup: ${popupInstanceId}`);
+      logger.info(`No longer active popup. Current: ${activePopupId}, this: ${popupInstanceId}`);
       window.close();
     }
   } catch (error) {
-    console.error('Error during active popup check:', error);
+    logger.error('Error during active popup check:', error);
   }
 }, 2000); // Check every 2 seconds
 
@@ -293,18 +286,15 @@ window.addEventListener('unload', () => {
   clearInterval(activePopupCheck);
   
   // Clean up background connection
-  console.log('Popup window unloading, cleaning up connections');
+  logger.debug('Popup window unloading, cleaning up connections');
   if (backgroundConnection) {
     try {
       backgroundConnection.disconnect();
     } catch (error) {
-      console.error('Error disconnecting from background script:', error);
+      logger.error('Error disconnecting from background script:', error);
     }
   }
 });
-
-// Log information about scripts for debugging
-console.log('Currently loaded scripts:', Array.from(document.scripts).map(s => s.src || 'inline script'));
 
 // Add handler to detect potential DOM changes that might cause multiple script loading
 if (window.MutationObserver) {
@@ -315,7 +305,7 @@ if (window.MutationObserver) {
           node.tagName === 'SCRIPT' && (node.src && node.src.includes('popup.js'))
         );
         if (addedScripts.length > 0) {
-          console.error('===== POPUP.JS ADDED AGAIN TO DOM! =====', addedScripts);
+          logger.error('POPUP.JS ADDED AGAIN TO DOM!', addedScripts);
         }
       }
     }
@@ -341,7 +331,7 @@ let popupInitialized = false;
  * Notifies background script as early as possible about popup opening
  */
 (function earlyInitialize() {
-  console.log('Performing early popup initialization');
+  logger.init('Early popup initialization');
   try {
     // Notify background script immediately that popup is open
     chrome.runtime.sendMessage({
@@ -349,10 +339,10 @@ let popupInitialized = false;
       action: 'popupInitialized',
       timestamp: Date.now()
     }, (response) => {
-      console.log('Background acknowledged early popup initialization:', response);
+      logger.debug('Background acknowledged early initialization');
     });
   } catch (error) {
-    console.error('Error during early popup initialization:', error);
+    logger.error('Error during early popup initialization:', error);
   }
 })();
 
@@ -362,22 +352,20 @@ let popupInitialized = false;
 async function applyThemeFromPreferences() {
   // Avoid multiple theme application attempts in rapid succession
   if (window.themeApplicationInProgress) {
-    console.log('THEME DEBUG: Theme application already in progress, skipping duplicate call');
+    logger.theme('Theme application already in progress, skipping');
     return;
   }
   
   window.themeApplicationInProgress = true;
   
   try {
-    console.log('THEME DEBUG: applyThemeFromPreferences called');
+    logger.theme('Applying theme from preferences');
     
     // Get user preferences from Chrome storage
     const { userPreferences } = await chrome.storage.local.get('userPreferences');
-    console.log('THEME DEBUG: userPreferences in applyThemeFromPreferences:', userPreferences);
     
     // Default to system theme if no preference is set
     const themePreference = (userPreferences && userPreferences.theme) || 'system';
-    console.log('THEME DEBUG: Using theme from userPreferences:', themePreference);
     
     let effectiveTheme;
     
@@ -390,33 +378,29 @@ async function applyThemeFromPreferences() {
       // For 'system' or any invalid value, detect system preference
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       effectiveTheme = prefersDark ? 'dark' : 'light';
-      console.log('THEME DEBUG: In applyThemeFromPreferences, "system" resolved to:', effectiveTheme);
+      logger.theme(`System theme resolved to: ${effectiveTheme}`);
     }
     
     // Check if theme already matches what's applied
     const currentTheme = document.documentElement.getAttribute('data-theme');
-    console.log('THEME DEBUG: In applyThemeFromPreferences, current theme:', currentTheme, 'new theme:', effectiveTheme);
     
     if (currentTheme !== effectiveTheme) {
-      console.log('THEME DEBUG: In applyThemeFromPreferences, updating theme from', currentTheme, 'to', effectiveTheme);
+      logger.theme(`Updating theme: ${currentTheme} → ${effectiveTheme}`);
       document.documentElement.setAttribute('data-theme', effectiveTheme);
-    } else {
-      console.log('THEME DEBUG: In applyThemeFromPreferences, theme already correct, no change needed');
     }
     
     // Cache the theme preference in localStorage for immediate access next time
     try {
       localStorage.setItem('temp_theme_preference', themePreference); // Store the preference, not the resolved theme
-      console.log('THEME DEBUG: In applyThemeFromPreferences, updated localStorage to:', themePreference);
     } catch (e) {
-      console.warn('Could not cache theme in localStorage:', e);
+      logger.warn('Could not cache theme in localStorage:', e);
     }
     
     // Add a CSS class to indicate theme is loaded
     document.documentElement.classList.add('theme-ready');
     document.documentElement.classList.remove('theme-loading');
   } catch (error) {
-    console.error('Error applying theme from preferences:', error);
+    logger.error('Error applying theme from preferences:', error);
     // Fallback to system preference if all else fails
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const fallbackTheme = prefersDark ? 'dark' : 'light';
@@ -435,7 +419,7 @@ async function applyThemeFromPreferences() {
  * Initialize all UI components and set up their communication
  */
 async function initializeComponents() {
-  console.debug('Initializing components...');
+  logger.init('Initializing components');
   
   // Initialize all UI components
   chatComponent.initializeChatComponent();
@@ -445,12 +429,12 @@ async function initializeComponents() {
   
   // Assign chatComponent to window.chat for access from autoExecuteIfNeeded
   window.chat = chatComponent;
-  console.debug('Assigned chat component to window.chat for auto-execution support');
+  logger.debug('Assigned chat component to window.chat');
   
   // Set up component communication
   setupComponentCommunication();
   
-  console.debug('Components initialized successfully');
+  logger.success('Components initialized successfully');
   return true;
 }
 
@@ -459,7 +443,7 @@ async function initializeComponents() {
  */
 async function initializePopup() {
   try {
-    console.debug('Initializing popup...');
+    logger.init('Initializing popup');
 
     // Apply theme from user preferences
     await applyThemeFromPreferences();
@@ -470,17 +454,17 @@ async function initializePopup() {
     // Check for Chrome storage errors
     const lastError = chrome.runtime.lastError;
     if (lastError) {
-      console.error('Chrome storage error:', lastError);
+      logger.error('Chrome storage error:', lastError);
       // Handle error if needed
     }
 
     // Check if we have an API key
     const apiKeyExists = await checkApiKeyExists();
     if (!apiKeyExists) {
-      console.debug('No API key exists, showing settings page');
+      logger.debug('No API key exists, showing settings page');
       navigateToSettings();
     } else {
-      console.debug('API key exists, proceeding with initialization');
+      logger.debug('API key exists, proceeding with initialization');
       
       // Check one more time for Ctrl key state right before auto-execution
       const checkCtrlKeyBeforeExecution = () => {
@@ -496,13 +480,13 @@ async function initializePopup() {
         // Method 1: Check the window.ctrlKeyPressed global variable set by our detection methods
         if (window.ctrlKeyPressed === true) {
           ctrlKeyDetected = true;
-          console.debug('Ctrl key detected from window.ctrlKeyPressed global variable');
+          logger.ctrl('Ctrl key detected via window.ctrlKeyPressed');
         }
         
         // Method 2: Check our local ctrlKeyPressed variable
         if (ctrlKeyPressed === true) {
           ctrlKeyDetected = true;
-          console.debug('Ctrl key detected from local ctrlKeyPressed variable');
+          logger.ctrl('Ctrl key detected via local ctrlKeyPressed');
         }
         
         // Method 3: Check if Ctrl key is currently pressed using browser APIs
@@ -512,10 +496,10 @@ async function initializePopup() {
             navigator.keyboard.getLayoutMap().then(keyMap => {
               if (keyMap.has('MetaLeft') || keyMap.has('MetaRight')) {
                 ctrlKeyDetected = true;
-                console.debug('Command key detected via Keyboard API on Mac');
+                logger.ctrl('Command key detected via Keyboard API on Mac');
                 monitorCtrlKeyState(true);
               }
-            }).catch(err => console.debug('Keyboard API error:', err));
+            }).catch(err => logger.debug('Keyboard API error:', err));
           }
         } else {
           // Use Ctrl key on other platforms
@@ -523,39 +507,36 @@ async function initializePopup() {
             navigator.keyboard.getLayoutMap().then(keyMap => {
               if (keyMap.has('ControlLeft') || keyMap.has('ControlRight')) {
                 ctrlKeyDetected = true;
-                console.debug('Ctrl key detected via Keyboard API');
+                logger.ctrl('Ctrl key detected via Keyboard API');
                 monitorCtrlKeyState(true);
               }
-            }).catch(err => console.debug('Keyboard API error:', err));
+            }).catch(err => logger.debug('Keyboard API error:', err));
           }
         }
         
         // Method 4: Use event.ctrlKey if available (unlikely, but worth checking)
         if (window.event?.ctrlKey) {
           ctrlKeyDetected = true;
-          console.debug('Ctrl key detected via window.event.ctrlKey');
+          logger.ctrl('Ctrl key detected via window.event.ctrlKey');
           monitorCtrlKeyState(true);
         } else if (window.event?.metaKey && navigator.userAgent.indexOf('Mac') !== -1) {
           ctrlKeyDetected = true;
-          console.debug('Command key detected via window.event.metaKey on Mac');
+          logger.ctrl('Command key detected via window.event.metaKey on Mac');
           monitorCtrlKeyState(true);
         }
         
         // Final check: If any method detected Ctrl key, update all variables
         if (ctrlKeyDetected) {
-          console.debug('Ctrl key detected in final comprehensive check before auto-execution');
+          logger.ctrl('Ctrl key detected in final check before auto-execution');
           monitorCtrlKeyState(true);
-        } else {
-          console.debug('Ctrl key not detected in final comprehensive check');
         }
         
-        // Only attempt auto-execution after popup is fully initialized, input is focused,
-        // and the Ctrl key is not pressed
+        // Only attempt auto-execution if Ctrl key is not pressed
         if (!ctrlKeyDetected) {
-          console.log('Proceeding with auto-execution - Ctrl key not detected');
+          logger.info('Proceeding with auto-execution - Ctrl key not detected');
           autoExecuteIfNeeded();
         } else {
-          console.log('Skipping auto-execution - Ctrl key detected');
+          logger.info('Skipping auto-execution - Ctrl key detected');
         }
       };
       
@@ -563,7 +544,7 @@ async function initializePopup() {
       setTimeout(checkCtrlKeyBeforeExecution, 100);
     }
   } catch (error) {
-    console.error('Error in popup initialization:', error);
+    logger.error('Error in popup initialization:', error);
   }
 }
 
@@ -574,7 +555,7 @@ function setupComponentCommunication() {
   // When a session is selected in history, notify chat component
   window.addEventListener('open-session', (event) => {
     const session = event.detail;
-    console.log('Open session event received:', session);
+    logger.session(`Open session event: ${session?.pageLoadId}`);
     
     // Switch to chat tab
     document.getElementById('chat-tab').click();
@@ -592,7 +573,7 @@ function setupComponentCommunication() {
   // When settings are changed, notify other components
   window.addEventListener('settings-changed', (event) => {
     const { settings } = event.detail;
-    console.log('Settings changed event received:', settings);
+    logger.debug(`Settings changed: ${Object.keys(settings).join(', ')}`);
     
     // Apply theme changes immediately
     if (settings.theme) {
@@ -607,7 +588,7 @@ function setupComponentCommunication() {
         // For 'system' or any invalid value, detect system preference
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         effectiveTheme = prefersDark ? 'dark' : 'light';
-        console.debug(`System theme detected as: ${effectiveTheme}`);
+        logger.theme(`System theme resolved to: ${effectiveTheme}`);
       }
       
       // Apply the theme to the HTML element
@@ -615,10 +596,9 @@ function setupComponentCommunication() {
       
       // Cache the theme preference in localStorage
       try {
-        localStorage.setItem('temp_theme_preference', settings.theme); // Store the preference, not the resolved theme
-        console.log('THEME DEBUG: Updated localStorage theme preference to:', settings.theme);
+        localStorage.setItem('temp_theme_preference', settings.theme);
       } catch (e) {
-        console.warn('Could not cache theme in localStorage:', e);
+        logger.warn('Could not cache theme in localStorage:', e);
       }
     }
     
@@ -633,7 +613,7 @@ function setupComponentCommunication() {
   // When chat session is updated, notify history component
   window.addEventListener('chat-session-updated', (event) => {
     const { session } = event.detail;
-    console.log('Chat session updated:', session);
+    logger.session('Chat session updated');
     
     // Notify history component to refresh
     window.dispatchEvent(new CustomEvent('session-updated', {
@@ -657,14 +637,14 @@ async function checkApiKeyExists() {
     // Return true if we have a successful response with data
     return response.success && !!response.data;
   } catch (error) {
-    console.error('Error checking if API key exists:', error);
+    logger.error('Error checking if API key exists:', error);
     
     // Try direct storage access as fallback
     try {
       const result = await chrome.storage.local.get('openai_api_key');
       return !!result.openai_api_key;
     } catch (storageError) {
-      console.error('Error accessing storage for API key check:', storageError);
+      logger.error('Error accessing storage for API key check:', storageError);
       return false;
     }
   }
@@ -685,7 +665,7 @@ function navigateToSettings() {
  */
 async function autoExecuteIfNeeded() {
   try {
-    console.debug('Running auto-execute checks...');
+    logger.debug('Running auto-execute checks');
     
     // First get the current tab information
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -693,18 +673,16 @@ async function autoExecuteIfNeeded() {
     const url = tab?.url;
     
     if (!tabId || !url) {
-      console.debug('Could not get valid tab information for auto-execute, aborting');
+      logger.debug('Invalid tab information, aborting auto-execute');
       return;
     }
-    
-    console.debug('Current tab:', { tabId, url });
     
     // Check user preferences for auto-execute setting
     const { userPreferences } = await chrome.storage.local.get('userPreferences');
     const autoExecuteEnabled = userPreferences?.autoExecute !== false; // Default to true if not specified
     
     if (!autoExecuteEnabled) {
-      console.debug('Auto-execute disabled in user preferences, aborting');
+      logger.debug('Auto-execute disabled in preferences');
       return;
     }
     
@@ -713,49 +691,46 @@ async function autoExecuteIfNeeded() {
     const userInput = global_last_user_input;
     
     if (!userInput || !userInput.trim()) {
-      console.debug('No valid user input found for auto-execution, aborting');
+      logger.debug('No valid user input found for auto-execution');
       return;
     }
     
-    console.debug('Found potential input for auto-execution:', userInput.substring(0, 30) + (userInput.length > 30 ? '...' : ''));
+    logger.debug(`Input for auto-execution: "${userInput.substring(0, 30)}${userInput.length > 30 ? '...' : ''}"`);
     
-    // *** CRITICAL: Use window.ctrlKeyPressed directly for the most up-to-date state
-    // We read from window.ctrlKeyPressed which gets updated from all the detection methods
+    // Use window.ctrlKeyPressed for the most up-to-date state
     const isCtrlPressed = window.ctrlKeyPressed === true;
-    console.debug('Checking Ctrl key state (window.ctrlKeyPressed):', isCtrlPressed);
     
     // If the Ctrl key is not pressed, auto-execute the command
     if (!isCtrlPressed) {
-      console.debug('Ctrl key not detected, proceeding with auto-execution');
+      logger.info('Auto-executing command - Ctrl key not detected');
       
       // Set the input in the chat component
       const messageInput = document.getElementById('message-input');
       if (messageInput) {
         messageInput.value = userInput;
       } else {
-        console.error('Message input element not found');
+        logger.error('Message input element not found');
         return;
       }
       
       // More robust approach to execute with a retry mechanism
-      // with proper validation of the chat module
       let retryCount = 0;
-      const maxRetries = 5; // Increased from 3 to 5 for more retries
+      const maxRetries = 5;
       const retryInterval = 200; // 200ms between retries
-      const maxWaitTime = 3000; // Increased from 2000ms to 3000ms for more time to initialize
+      const maxWaitTime = 3000; // Maximum wait time
       
       const startTime = Date.now();
       
       const tryExecute = async () => {
         // Check if we've been trying too long regardless of retry count
         if (Date.now() - startTime > maxWaitTime) {
-          console.error(`Timeout reached waiting for chat module initialization after ${maxWaitTime}ms`);
+          logger.error(`Timeout reached after ${maxWaitTime}ms waiting for chat initialization`);
           return;
         }
         
         // Check again if Ctrl key was pressed during our retry attempts
         if (window.ctrlKeyPressed === true) {
-          console.debug('Ctrl key detected during execution retry, aborting auto-execution');
+          logger.ctrl('Ctrl key detected during execution retry, aborting');
           return;
         }
         
@@ -763,26 +738,23 @@ async function autoExecuteIfNeeded() {
         if (typeof window.chat === 'undefined' || !window.chat || typeof window.chat.executeCommand !== 'function') {
           retryCount++;
           if (retryCount <= maxRetries) {
-            console.debug(`Chat module not properly initialized, retrying in ${retryInterval}ms (attempt ${retryCount}/${maxRetries})`);
+            logger.debug(`Chat module not initialized, retrying (${retryCount}/${maxRetries})`);
             setTimeout(tryExecute, retryInterval);
           } else {
-            console.error('Chat module not initialized after maximum retries, cannot auto-execute');
+            logger.error('Chat module not initialized after maximum retries');
           }
           return;
         }
         
         try {
-          // Ensure the content script is properly loaded in the tab by sending a test message
+          // Ensure the content script is properly loaded in the tab
           try {
             // Try a ping to see if the content script is ready
             const pingResponse = await chrome.tabs.sendMessage(tabId, { action: 'ping' })
-              .catch(error => {
-                console.debug('Content script not ready yet:', error);
-                return null;
-              });
+              .catch(error => null);
               
             if (!pingResponse || !pingResponse.pong) {
-              console.debug('Content script needs initialization, asking background script to reinject');
+              logger.debug('Content script needs initialization, requesting injection');
               // Ask background script to inject the content script if needed
               await chrome.runtime.sendMessage({ 
                 action: 'injectContentScript', 
@@ -792,28 +764,28 @@ async function autoExecuteIfNeeded() {
               // Wait a bit for the injection to complete
               await new Promise(resolve => setTimeout(resolve, 500));
             } else {
-              console.debug('Content script already initialized');
+              logger.debug('Content script already initialized');
             }
           } catch (scriptError) {
-            console.debug('Error checking content script status:', scriptError);
+            logger.debug('Error checking content script status');
             // Continue anyway as we'll retry execution
           }
           
-          // Check again if Ctrl key was pressed during our content script check
+          // Check again if Ctrl key was pressed
           if (window.ctrlKeyPressed === true) {
-            console.debug('Ctrl key detected after content script initialization, aborting auto-execution');
+            logger.ctrl('Ctrl key detected after content script check, aborting');
             return;
           }
           
           // Execute the stored command
-          console.debug('Chat module ready, executing command');
+          logger.success('Executing command');
           window.chat.executeCommand();
         } catch (execError) {
-          console.error('Error during command execution:', execError);
+          logger.error('Error during command execution:', execError);
           // If execution failed, try one more time after a delay
           if (retryCount < maxRetries) {
             retryCount++;
-            console.debug(`Command execution failed, retrying in ${retryInterval * 2}ms (attempt ${retryCount}/${maxRetries})`);
+            logger.debug(`Execution failed, retrying (${retryCount}/${maxRetries})`);
             setTimeout(tryExecute, retryInterval * 2);
           }
         }
@@ -822,20 +794,20 @@ async function autoExecuteIfNeeded() {
       // Start the execution attempt
       tryExecute();
     } else {
-      console.debug('Ctrl key detected, skipping auto-execution');
+      logger.info('Skipping auto-execution - Ctrl key detected');
     }
   } catch (error) {
-    console.error('Error in auto-execution:', error);
+    logger.error('Error in auto-execution:', error);
   }
 }
 
 // Apply theme as early as possible, before DOMContentLoaded
 applyThemeFromPreferences().catch(error => {
-  console.error('Error applying early theme:', error);
+  logger.error('Error applying early theme:', error);
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Popup DOMContentLoaded event fired');
+  logger.init('Popup DOM loaded');
   
   // Add fade-in animation for visual smoothness
   const popupContainer = document.querySelector('.popup-container');
@@ -847,6 +819,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Also try to initialize immediately if document is already complete
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  console.log('Document already ready, initializing popup immediately');
+  logger.init('Document already ready, initializing popup immediately');
   initializePopup();
 } 

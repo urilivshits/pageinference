@@ -20,8 +20,9 @@ import {
   STACKOVERFLOW_SYSTEM_PROMPT
 } from '../shared/prompts/website-specific.js';
 
-// Import OpenAI service
+// Import OpenAI service and logger
 import openaiApi from './api/openai.js';
+import logger from '../shared/utils/logger.js';
 
 // Global variables to store service references
 let messageHandler = null;
@@ -76,7 +77,7 @@ const STORAGE_KEYS_CONSTANTS = {
  */
 async function initialize() {
   try {
-    console.log('Background script initializing');
+    logger.init('Background script initializing', null, 'background');
     
     // Set up simple references without ES modules
     STORAGE_KEYS = STORAGE_KEYS_CONSTANTS;
@@ -109,27 +110,24 @@ async function initialize() {
       // Get session list from storage
       getSessionList: async function() {
         const sessions = await storageService.getValue(STORAGE_KEYS.CHAT_SESSIONS, []);
-        console.log(`Retrieved ${sessions.length} sessions from storage`);
+        logger.session(`Retrieved ${sessions.length} chat sessions`);
         return sessions;
       },
       
       // Get a specific chat session
       getSession: async function(sessionId) {
-        console.log('chatService.getSession called with sessionId:', sessionId);
+        logger.session(`Getting session: ${sessionId}`);
         
         if (!sessionId) {
-          console.warn('No sessionId provided to getSession');
+          logger.warn('No sessionId provided to getSession');
           return null;
         }
         
         const sessions = await this.getSessionList();
         const session = sessions.find(session => session.pageLoadId === sessionId);
         
-        if (session) {
-          console.log('Session found:', session.pageLoadId);
-        } else {
-          console.warn('Session not found with ID:', sessionId);
-          console.log('Available session IDs:', sessions.map(s => s.pageLoadId));
+        if (!session) {
+          logger.session(`Session not found: ${sessionId}`);
         }
         
         return session || null;
@@ -137,20 +135,18 @@ async function initialize() {
       
       // Get session by URL
       getSessionByUrl: async function(url) {
-        console.log('chatService.getSessionByUrl called with URL:', url);
+        logger.session(`Getting session by URL: ${url}`);
         
         if (!url) {
-          console.warn('No URL provided to getSessionByUrl');
+          logger.warn('No URL provided to getSessionByUrl');
           return null;
         }
         
         const sessions = await this.getSessionList();
         const session = sessions.find(session => session.url === url);
         
-        if (session) {
-          console.log('Session found by URL, pageLoadId:', session.pageLoadId);
-        } else {
-          console.warn('No session found with URL:', url);
+        if (!session) {
+          logger.session(`No session found for URL: ${url}`);
         }
         
         return session || null;
@@ -159,11 +155,11 @@ async function initialize() {
       // Create a new chat session
       createSession: async function(sessionData) {
         if (!sessionData.pageLoadId) {
-          console.error('Cannot create session without pageLoadId');
+          logger.error('Cannot create session without pageLoadId');
           throw new Error('pageLoadId is required to create a session');
         }
         
-        console.log('Creating new chat session with pageLoadId:', sessionData.pageLoadId);
+        logger.session(`Creating new chat session: ${sessionData.pageLoadId}`);
         
         const sessions = await this.getSessionList();
         
@@ -171,7 +167,7 @@ async function initialize() {
         const existingIndex = sessions.findIndex(s => s.pageLoadId === sessionData.pageLoadId);
         
         if (existingIndex !== -1) {
-          console.log('Session with this pageLoadId already exists, updating instead');
+          logger.session('Session already exists, updating instead');
           sessions[existingIndex] = {
             ...sessions[existingIndex],
             ...sessionData,
@@ -186,25 +182,23 @@ async function initialize() {
         
         // Return the newly created or updated session
         const createdSession = await this.getSession(sessionData.pageLoadId);
-        console.log('Session created successfully:', sessionData.pageLoadId);
+        logger.session('Session created successfully');
         return createdSession;
       },
       
       // Update an existing chat session
       updateSession: async function(sessionData) {
         if (!sessionData.pageLoadId) {
-          console.error('Cannot update session without pageLoadId');
+          logger.error('Cannot update session without pageLoadId');
           throw new Error('pageLoadId is required to update a session');
         }
         
-        console.log('Updating chat session with pageLoadId:', sessionData.pageLoadId);
+        logger.session(`Updating session: ${sessionData.pageLoadId}`);
         
         const sessions = await this.getSessionList();
         const index = sessions.findIndex(s => s.pageLoadId === sessionData.pageLoadId);
         
         if (index !== -1) {
-          console.log('Found session to update at index:', index);
-          
           // Update existing session with new data
           sessions[index] = {
             ...sessions[index],
@@ -212,7 +206,7 @@ async function initialize() {
             lastUpdated: Date.now()
           };
         } else {
-          console.warn('Session not found for update, creating new session:', sessionData.pageLoadId);
+          logger.session('Session not found, creating new one');
           // Add as new session if not found
           sessions.unshift({
             ...sessionData,
@@ -225,12 +219,13 @@ async function initialize() {
         
         // Return the updated session
         const updatedSession = await this.getSession(sessionData.pageLoadId);
-        console.log('Session updated successfully:', sessionData.pageLoadId);
+        logger.session('Session updated successfully');
         return updatedSession;
       },
       
       // Delete a chat session
       deleteSession: async function(pageLoadId) {
+        logger.session(`Deleting session: ${pageLoadId}`);
         const sessions = await this.getSessionList();
         const filteredSessions = sessions.filter(s => s.pageLoadId !== pageLoadId);
         await storageService.setValue(STORAGE_KEYS.CHAT_SESSIONS, filteredSessions);
@@ -245,11 +240,11 @@ async function initialize() {
     // Check if this is a first install or an update
     chrome.runtime.onInstalled.addListener(async (details) => {
       if (details.reason === 'install') {
-        console.log('Extension installed');
+        logger.info('Extension installed', null, 'background');
         await handleFirstInstall();
       } else if (details.reason === 'update') {
         const previousVersion = details.previousVersion;
-        console.log(`Extension updated from ${previousVersion} to ${chrome.runtime.getManifest().version}`);
+        logger.info(`Extension updated from ${previousVersion} to ${chrome.runtime.getManifest().version}`, null, 'background');
         await handleUpdate(previousVersion);
       }
     });
@@ -257,7 +252,7 @@ async function initialize() {
     // Initialize debug mode if enabled
     const debugMode = await storageService.getValue(STORAGE_KEYS.DEBUG_MODE, false);
     if (debugMode) {
-      console.log('Debug mode enabled');
+      logger.info('Debug mode enabled', null, 'background');
       await storageService.storeDebugLog({
         type: 'initialization',
         message: 'Background script initialized',
@@ -265,10 +260,10 @@ async function initialize() {
       });
     }
     
-    console.log('Background script initialized');
+    logger.success('Background script initialized successfully', null, 'background');
     return true;
   } catch (error) {
-    console.error('Error initializing background script:', error);
+    logger.error('Error initializing background script:', error);
     return false;
   }
 }
@@ -301,7 +296,7 @@ async function cleanupLegacyStorage() {
         await chrome.tabs.get(parseInt(tabId));
       } catch (e) {
         // Tab doesn't exist anymore, mark all its keys for removal
-        console.log(`Cleaning up storage for closed tab ${tabId}`);
+        logger.debug(`Cleaning up storage for closed tab ${tabId}`);
         for (const key of Object.keys(allStorageItems)) {
           if (key.includes(`_tab_${tabId}`)) {
             keysToRemove.push(key);
@@ -312,14 +307,11 @@ async function cleanupLegacyStorage() {
     
     // Run cleanup if we found keys to remove
     if (keysToRemove.length > 0) {
-      console.log('Removing legacy/closed tab storage keys:', keysToRemove);
+      logger.debug(`Removing ${keysToRemove.length} stale storage keys`);
       await chrome.storage.local.remove(keysToRemove);
     }
-    
-    // We'll keep the global keys for now for backward compatibility,
-    // but we could remove them in a future version
   } catch (error) {
-    console.error('Error cleaning up storage:', error);
+    logger.error('Error cleaning up storage:', error);
   }
 }
 
@@ -330,14 +322,14 @@ function setupMessageListeners() {
   // Setup long-lived connections to track popup instances
   chrome.runtime.onConnect.addListener(port => {
     if (port.name === 'popup') {
-      console.log(`New popup connected with ID: ${port.sender.contextId}`);
+      logger.debug(`New popup connected: ${port.sender.contextId}`);
       let registeredPopupId = null;
       
       // Listen for registration message from the popup
       port.onMessage.addListener((message) => {
         if (message.action === 'registerPopup' && message.popupId) {
           registeredPopupId = message.popupId;
-          console.log(`Popup registered with ID: ${registeredPopupId}`);
+          logger.debug(`Popup registered: ${registeredPopupId}`);
           
           // Close any other open popups
           closeOtherPopups(port.sender.contextId, registeredPopupId);
@@ -353,7 +345,7 @@ function setupMessageListeners() {
       
       // Listen for disconnect to remove from tracked popups
       port.onDisconnect.addListener(() => {
-        console.log(`Popup disconnected: ${port.sender.contextId}, registered ID: ${registeredPopupId}`);
+        logger.debug(`Popup disconnected: ${registeredPopupId || port.sender.contextId}`);
         activePopupPorts = activePopupPorts.filter(p => p !== port);
         
         if (lastActivePopupId === port.sender.contextId) {
@@ -366,7 +358,7 @@ function setupMessageListeners() {
           chrome.storage.local.get('activePopupId', ({activePopupId}) => {
             if (activePopupId === registeredPopupId) {
               chrome.storage.local.remove('activePopupId');
-              console.log(`Cleared disconnected popup ID from storage: ${registeredPopupId}`);
+              logger.debug(`Cleared popup ID from storage: ${registeredPopupId}`);
             }
           });
         }
@@ -375,14 +367,14 @@ function setupMessageListeners() {
   });
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Received message:', message);
+    logger.debug(`Received message: ${message.type || message.action}`);
     
     // Support both message.type and message.action for backwards compatibility
     const messageType = message.type || message.action;
     
     // Special handling for popup initialization event
     if (messageType === 'popupInitialized') {
-      console.debug('Popup initialized, running storage cleanup');
+      logger.debug('Popup initialized, running storage cleanup');
       cleanupLegacyStorage();
       sendResponse({ success: true });
       return true;
@@ -390,7 +382,7 @@ function setupMessageListeners() {
     
     if (message.action === 'getCtrlKeyState') {
       const tabId = message.tabId;
-      console.debug(`Getting Ctrl key state for tab ${tabId}`);
+      logger.debug(`Getting Ctrl key state for tab ${tabId}`);
 
       chrome.storage.local.get(null, (items) => {
         // Check tab-specific keys first
@@ -405,7 +397,7 @@ function setupMessageListeners() {
         const isPressed = tabSpecificPressed || globalPressed;
         const isPending = tabSpecificPending || globalPending;
         
-        console.debug(`Ctrl key state for tab ${tabId}:`, {
+        logger.debug(`Ctrl key state for tab ${tabId}:`, {
           tabSpecific: { pressed: tabSpecificPressed, pending: tabSpecificPending },
           global: { pressed: globalPressed, pending: globalPending },
           final: { ctrlKeyPressed: isPressed, ctrlClickPending: isPending }
@@ -422,7 +414,7 @@ function setupMessageListeners() {
 
     if (message.action === 'clearCtrlKeyState') {
       const tabId = message.tabId;
-      console.debug(`Clearing Ctrl key state for tab ${tabId}`);
+      logger.debug(`Clearing Ctrl key state for tab ${tabId}`);
       
       // Clear both tab-specific and global states
       const keysToUpdate = {
@@ -436,7 +428,7 @@ function setupMessageListeners() {
       };
       
       chrome.storage.local.set(keysToUpdate, () => {
-        console.debug('Ctrl key state cleared');
+        logger.debug('Ctrl key state cleared');
         sendResponse({ success: true });
       });
       
@@ -448,12 +440,12 @@ function setupMessageListeners() {
       // API key related messages
       'get_api_key': async () => {
         try {
-          console.log('Getting API key');
+          logger.log('Getting API key');
           const apiKey = await storageService.getValue(STORAGE_KEYS.API_KEY, null);
-          console.log('API key exists:', !!apiKey);
+          logger.log('API key exists:', !!apiKey);
           return { success: true, data: apiKey };
         } catch (error) {
-          console.error('Error retrieving API key:', error);
+          logger.error('Error retrieving API key:', error);
           return { success: false, error: error.message };
         }
       },
@@ -464,7 +456,7 @@ function setupMessageListeners() {
           await storageService.setValue(STORAGE_KEYS.API_KEY, apiKey);
           return { success: true };
         } catch (error) {
-          console.error('Error setting API key:', error);
+          logger.error('Error setting API key:', error);
           return { success: false, error: error.message };
         }
       },
@@ -475,7 +467,7 @@ function setupMessageListeners() {
           // For now, we'll just return success
           return { success: true };
         } catch (error) {
-          console.error('Error testing API key:', error);
+          logger.error('Error testing API key:', error);
           return { success: false, error: error.message };
         }
       },
@@ -486,7 +478,7 @@ function setupMessageListeners() {
           const settings = await storageService.getValue(STORAGE_KEYS.USER_PREFERENCES, {});
           return { success: true, data: settings };
         } catch (error) {
-          console.error('Error retrieving settings:', error);
+          logger.error('Error retrieving settings:', error);
           return { success: false, error: error.message };
         }
       },
@@ -496,7 +488,7 @@ function setupMessageListeners() {
           const settings = await storageService.getValue(STORAGE_KEYS.USER_PREFERENCES, {});
           return { success: true, data: settings };
         } catch (error) {
-          console.error('Error retrieving user preferences:', error);
+          logger.error('Error retrieving user preferences:', error);
           return { success: false, error: error.message };
         }
       },
@@ -508,7 +500,7 @@ function setupMessageListeners() {
           await storageService.setValue(STORAGE_KEYS.USER_PREFERENCES, updatedSettings);
           return { success: true, data: updatedSettings };
         } catch (error) {
-          console.error('Error updating user preferences:', error);
+          logger.error('Error updating user preferences:', error);
           return { success: false, error: error.message };
         }
       },
@@ -519,7 +511,7 @@ function setupMessageListeners() {
           await storageService.setValue(STORAGE_KEYS.USER_PREFERENCES, settings);
           return { success: true };
         } catch (error) {
-          console.error('Error saving settings:', error);
+          logger.error('Error saving settings:', error);
           return { success: false, error: error.message };
         }
       },
@@ -544,7 +536,7 @@ function setupMessageListeners() {
           
           return { success: true, data: sessions };
         } catch (error) {
-          console.error('Error retrieving session list:', error);
+          logger.error('Error retrieving session list:', error);
           return { success: false, error: error.message };
         }
       },
@@ -555,7 +547,7 @@ function setupMessageListeners() {
           const session = await chatService.getSession(sessionId);
           return { success: true, data: session };
         } catch (error) {
-          console.error('Error retrieving session:', error);
+          logger.error('Error retrieving session:', error);
           return { success: false, error: error.message };
         }
       },
@@ -567,28 +559,28 @@ function setupMessageListeners() {
           let session = null;
           
           // Log the request parameters for debugging
-          console.log('GET_CHAT_SESSION request params:', { url, sessionId, pageLoadId });
+          logger.log('GET_CHAT_SESSION request params:', { url, sessionId, pageLoadId });
           
           // Try to get by pageLoadId or sessionId first
           if (pageLoadId) {
-            console.log('Looking up session by pageLoadId:', pageLoadId);
+            logger.log('Looking up session by pageLoadId:', pageLoadId);
             session = await chatService.getSession(pageLoadId);
           } else if (sessionId) {
-            console.log('Looking up session by sessionId:', sessionId);
+            logger.log('Looking up session by sessionId:', sessionId);
             session = await chatService.getSession(sessionId);
           }
           
           // If not found and URL is provided, try by URL
           if (!session && url) {
-            console.log('Session not found by ID, looking up by URL:', url);
+            logger.log('Session not found by ID, looking up by URL:', url);
             session = await chatService.getSessionByUrl(url);
           }
           
-          console.log('GET_CHAT_SESSION result:', session ? 'Session found' : 'Session not found');
+          logger.log('GET_CHAT_SESSION result:', session ? 'Session found' : 'Session not found');
           
           return { success: true, data: session };
         } catch (error) {
-          console.error('Error retrieving chat session:', error);
+          logger.error('Error retrieving chat session:', error);
           return { success: false, error: error.message };
         }
       },
@@ -607,10 +599,10 @@ function setupMessageListeners() {
             }, 0);
             
             sessionData.pageLoadId = `session_${timestamp}_${Math.abs(urlHash)}`;
-            console.log('Generated pageLoadId:', sessionData.pageLoadId);
+            logger.log('Generated pageLoadId:', sessionData.pageLoadId);
           } else if (!sessionData.pageLoadId) {
             sessionData.pageLoadId = `session_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
-            console.log('Generated random pageLoadId:', sessionData.pageLoadId);
+            logger.log('Generated random pageLoadId:', sessionData.pageLoadId);
           }
           
           const session = await chatService.createSession({
@@ -621,7 +613,7 @@ function setupMessageListeners() {
           
           return { success: true, data: session };
         } catch (error) {
-          console.error('Error creating chat session:', error);
+          logger.error('Error creating chat session:', error);
           return { success: false, error: error.message };
         }
       },
@@ -640,7 +632,7 @@ function setupMessageListeners() {
           
           return { success: true, data: session };
         } catch (error) {
-          console.error('Error updating chat session:', error);
+          logger.error('Error updating chat session:', error);
           return { success: false, error: error.message };
         }
       },
@@ -655,7 +647,7 @@ function setupMessageListeners() {
           await chatService.deleteSession(pageLoadId);
           return { success: true };
         } catch (error) {
-          console.error('Error deleting chat session:', error);
+          logger.error('Error deleting chat session:', error);
           return { success: false, error: error.message };
         }
       },
@@ -675,7 +667,7 @@ function setupMessageListeners() {
             }
           };
         } catch (error) {
-          console.error('Error checking model availability:', error);
+          logger.error('Error checking model availability:', error);
           return { success: false, error: error.message };
         }
       },
@@ -683,14 +675,14 @@ function setupMessageListeners() {
       // Content script initialization
       'contentScriptInitialized': async () => {
         try {
-          console.log('Content script initialized at:', message.url);
+          logger.log('Content script initialized at:', message.url);
           // Store any initialization state if needed
           return { 
             success: true, 
             message: 'Content script initialization acknowledged'
           };
         } catch (error) {
-          console.error('Error handling content script initialization:', error);
+          logger.error('Error handling content script initialization:', error);
           return { success: false, error: error.message };
         }
       },
@@ -713,7 +705,7 @@ function setupMessageListeners() {
             tabCtrlKeyStates[tabId].pending = true;
             tabCtrlKeyStates[tabId].timestamp = timestamp;
             
-            console.log(`Ctrl key press detected for tab ${tabId}, storing state`);
+            logger.log(`Ctrl key press detected for tab ${tabId}, storing state`);
             
             // Store in local storage using tab-specific keys
             chrome.storage.local.set({ 
@@ -746,10 +738,10 @@ function setupMessageListeners() {
           // Reset after a delay to prevent auto-execution issues
           setTimeout(() => {
             if (tabId && tabCtrlKeyStates[tabId]) {
-              console.log(`Auto-clearing ctrlClickPending after timeout for tab ${tabId}`);
+              logger.log(`Auto-clearing ctrlClickPending after timeout for tab ${tabId}`);
               tabCtrlKeyStates[tabId].pending = false;
             } else {
-              console.log('Auto-clearing global ctrlClickPending after timeout');
+              logger.log('Auto-clearing global ctrlClickPending after timeout');
                 ctrlClickPending = false;
               }
             }, 5000);
@@ -761,7 +753,7 @@ function setupMessageListeners() {
       'getCtrlKeyState': async () => {
         const tabId = message.tabId;
         
-        console.log(`Getting Ctrl key state for tab ${tabId || 'global'}`);
+        logger.log(`Getting Ctrl key state for tab ${tabId || 'global'}`);
         
         let finalCtrlKeyState = false;
         let finalCtrlClickPending = false;
@@ -785,7 +777,7 @@ function setupMessageListeners() {
             finalCtrlClickPending = storedTabState[`ctrlClickPending_tab_${tabId}`] === true;
             finalTimestamp = storedTabState[`ctrlKeyPressTimestamp_tab_${tabId}`] || 0;
             
-            console.log(`Tab-specific Ctrl state for tab ${tabId}:`, {
+            logger.log(`Tab-specific Ctrl state for tab ${tabId}:`, {
               pressed: finalCtrlKeyState,
               pending: finalCtrlClickPending,
               timestamp: finalTimestamp
@@ -829,7 +821,7 @@ function setupMessageListeners() {
               finalTimestamp = storedGlobalState.ctrlKeyPressTimestamp;
             }
             
-            console.log('Global Ctrl state (fallback):', {
+            logger.log('Global Ctrl state (fallback):', {
               pressed: storedGlobalState.ctrlKeyPressed === true,
               pending: storedGlobalState.ctrlClickPending === true,
               timestamp: storedGlobalState.ctrlKeyPressTimestamp || 0
@@ -847,11 +839,11 @@ function setupMessageListeners() {
             }
           }
         } catch (error) {
-          console.error('Error checking stored Ctrl state:', error);
+          logger.error('Error checking stored Ctrl state:', error);
         }
         
         // Add a debug log with final result
-        console.log('Final Ctrl key state to return:', {
+        logger.log('Final Ctrl key state to return:', {
           ctrlKeyPressed: finalCtrlKeyState,
           ctrlClickPending: finalCtrlClickPending,
           timestamp: finalTimestamp
@@ -869,9 +861,9 @@ function setupMessageListeners() {
         
         // Different log message based on whether we're clearing globally or for a specific tab
         if (tabId) {
-          console.log(`Clearing Ctrl key state for tab ${tabId}`);
+          logger.log(`Clearing Ctrl key state for tab ${tabId}`);
         } else {
-          console.log('Clearing global Ctrl key state');
+          logger.log('Clearing global Ctrl key state');
         }
         
         // Reset memory state
@@ -900,7 +892,7 @@ function setupMessageListeners() {
           
           if (keysToRemove.length > 0) {
             await chrome.storage.local.remove(keysToRemove);
-            console.log('Cleared all Ctrl key storage entries:', keysToRemove);
+            logger.log('Cleared all Ctrl key storage entries:', keysToRemove);
           }
         }
         
@@ -909,14 +901,14 @@ function setupMessageListeners() {
       
       // Default handler
       'default': async () => {
-        console.warn('Unknown message type:', messageType);
+        logger.warn('Unknown message type:', messageType);
         return { success: false, error: 'Unknown message type' };
       },
       
       'getTabId': async () => {
         // Get the tab ID of the sender tab
         if (sender && sender.tab && sender.tab.id) {
-          console.log(`Content script requested its tab ID, returning: ${sender.tab.id}`);
+          logger.log(`Content script requested its tab ID, returning: ${sender.tab.id}`);
           return { 
             success: true, 
             tabId: sender.tab.id
@@ -928,7 +920,7 @@ function setupMessageListeners() {
       // Add handler for check_ctrl_key message type
       'check_ctrl_key': async () => {
         const tabId = message.tabId;
-        console.log(`Checking Ctrl key state for tab ${tabId || 'global'}`);
+        logger.log(`Checking Ctrl key state for tab ${tabId || 'global'}`);
         
         const isPending = tabId && tabCtrlKeyStates[tabId] ? 
           tabCtrlKeyStates[tabId].pending : 
@@ -946,7 +938,7 @@ function setupMessageListeners() {
         const isPressed = message.isPressed;
         const tabId = sender && sender.tab && sender.tab.id;
         
-        console.log(`Received ctrlKeyState message, isPressed=${isPressed}, tabId=${tabId}`);
+        logger.log(`Received ctrlKeyState message, isPressed=${isPressed}, tabId=${tabId}`);
         
         if (tabId) {
           // Initialize tab state object if needed
@@ -972,7 +964,7 @@ function setupMessageListeners() {
             // Auto-clear after timeout
             setTimeout(() => {
               if (tabCtrlKeyStates[tabId]) {
-                console.log(`Auto-clearing ctrlClickPending for tab ${tabId} after timeout`);
+                logger.log(`Auto-clearing ctrlClickPending for tab ${tabId} after timeout`);
                 tabCtrlKeyStates[tabId].pending = false;
                 chrome.storage.local.set({
                   [`ctrlClickPending_tab_${tabId}`]: false
@@ -992,7 +984,7 @@ function setupMessageListeners() {
       
       // Add handler for linkedinContentUpdated message type
       'linkedinContentUpdated': async () => {
-        console.log('LinkedIn content updated, potentially refreshing scraper data');
+        logger.log('LinkedIn content updated, potentially refreshing scraper data');
         
         // Extract any relevant data from message
         const url = message.url || (sender && sender.tab && sender.tab.url);
@@ -1001,7 +993,7 @@ function setupMessageListeners() {
         // Store info about the updated content if needed
         if (tabId && url) {
           // You could store information about the updated content here
-          console.log(`LinkedIn content updated for tab ${tabId} at ${url}`);
+          logger.log(`LinkedIn content updated for tab ${tabId} at ${url}`);
         }
         
         return { success: true };
@@ -1009,13 +1001,13 @@ function setupMessageListeners() {
       
       // Add handler for windowFocusChanged message type
       'windowFocusChanged': async () => {
-        console.log('Window focus changed event received');
+        logger.log('Window focus changed event received');
         
         const tabId = sender && sender.tab && sender.tab.id;
         const hasFocus = message.hasFocus === true;
         
         if (tabId) {
-          console.log(`Window focus for tab ${tabId} changed to: ${hasFocus}`);
+          logger.log(`Window focus for tab ${tabId} changed to: ${hasFocus}`);
           
           // You might want to update tab focus tracking here
           // This is useful for knowing which tab the user is currently looking at
@@ -1026,7 +1018,7 @@ function setupMessageListeners() {
       
       // Add handler for send_user_message message type
       'send_user_message': async () => {
-        console.log('Handling send_user_message request');
+        logger.log('Handling send_user_message request');
         
         try {
           const { 
@@ -1046,7 +1038,7 @@ function setupMessageListeners() {
           }
           
           // Log request details
-          console.log('Send user message request details:', {
+          logger.log('Send user message request details:', {
             pageLoadId,
             messageText: userMessage.substring(0, 50) + (userMessage.length > 50 ? '...' : ''),
             hasPageContent: !!pageContent,
@@ -1074,7 +1066,7 @@ function setupMessageListeners() {
               lastUpdated: Date.now()
             };
             
-            console.log('Creating new session:', sessionData);
+            logger.log('Creating new session:', sessionData);
             session = await chatService.createSession(sessionData);
           }
           
@@ -1112,7 +1104,7 @@ function setupMessageListeners() {
                   systemPrompt = generatePageAwarePrompt(url);
                   }
                 } catch (e) {
-                console.error('Error determining site-specific prompt:', e);
+                logger.error('Error determining site-specific prompt:', e);
               }
             }
           }
@@ -1160,7 +1152,7 @@ function setupMessageListeners() {
           await chatService.updateSession(session);
           
           // Call OpenAI API
-          console.log(`Calling OpenAI API with model ${model || 'default'} and ${messages.length} messages`);
+          logger.log(`Calling OpenAI API with model ${model || 'default'} and ${messages.length} messages`);
           
           // Get API key
           const apiKey = await storageService.getValue(STORAGE_KEYS.API_KEY);
@@ -1221,14 +1213,14 @@ function setupMessageListeners() {
             }
           };
         } catch (error) {
-          console.error('Error processing user message:', error);
+          logger.error('Error processing user message:', error);
           return { success: false, error: error.message };
         }
       },
       
       'scrape_page_content': async () => {
         try {
-          console.log('Handling page content scraping request');
+          logger.log('Handling page content scraping request');
           
           // Get tab to scrape (either specified or active tab)
           let tab;
@@ -1236,7 +1228,7 @@ function setupMessageListeners() {
             try {
               tab = await chrome.tabs.get(message.tabId);
             } catch (error) {
-              console.error('Failed to get tab with ID:', message.tabId, error);
+              logger.error('Failed to get tab with ID:', message.tabId, error);
               return { success: false, error: 'Tab not found or inaccessible' };
             }
           } else {
@@ -1248,13 +1240,13 @@ function setupMessageListeners() {
             tab = tabs[0];
           }
           
-          console.log('Processing scrape request for tab:', tab.id, tab.url);
+          logger.log('Processing scrape request for tab:', tab.id, tab.url);
           
           // Call the helper function that handles the actual scraping
           const result = await processScrapeTabRequest(tab);
           return result;
         } catch (error) {
-          console.error('Error processing page scraping request:', error);
+          logger.error('Error processing page scraping request:', error);
           return { 
             success: false, 
             error: error.message || 'Unknown error scraping page',
@@ -1271,7 +1263,7 @@ function setupMessageListeners() {
             throw new Error('tabId is required for content script injection');
           }
           
-          console.log(`Handling request to inject content script into tab ${tabId}`);
+          logger.log(`Handling request to inject content script into tab ${tabId}`);
           
           await injectContentScriptIfNeeded(tabId);
           
@@ -1280,7 +1272,7 @@ function setupMessageListeners() {
             message: `Content script injected into tab ${tabId}` 
           };
         } catch (error) {
-          console.error('Error injecting content script:', error);
+          logger.error('Error injecting content script:', error);
           return { 
             success: false, 
             error: error.message 
@@ -1300,7 +1292,7 @@ function setupMessageListeners() {
     handler().then(response => {
       sendResponse(response);
     }).catch(error => {
-      console.error('Error handling message:', error);
+      logger.error('Error handling message:', error);
       sendResponse({ success: false, error: error.message });
     });
     
@@ -1316,17 +1308,17 @@ function setupExtensionHandlers() {
   // Handle extension installation
   chrome.runtime.onInstalled.addListener(async ({ reason, previousVersion }) => {
     if (reason === 'install') {
-      console.log('Extension installed');
+      logger.log('Extension installed');
       await handleFirstInstall();
     } else if (reason === 'update') {
-      console.log(`Extension updated from ${previousVersion}`);
+      logger.log(`Extension updated from ${previousVersion}`);
       await handleUpdate(previousVersion);
     }
   });
   
   // Handle extension startup
   chrome.runtime.onStartup.addListener(() => {
-    console.log('Extension started');
+    logger.log('Extension started');
   });
 }
 
@@ -1403,7 +1395,7 @@ async function performDataMigrations(previousVersion) {
   
   // Example: If updating from before version 2.0.0
   if (versionParts[0] < 2) {
-    console.log('Performing migration for pre-2.0.0 version');
+    logger.log('Performing migration for pre-2.0.0 version');
     
     // Here you would perform data migrations specific to this version change
     // For example, moving data from one storage format to another
@@ -1419,7 +1411,7 @@ async function performDataMigrations(previousVersion) {
  */
 async function injectContentScriptIfNeeded(tabId) {
   try {
-    console.log('Injecting content script into tab:', tabId);
+    logger.log('Injecting content script into tab:', tabId);
     
     // Check if we can execute scripts in this tab
     await chrome.scripting.executeScript({
@@ -1433,9 +1425,9 @@ async function injectContentScriptIfNeeded(tabId) {
       files: ['content.js']
     });
     
-    console.log('Content script injected successfully');
+    logger.success('Content script injected successfully', null, 'background');
   } catch (error) {
-    console.error('Error injecting content script:', error);
+    logger.error('Error injecting content script:', error);
     throw error;
   }
 }
@@ -1446,11 +1438,11 @@ async function injectContentScriptIfNeeded(tabId) {
  * @returns {object} - Response object with scraped content or error
  */
 async function processScrapeTabRequest(tab) {
-  console.log('Processing scrape request for tab:', tab.id, tab.url, 'in window:', tab.windowId);
+  logger.log('Processing scrape request for tab:', tab.id, tab.url, 'in window:', tab.windowId);
   
   // Check if we can scrape this URL (avoid chrome:// urls etc.)
   if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-    console.warn('Cannot scrape content from this type of URL:', tab.url);
+    logger.warn('Cannot scrape content from this type of URL:', tab.url);
     return { 
       success: false, 
       error: 'Cannot scrape content from this type of URL',
@@ -1464,11 +1456,11 @@ async function processScrapeTabRequest(tab) {
   
   // Try to send a message to the content script
   try {
-    console.log('Sending scrapeContent message to tab:', tab.id);
+    logger.log('Sending scrapeContent message to tab:', tab.id);
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
     
     if (!response || !response.content) {
-      console.warn('Content script returned empty or invalid response');
+      logger.warn('Content script returned empty or invalid response');
       return { 
         success: false, 
         error: 'Failed to retrieve content from page',
@@ -1480,7 +1472,7 @@ async function processScrapeTabRequest(tab) {
       };
     }
     
-    console.log(`Successfully scraped ${response.content.length} characters from page`);
+    logger.log(`Successfully scraped ${response.content.length} characters from page`);
     return { 
       success: true, 
       data: {
@@ -1490,10 +1482,10 @@ async function processScrapeTabRequest(tab) {
       }
     };
   } catch (error) {
-    console.error('Error communicating with content script:', error);
+    logger.error('Error communicating with content script:', error);
     
     // Since content script communication failed, try injecting the content script
-    console.log('Attempting to inject content script and retry...');
+    logger.log('Attempting to inject content script and retry...');
     try {
       await injectContentScriptIfNeeded(tab.id);
       
@@ -1501,14 +1493,14 @@ async function processScrapeTabRequest(tab) {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Try again after injection
-      console.log('Retrying scrapeContent after script injection');
+      logger.log('Retrying scrapeContent after script injection');
       const retryResponse = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
       
       if (!retryResponse || !retryResponse.content) {
         throw new Error('Content script returned empty response after injection');
       }
       
-      console.log(`Successfully scraped ${retryResponse.content.length} characters after script injection`);
+      logger.log(`Successfully scraped ${retryResponse.content.length} characters after script injection`);
       return { 
         success: true, 
         data: {
@@ -1518,7 +1510,7 @@ async function processScrapeTabRequest(tab) {
         }
       };
     } catch (retryError) {
-      console.error('Failed to scrape content after script injection:', retryError);
+      logger.error('Failed to scrape content after script injection:', retryError);
       return { 
         success: false, 
         error: 'Failed to scrape page content after script injection',
@@ -1538,7 +1530,7 @@ async function processScrapeTabRequest(tab) {
  * @param {string} currentPopupId - The unique popup ID to keep open
  */
 function closeOtherPopups(currentContextId, currentPopupId) {
-  console.log(`Closing all popups except: contextId=${currentContextId}, popupId=${currentPopupId}`);
+  logger.log(`Closing all popups except: contextId=${currentContextId}, popupId=${currentPopupId}`);
   
   // Update the active popup ID in storage
   chrome.storage.local.set({ activePopupId: currentPopupId });
@@ -1547,14 +1539,14 @@ function closeOtherPopups(currentContextId, currentPopupId) {
   activePopupPorts.forEach(port => {
     if (port.sender.contextId !== currentContextId) {
       try {
-        console.log(`Sending close message to popup: ${port.sender.contextId}`);
+        logger.log(`Sending close message to popup: ${port.sender.contextId}`);
         port.postMessage({ 
           action: 'closePopup', 
           reason: 'Another popup was opened',
           newActivePopupId: currentPopupId
         });
       } catch (error) {
-        console.error(`Error sending close message to popup: ${port.sender.contextId}`, error);
+        logger.error(`Error sending close message to popup: ${port.sender.contextId}`, error);
       }
     }
   });
@@ -1568,7 +1560,7 @@ function setupBrowserActionClickHandler() {
   // We'll add a listener for the onClicked event that Chrome provides for browser actions
   // This won't fire when popup is present, but will help us track Ctrl key state
   chrome.action.onClicked.addListener(async (tab) => {
-    console.log('Browser action clicked, letting Chrome handle popup opening');
+    logger.log('Browser action clicked, letting Chrome handle popup opening');
   });
   
   // Note: Ctrl key detection is now handled in the main message listener
@@ -1579,7 +1571,7 @@ function setupBrowserActionClickHandler() {
 async function handleDoubleClick(tab) {
   // This function is kept for backward compatibility
   // but is no longer used with our new approach
-  console.log('Legacy function: handleDoubleClick is no longer used');
+  logger.log('Legacy function: handleDoubleClick is no longer used');
 }
 
 /**
@@ -1588,14 +1580,14 @@ async function handleDoubleClick(tab) {
 function setupKeyboardCommandHandler() {
   // Listen for keyboard shortcuts
   chrome.commands.onCommand.addListener(async (command) => {
-    console.log('Keyboard command received:', command);
+    logger.log('Keyboard command received:', command);
     
     if (command === 'run-page-inference') {
       try {
         // Get the active tab
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tabs || !tabs.length) {
-          console.error('No active tab found');
+          logger.error('No active tab found');
           return;
         }
         
@@ -1624,12 +1616,12 @@ function setupKeyboardCommandHandler() {
         );
         
         if (sortedSessions.length === 0) {
-          console.log('No previous chat sessions found for current domain');
+          logger.log('No previous chat sessions found for current domain');
           return;
         }
         
         const mostRecentSession = sortedSessions[0];
-        console.log('Found most recent session:', mostRecentSession);
+        logger.log('Found most recent session:', mostRecentSession);
         
         // Get the most recent user message
         let lastUserMessage = null;
@@ -1651,7 +1643,7 @@ function setupKeyboardCommandHandler() {
         }
         
         if (!lastUserMessage) {
-          console.log('No previous user message found to execute');
+          logger.log('No previous user message found to execute');
           return;
         }
         
@@ -1666,7 +1658,7 @@ function setupKeyboardCommandHandler() {
           }
         });
         
-        console.log('Stored last user input for execution:', lastUserMessage);
+        logger.log('Stored last user input for execution:', lastUserMessage);
         
         // Set badge to indicate the shortcut was used
         await chrome.action.setBadgeText({ text: '↵' });
@@ -1683,7 +1675,7 @@ function setupKeyboardCommandHandler() {
           }, i * 400 + 200);
         }
       } catch (error) {
-        console.error('Error handling keyboard command:', error);
+        logger.error('Error handling keyboard command:', error);
       }
     }
   });

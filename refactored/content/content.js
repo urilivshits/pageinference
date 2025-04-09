@@ -7,8 +7,9 @@
  * 3. Handling user interactions on the page
  */
 
-// Import scrapers
+// Import scrapers and logger
 import { scrapeCurrentPage } from './scrapers/index.js';
+import logger from '../shared/utils/logger.js';
 
 // Track initialization status
 window.__pageInferenceInitialized = false;
@@ -17,26 +18,26 @@ window.__pageInferenceInitialized = false;
 function initialize() {
   // Only initialize once
   if (window.__pageInferenceInitialized) {
-    console.log('Content script already initialized, skipping re-initialization');
+    logger.debug('Content script already initialized, skipping re-initialization');
     return;
   }
   
-  console.log(`Initializing content script on ${window.location.href}, document state: ${document.readyState}`);
+  logger.init(`Initializing content script on ${window.location.href}`);
   
   // If document isn't ready yet, wait for it
   if (document.readyState !== 'complete' && document.readyState !== 'interactive') {
-    console.log('Document not ready, waiting for DOMContentLoaded event');
+    logger.debug('Document not ready, waiting for DOMContentLoaded');
     document.addEventListener('DOMContentLoaded', setupContentScript);
     // Also set a timeout as a fallback
     setTimeout(() => {
       if (!window.__pageInferenceInitialized) {
-        console.log('Timeout reached, forcing initialization');
+        logger.debug('Timeout reached, forcing initialization');
         setupContentScript();
       }
     }, 1000);
   } else {
     // Document is ready, initialize now
-    console.log('Document ready, initializing immediately');
+    logger.debug('Document ready, initializing immediately');
     setupContentScript();
   }
 }
@@ -47,18 +48,17 @@ function setupContentScript() {
   
   // Listen for messages from the popup or background script
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('Content script received message:', request);
+    logger.debug(`Received message: ${request.action}`);
     
     // Handle content scraping request
     if (request.action === 'scrapeContent') {
-      console.log('Scraping page content...');
+      logger.debug('Scraping page content');
       try {
         const pageContent = scrapeCurrentPage();
-        console.log('Scraped content length:', pageContent.length);
+        logger.debug(`Scraped content length: ${pageContent.length} characters`);
         sendResponse({ content: pageContent });
-        console.log('Sent response with content');
       } catch (error) {
-        console.error('Error during content scraping:', error);
+        logger.error('Error during content scraping:', error);
         sendResponse({ 
           error: 'Error scraping content: ' + error.message,
           content: `Error extracting content from ${window.location.href}. ${error.message}`
@@ -69,7 +69,7 @@ function setupContentScript() {
     
     // Handle ping to check if content script is initialized
     if (request.action === 'ping') {
-      sendResponse({ success: true, initialized: true });
+      sendResponse({ pong: true, initialized: true });
       return true;
     }
     
@@ -79,7 +79,7 @@ function setupContentScript() {
   });
 
   window.__pageInferenceInitialized = true;
-  console.log('Page Inference content script initialized successfully');
+  logger.success('Content script initialized successfully');
   
   // Broadcast initialization status to ensure background script knows we're ready
   try {
@@ -89,9 +89,9 @@ function setupContentScript() {
       url: window.location.href,
       timestamp: Date.now()
     });
-    console.log('Sent initialization confirmation to background script');
+    logger.debug('Sent initialization confirmation to background');
   } catch (e) {
-    console.warn('Failed to send initialization confirmation:', e);
+    logger.warn('Failed to send initialization confirmation:', e);
   }
   
   // Set up keyboard event listeners (for Ctrl key state)
@@ -117,7 +117,7 @@ function setupKeyListeners() {
         action: 'ctrlKeyState', 
         isPressed: isPressed 
       }, (response) => {
-        console.log(`Content script sent Ctrl key=${isPressed}, response:`, response);
+        logger.ctrl(`Sent Ctrl key state: ${isPressed ? 'pressed' : 'released'}`);
       });
     }, delay);
   }
@@ -150,7 +150,7 @@ function setupKeyListeners() {
           action: 'ctrlKeyState', 
           isPressed: false 
         }, (response) => {
-          console.log('Content script sent Ctrl key reset on blur, response:', response);
+          logger.ctrl('Reset Ctrl key state on window blur');
         });
       }, 500); // Longer delay on blur
     }
@@ -161,6 +161,8 @@ function setupKeyListeners() {
     action: 'ctrlKeyState', 
     isPressed: false 
   });
+  
+  logger.debug('Keyboard event listeners initialized');
 }
 
 // Start initialization
@@ -169,9 +171,7 @@ initialize();
 // Add a failsafe initialization for slow loading pages
 setTimeout(() => {
   if (!window.__pageInferenceInitialized) {
-    console.log('Delayed initialization triggered');
+    logger.debug('Triggering delayed initialization');
     initialize();
-  } else {
-    console.log('Delayed initialization not needed, already initialized');
   }
 }, 1500); 
