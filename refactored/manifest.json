@@ -46,5 +46,13 @@
       ],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "commands": {
+    "run-page-inference": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "Run inference on the current page using the last query"
+    }
+  }
 } 

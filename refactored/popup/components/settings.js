@@ -300,18 +300,30 @@ async function loadSettings() {
  * @param {string} theme - The theme to apply
  */
 function applyTheme(theme) {
+	console.log('THEME DEBUG: applyTheme called in settings.js with theme:', theme);
+	
+	let effectiveTheme = theme;
+	
 	if (theme === "system") {
 		// Check system preference
 		const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-		document.body.setAttribute("data-theme", prefersDark ? "dark" : "light");
-
-		// Listen for system theme changes
-		window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
-			document.body.setAttribute("data-theme", e.matches ? "dark" : "light");
-		});
-	} else {
-		document.body.setAttribute("data-theme", theme);
+		effectiveTheme = prefersDark ? "dark" : "light";
+		console.log('THEME DEBUG: In settings.js, "system" theme resolved to:', effectiveTheme);
 	}
+	
+	// Check if theme is already correctly set
+	const currentTheme = document.body.getAttribute("data-theme");
+	console.log('THEME DEBUG: In settings.js, current theme:', currentTheme, 'effectiveTheme:', effectiveTheme);
+	
+	if (currentTheme !== effectiveTheme) {
+		console.log('THEME DEBUG: In settings.js, updating theme from', currentTheme, 'to', effectiveTheme);
+		document.body.setAttribute("data-theme", effectiveTheme);
+	} else {
+		console.log('THEME DEBUG: In settings.js, theme already correct, not changing');
+	}
+	
+	// Store the effective theme in localStorage for immediate access on next popup
+	localStorage.setItem('temp_theme_preference', effectiveTheme);
 }
 
 /**

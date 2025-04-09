@@ -17,6 +17,106 @@ if (window.popupJsInitialized) {
 const popupInstanceId = Date.now() + '-' + Math.random().toString(36).substring(2, 15);
 console.log(`Popup instance ID: ${popupInstanceId}`);
 
+// Apply theme immediately, before anything else renders
+(function applyThemeImmediately() {
+  try {
+    console.debug('Applying theme immediately on script load');
+    
+    // IMPORTANT: First make sure we don't have an old separate 'theme' key in storage
+    // that might conflict with the proper 'userPreferences.theme'
+    chrome.storage.local.remove('theme', () => {
+      console.log('THEME DEBUG: Removed any direct "theme" key to avoid conflicts');
+    });
+    
+    // First try to read from localStorage for instant application
+    const cachedTheme = localStorage.getItem('temp_theme_preference');
+    console.log('THEME DEBUG: cachedTheme from localStorage:', cachedTheme);
+    
+    if (cachedTheme) {
+      console.debug(`Applying cached theme from localStorage: ${cachedTheme}`);
+      document.documentElement.classList.add('theme-loading');
+      document.body.setAttribute('data-theme', cachedTheme);
+    } else {
+      // Default to system preference if no cached theme
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const defaultTheme = prefersDark ? 'dark' : 'light';
+      console.log('THEME DEBUG: System preference detected as:', prefersDark ? 'dark' : 'light');
+      console.debug(`No cached theme, using system preference: ${defaultTheme}`);
+      document.documentElement.classList.add('theme-loading');
+      document.body.setAttribute('data-theme', defaultTheme);
+    }
+    
+    // Immediately try to get the actual user preference from Chrome storage
+    // This runs asynchronously so it won't block the initial render
+    chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
+      console.log('THEME DEBUG: userPreferences from Chrome storage:', userPreferences);
+      
+      if (userPreferences && userPreferences.theme) {
+        const theme = userPreferences.theme;
+        console.log('THEME DEBUG: Theme preference from Chrome storage:', theme);
+        
+        let effectiveTheme = theme;
+        
+        // For "system" theme, detect system preference
+        if (theme === 'system') {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          effectiveTheme = prefersDark ? 'dark' : 'light';
+          console.log('THEME DEBUG: "system" theme resolved to:', effectiveTheme);
+        }
+        
+        // Only update DOM if the effective theme is different from what's already applied
+        const currentTheme = document.body.getAttribute('data-theme');
+        console.log('THEME DEBUG: Current theme in DOM:', currentTheme, 'New effectiveTheme:', effectiveTheme);
+        
+        if (currentTheme !== effectiveTheme) {
+          console.log('THEME DEBUG: Updating theme from', currentTheme, 'to', effectiveTheme);
+          document.body.setAttribute('data-theme', effectiveTheme);
+        } else {
+          console.log('THEME DEBUG: Theme already correct, no change needed');
+        }
+        
+        // Update localStorage to match for next popup open
+        try {
+          localStorage.setItem('temp_theme_preference', effectiveTheme);
+          console.log('THEME DEBUG: Updated localStorage theme to:', effectiveTheme);
+        } catch (e) {
+          console.warn('Could not update cached theme in localStorage:', e);
+        }
+      }
+      
+      // Add the ready class to signal theme is fully processed
+      document.documentElement.classList.add('theme-ready');
+      document.documentElement.classList.remove('theme-loading');
+    });
+    
+    // Get all stored keys for diagnosis
+    chrome.storage.local.get(null, (result) => {
+      console.log('THEME DEBUG: All Chrome storage keys:', Object.keys(result));
+      if (result.theme) {
+        console.log('THEME DEBUG: Direct "theme" key found in Chrome storage:', result.theme);
+      }
+    });
+    
+    // Set up a listener for system theme changes
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    darkModeMediaQuery.addEventListener('change', (e) => {
+      // Only apply if the theme is set to "system"
+      chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
+        if (userPreferences?.theme === 'system') {
+          const newTheme = e.matches ? 'dark' : 'light';
+          console.debug(`System theme changed to: ${newTheme}`);
+          document.body.setAttribute('data-theme', newTheme);
+          localStorage.setItem('temp_theme_preference', newTheme);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error in immediate theme application:', error);
+    // Fallback to light theme if all else fails
+    document.body.setAttribute('data-theme', 'light');
+  }
+})();
+
 // Store our ID in local storage to detect and close old popups
 (async function checkAndCloseOldPopups() {
   try {
@@ -166,26 +266,150 @@ let popupInitialized = false;
 })();
 
 /**
- * Main initialization function for the popup
+ * Apply theme from user preferences
  */
-function initializePopup() {
-  if (popupInitialized) {
-    console.warn('Popup already initialized, skipping');
-    return;
+async function applyThemeFromPreferences() {
+  try {
+    console.log('THEME DEBUG: applyThemeFromPreferences called');
+    const { userPreferences } = await chrome.storage.local.get('userPreferences');
+    console.log('THEME DEBUG: userPreferences in applyThemeFromPreferences:', userPreferences);
+    
+    if (userPreferences && userPreferences.theme) {
+      const theme = userPreferences.theme;
+      console.log('THEME DEBUG: Using theme from userPreferences:', theme);
+      
+      let effectiveTheme = theme;
+      
+      // Special handling for "system" theme - detect system preference
+      if (theme === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        effectiveTheme = prefersDark ? 'dark' : 'light';
+        console.log('THEME DEBUG: In applyThemeFromPreferences, "system" resolved to:', effectiveTheme);
+      }
+      
+      // Check if theme already matches what's applied
+      const currentTheme = document.body.getAttribute('data-theme');
+      console.log('THEME DEBUG: In applyThemeFromPreferences, current theme:', currentTheme, 'new theme:', effectiveTheme);
+      
+      if (currentTheme !== effectiveTheme) {
+        console.log('THEME DEBUG: In applyThemeFromPreferences, updating theme from', currentTheme, 'to', effectiveTheme);
+        document.body.setAttribute('data-theme', effectiveTheme);
+        
+        // Cache the effective theme in localStorage for immediate access next time
+        try {
+          localStorage.setItem('temp_theme_preference', effectiveTheme);
+          console.log('THEME DEBUG: In applyThemeFromPreferences, updated localStorage to:', effectiveTheme);
+        } catch (e) {
+          console.warn('Could not cache theme in localStorage:', e);
+        }
+      } else {
+        console.log('THEME DEBUG: In applyThemeFromPreferences, theme already correct, no change needed');
+      }
+      
+      // Add a CSS class to indicate theme is loaded
+      document.documentElement.classList.add('theme-ready');
+      document.documentElement.classList.remove('theme-loading');
+    } else {
+      console.log('THEME DEBUG: No theme found in storage, using system default');
+      // Apply system theme as default
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const defaultTheme = prefersDark ? 'dark' : 'light';
+      console.log('THEME DEBUG: System preference is:', defaultTheme);
+      
+      // Check if already applied
+      const currentTheme = document.body.getAttribute('data-theme');
+      if (currentTheme !== defaultTheme) {
+        console.log('THEME DEBUG: Updating theme from', currentTheme, 'to', defaultTheme);
+        document.body.setAttribute('data-theme', defaultTheme);
+        
+        // Cache this theme
+        try {
+          localStorage.setItem('temp_theme_preference', defaultTheme);
+          console.log('THEME DEBUG: Updated localStorage to:', defaultTheme);
+        } catch (e) {
+          console.warn('Could not cache theme in localStorage:', e);
+        }
+      } else {
+        console.log('THEME DEBUG: Theme already correct, no change needed');
+      }
+      
+      document.documentElement.classList.add('theme-ready');
+      document.documentElement.classList.remove('theme-loading');
+    }
+  } catch (error) {
+    console.error('Error applying theme from preferences:', error);
+    // Fallback to light theme
+    document.body.setAttribute('data-theme', 'light');
+    document.documentElement.classList.add('theme-ready');
+    document.documentElement.classList.remove('theme-loading');
   }
+}
+
+/**
+ * Initialize all UI components and set up their communication
+ */
+async function initializeComponents() {
+  console.debug('Initializing components...');
   
-  console.log('Initializing popup');
-  
-  // Initialize all components
+  // Initialize all UI components
   chatComponent.initializeChatComponent();
   settingsComponent.initializeSettingsComponent();
   historyComponent.initializeHistoryComponent();
   controlsComponent.initializeControlsComponent();
   
-  // Mark as initialized
-  popupInitialized = true;
+  // Assign chatComponent to window.chat for access from autoExecuteIfNeeded
+  window.chat = chatComponent;
+  console.debug('Assigned chat component to window.chat for auto-execution support');
   
-  console.log('Popup initialization complete');
+  // Set up component communication
+  setupComponentCommunication();
+  
+  console.debug('Components initialized successfully');
+  return true;
+}
+
+/**
+ * Main initialization function for the popup
+ */
+async function initializePopup() {
+  try {
+    console.debug('Initializing popup...');
+
+    // Apply theme from user preferences
+    await applyThemeFromPreferences();
+
+    // Initialize the components
+    await initializeComponents();
+
+    // Check for Chrome storage errors
+    const lastError = chrome.runtime.lastError;
+    if (lastError) {
+      console.error('Chrome storage error:', lastError);
+      // Handle error if needed
+    }
+
+    // Check if we have an API key
+    const apiKeyExists = await checkApiKeyExists();
+    if (!apiKeyExists) {
+      console.debug('No API key exists, showing settings page');
+      navigateToSettings();
+    } else {
+      console.debug('API key exists, proceeding with initialization');
+      
+      // Set focus on input after everything is properly initialized
+      setTimeout(() => {
+        const inputElement = document.getElementById('message-input');
+        if (inputElement) {
+          inputElement.focus();
+        }
+        
+        // Only attempt auto-execution after popup is fully initialized and input is focused
+        autoExecuteIfNeeded();
+      }, 100);
+    }
+  } catch (error) {
+    console.error('Error in popup initialization:', error);
+  }
 }
 
 /**
@@ -217,7 +441,24 @@ function setupComponentCommunication() {
     
     // Apply theme changes immediately
     if (settings.theme) {
-      document.body.setAttribute('data-theme', settings.theme);
+      let effectiveTheme = settings.theme;
+      
+      // Special handling for "system" theme - detect system preference
+      if (settings.theme === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        effectiveTheme = prefersDark ? 'dark' : 'light';
+        console.debug(`System theme detected as: ${effectiveTheme}`);
+      }
+      
+      // Apply the theme to the document
+      document.body.setAttribute('data-theme', effectiveTheme);
+      
+      // Cache the effective theme in localStorage
+      try {
+        localStorage.setItem('temp_theme_preference', effectiveTheme);
+      } catch (e) {
+        console.warn('Could not cache theme in localStorage:', e);
+      }
     }
     
     // Notify chat component of relevant changes
@@ -241,103 +482,165 @@ function setupComponentCommunication() {
 }
 
 /**
- * Check if API key is set, show appropriate UI if not
+ * Check if API key exists in storage
+ * This function is specifically used to determine if we should show settings on startup
+ * @returns {Promise<boolean>} Whether API key exists
  */
-async function checkApiKey() {
+async function checkApiKeyExists() {
   try {
+    // Try getting the API key from background script
     const response = await chrome.runtime.sendMessage({
       type: 'get_api_key'
     });
     
-    const hasApiKey = response.success && response.data;
-    
-    if (!hasApiKey) {
-      // Show API key notice and switch to settings tab
-      console.log('No API key found, showing settings tab');
-      document.getElementById('settings-tab').click();
-      
-      // Show API key notice
-      const notice = document.createElement('div');
-      notice.classList.add('api-key-notice');
-      notice.innerHTML = `
-        <p>Please enter your OpenAI API key to use the extension.</p>
-        <p>You can get an API key from <a href="https://platform.openai.com/account/api-keys" target="_blank">OpenAI's website</a>.</p>
-      `;
-      
-      const apiKeyInput = document.getElementById('api-key-input');
-      if (apiKeyInput) {
-        apiKeyInput.parentNode.insertBefore(notice, apiKeyInput);
-        apiKeyInput.focus();
-      }
-    }
+    // Return true if we have a successful response with data
+    return response.success && !!response.data;
   } catch (error) {
-    console.error('Error checking API key:', error);
+    console.error('Error checking if API key exists:', error);
+    
+    // Try direct storage access as fallback
+    try {
+      const result = await chrome.storage.local.get('openai_api_key');
+      return !!result.openai_api_key;
+    } catch (storageError) {
+      console.error('Error accessing storage for API key check:', storageError);
+      return false;
+    }
   }
 }
+
+/**
+ * Navigate to settings tab
+ */
+function navigateToSettings() {
+  const settingsTab = document.getElementById('settings-tab');
+  if (settingsTab) {
+    settingsTab.click();
+  }
+}
+
+/**
+ * Auto-execute if needed based on user preferences and stored input
+ */
+async function autoExecuteIfNeeded() {
+  try {
+    console.debug('Running auto-execute checks...');
+    
+    // First get the current tab information
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tabId = tab?.id;
+    const url = tab?.url;
+    
+    if (!tabId || !url) {
+      console.debug('Could not get valid tab information for auto-execute, aborting');
+      return;
+    }
+    
+    console.debug('Current tab:', { tabId, url });
+    
+    // Check user preferences for auto-execute setting
+    const { userPreferences } = await chrome.storage.local.get('userPreferences');
+    const autoExecuteEnabled = userPreferences?.autoExecute !== false; // Default to true if not specified
+    
+    if (!autoExecuteEnabled) {
+      console.debug('Auto-execute disabled in user preferences, aborting');
+      return;
+    }
+    
+    // Get the last user input that was saved
+    const { global_last_user_input } = await chrome.storage.local.get('global_last_user_input');
+    const userInput = global_last_user_input;
+    
+    if (!userInput || !userInput.trim()) {
+      console.debug('No valid user input found for auto-execution, aborting');
+      return;
+    }
+    
+    console.debug('Found potential input for auto-execution:', userInput.substring(0, 30) + (userInput.length > 30 ? '...' : ''));
+    
+    // Check if Ctrl key is pressed by asking the background script
+    const ctrlCheckResponse = await chrome.runtime.sendMessage({ 
+      action: 'check_ctrl_key', 
+      tabId: tabId
+    });
+    
+    const ctrlKeyPressed = ctrlCheckResponse && ctrlCheckResponse.ctrlKeyPressed;
+    console.debug('Ctrl key state from background script:', ctrlKeyPressed);
+    
+    // If the Ctrl key is not pressed, auto-execute the command
+    if (!ctrlKeyPressed) {
+      console.debug('Auto-executing command, Ctrl key not pressed');
+      
+      // Set the input in the chat component
+      const messageInput = document.getElementById('message-input');
+      if (messageInput) {
+        messageInput.value = userInput;
+      } else {
+        console.error('Message input element not found');
+        return;
+      }
+      
+      // More robust approach to execute with a retry mechanism
+      // with proper validation of the chat module
+      let retryCount = 0;
+      const maxRetries = 5; // Increased from 3 to 5 for more retries
+      const retryInterval = 200; // 200ms between retries
+      const maxWaitTime = 2000; // Maximum 2 seconds total wait time
+      
+      const startTime = Date.now();
+      
+      const tryExecute = () => {
+        // Check if we've been trying too long regardless of retry count
+        if (Date.now() - startTime > maxWaitTime) {
+          console.error(`Timeout reached waiting for chat module initialization after ${maxWaitTime}ms`);
+          return;
+        }
+        
+        // Check if chat module is properly initialized
+        if (typeof window.chat === 'undefined' || !window.chat || typeof window.chat.executeCommand !== 'function') {
+          retryCount++;
+          if (retryCount <= maxRetries) {
+            console.debug(`Chat module not properly initialized, retrying in ${retryInterval}ms (attempt ${retryCount}/${maxRetries})`);
+            setTimeout(tryExecute, retryInterval);
+          } else {
+            console.error('Chat module not initialized after maximum retries, cannot auto-execute');
+          }
+          return;
+        }
+        
+        try {
+          // Execute the stored command
+          console.debug('Chat module ready, executing command');
+          window.chat.executeCommand();
+        } catch (execError) {
+          console.error('Error during command execution:', execError);
+        }
+      };
+      
+      // Start the execution attempt
+      tryExecute();
+    } else {
+      console.debug('Ctrl key pressed, not auto-executing');
+    }
+  } catch (error) {
+    console.error('Error in auto-execution:', error);
+  }
+}
+
+// Apply theme as early as possible, before DOMContentLoaded
+applyThemeFromPreferences().catch(error => {
+  console.error('Error applying early theme:', error);
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Popup DOMContentLoaded event fired');
   
   // Add fade-in animation for visual smoothness
   const popupContainer = document.querySelector('.popup-container');
-  popupContainer.classList.add('popup-fade-in');
-  
-  // Check if Ctrl key was pressed when opening the popup
-  let ctrlKeyPressed = false;
-  try {
-    // Check storage first (set by content script)
-    const { ctrlKeyPressed: storedCtrlKey } = await chrome.storage.local.get('ctrlKeyPressed');
-    if (storedCtrlKey) {
-      ctrlKeyPressed = true;
-      console.log('Ctrl key was pressed (from storage), skipping auto-execution');
-    } else {
-      // Also ask the background script directly
-      const response = await chrome.runtime.sendMessage({ action: 'getCtrlKeyState' });
-      if (response && response.ctrlKeyPressed) {
-        ctrlKeyPressed = true;
-        console.log('Ctrl key was pressed (from background), skipping auto-execution');
-      }
-    }
-  } catch (error) {
-    console.error('Error checking Ctrl key state:', error);
-  }
-  
-  // Only automatically execute if Ctrl key was NOT pressed
-  if (!ctrlKeyPressed) {
-    try {
-      // Get the last user input from storage
-      const { global_last_user_input } = await chrome.storage.local.get('global_last_user_input');
-      
-      if (global_last_user_input) {
-        console.log('Last input found, setting up for automatic execution:', global_last_user_input);
-        
-        // Get current tab information
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tabs && tabs.length) {
-          const currentTab = tabs[0];
-          
-          // Set up execute_last_input that the chat component will check
-          await chrome.storage.local.set({
-            'execute_last_input': {
-              input: global_last_user_input,
-              tabId: currentTab.id,
-              url: currentTab.url,
-              timestamp: Date.now()
-            }
-          });
-        }
-      } else {
-        console.log('No last input found, normal popup opening');
-      }
-    } catch (error) {
-      console.error('Error setting up automatic execution:', error);
-    }
-  } else {
-    console.log('Ctrl+Click detected, opening popup without auto-execution');
-  }
+  if (popupContainer) popupContainer.classList.add('popup-fade-in');
   
   // Continue with normal initialization
-  initializePopup();
+  await initializePopup();
 });
 
 // Also try to initialize immediately if document is already complete

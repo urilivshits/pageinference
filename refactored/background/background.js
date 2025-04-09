@@ -33,6 +33,7 @@ let STORAGE_KEYS = null;
 let ctrlClickPending = false;
 let lastCtrlKeyState = false;
 let ctrlClickTimeoutId = null;
+let ctrlKeyPressTimestamp = 0; // Add timestamp tracking for more reliable detection
 
 // Track the focused windows and tabs
 let focusedTabs = {};
@@ -50,6 +51,9 @@ let lastActivePopupId = null;
 
 // Track Ctrl key state for popup opening
 let wasCtrlKeyPressed = false;
+
+// Track Ctrl key state per tab
+let tabCtrlKeyStates = {};
 
 // Double-click detection variables
 let lastClickTime = 0;
@@ -270,6 +274,56 @@ async function initialize() {
 }
 
 /**
+ * Function to clean up legacy storage items that are no longer needed
+ * after we've moved to tab-specific state tracking
+ */
+async function cleanupLegacyStorage() {
+  try {
+    // Get all items from storage
+    const allStorageItems = await chrome.storage.local.get(null);
+    const keysToRemove = [];
+    
+    // Only keep the most recent tab-specific entries, remove old ones
+    const tabIdPattern = /_tab_(\d+)$/;
+    const currentTabs = new Set();
+    
+    // First, get all unique tab IDs in storage
+    for (const key of Object.keys(allStorageItems)) {
+      const match = key.match(tabIdPattern);
+      if (match && match[1]) {
+        currentTabs.add(match[1]);
+      }
+    }
+    
+    // For each tab ID found, check if tab still exists
+    for (const tabId of currentTabs) {
+      try {
+        await chrome.tabs.get(parseInt(tabId));
+      } catch (e) {
+        // Tab doesn't exist anymore, mark all its keys for removal
+        console.log(`Cleaning up storage for closed tab ${tabId}`);
+        for (const key of Object.keys(allStorageItems)) {
+          if (key.includes(`_tab_${tabId}`)) {
+            keysToRemove.push(key);
+          }
+        }
+      }
+    }
+    
+    // Run cleanup if we found keys to remove
+    if (keysToRemove.length > 0) {
+      console.log('Removing legacy/closed tab storage keys:', keysToRemove);
+      await chrome.storage.local.remove(keysToRemove);
+    }
+    
+    // We'll keep the global keys for now for backward compatibility,
+    // but we could remove them in a future version
+  } catch (error) {
+    console.error('Error cleaning up storage:', error);
+  }
+}
+
+/**
  * Set up message listeners with proper async response handling
  */
 function setupMessageListeners() {
@@ -328,21 +382,64 @@ function setupMessageListeners() {
     
     // Special handling for popup initialization event
     if (messageType === 'popupInitialized') {
-      // When popup is opened, immediately capture the tab it was opened from
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs && tabs.length > 0) {
-          const currentTab = tabs[0];
-          popupOpenedFromTabId = currentTab.id;
-          popupOpenedFromWindowId = currentTab.windowId;
-          popupOpenedFromUrl = currentTab.url;
-          console.log(`Popup opened from tab: ${popupOpenedFromTabId}, window: ${popupOpenedFromWindowId}, URL: ${popupOpenedFromUrl}`);
-          
-          // Send response indicating we captured the tab
-          if (sendResponse) {
-            sendResponse({ success: true, message: 'Popup initialization captured' });
-          }
-        }
+      console.debug('Popup initialized, running storage cleanup');
+      cleanupLegacyStorage();
+      sendResponse({ success: true });
+      return true;
+    }
+    
+    if (message.action === 'getCtrlKeyState') {
+      const tabId = message.tabId;
+      console.debug(`Getting Ctrl key state for tab ${tabId}`);
+
+      chrome.storage.local.get(null, (items) => {
+        // Check tab-specific keys first
+        const tabSpecificPressed = items[`ctrlKeyPressed_tab_${tabId}`] === true;
+        const tabSpecificPending = items[`ctrlClickPending_tab_${tabId}`] === true;
+        
+        // Fall back to global keys if tab-specific keys don't exist
+        const globalPressed = items.ctrlKeyPressed === true;
+        const globalPending = items.ctrlClickPending === true;
+        
+        // Prioritize tab-specific values
+        const isPressed = tabSpecificPressed || globalPressed;
+        const isPending = tabSpecificPending || globalPending;
+        
+        console.debug(`Ctrl key state for tab ${tabId}:`, {
+          tabSpecific: { pressed: tabSpecificPressed, pending: tabSpecificPending },
+          global: { pressed: globalPressed, pending: globalPending },
+          final: { ctrlKeyPressed: isPressed, ctrlClickPending: isPending }
+        });
+        
+        sendResponse({
+          ctrlKeyPressed: isPressed,
+          ctrlClickPending: isPending
+        });
       });
+      
+      return true; // Keep the message channel open for async response
+    }
+
+    if (message.action === 'clearCtrlKeyState') {
+      const tabId = message.tabId;
+      console.debug(`Clearing Ctrl key state for tab ${tabId}`);
+      
+      // Clear both tab-specific and global states
+      const keysToUpdate = {
+        [`ctrlKeyPressed_tab_${tabId}`]: false,
+        [`ctrlClickPending_tab_${tabId}`]: false,
+        [`ctrlKeyPressTimestamp_tab_${tabId}`]: null,
+        // Also clear global states for backward compatibility 
+        ctrlKeyPressed: false,
+        ctrlClickPending: false,
+        ctrlKeyPressTimestamp: null
+      };
+      
+      chrome.storage.local.set(keysToUpdate, () => {
+        console.debug('Ctrl key state cleared');
+        sendResponse({ success: true });
+      });
+      
       return true; // Keep the message channel open for async response
     }
     
@@ -599,395 +696,604 @@ function setupMessageListeners() {
       },
       
       // Ctrl key state tracking
-      'ctrlKeyState': async () => {
-        try {
-          const isPressed = message.isPressed || false;
+      'ctrlKeyPressed': async () => {
+        const isHeartbeat = message.isHeartbeat || false;
+        const tabId = message.tabId || (sender && sender.tab && sender.tab.id);
+        
+        // Only process non-heartbeat messages fully
+        if (!isHeartbeat) {
+          const timestamp = Date.now();
           
-          console.log('BACKGROUND: Ctrl key state updated:', isPressed);
-          
-          // If Ctrl key is pressed and wasn't pressed before, set pending flag
-          if (isPressed && !lastCtrlKeyState) {
-            ctrlClickPending = true;
-            console.log('BACKGROUND: Ctrl+Click pending set to true');
-            
-            // Clear any existing timeout
-            if (ctrlClickTimeoutId) {
-              clearTimeout(ctrlClickTimeoutId);
+          // Track tab-specific state if we have a tab ID
+          if (tabId) {
+            if (!tabCtrlKeyStates[tabId]) {
+              tabCtrlKeyStates[tabId] = {};
             }
+            tabCtrlKeyStates[tabId].pressed = true;
+            tabCtrlKeyStates[tabId].pending = true;
+            tabCtrlKeyStates[tabId].timestamp = timestamp;
             
-            // Set timeout to clear the pending flag after 5 seconds
-            ctrlClickTimeoutId = setTimeout(() => {
-              if (ctrlClickPending) {
-                console.log('BACKGROUND: Auto-clearing ctrlClickPending after timeout');
+            console.log(`Ctrl key press detected for tab ${tabId}, storing state`);
+            
+            // Store in local storage using tab-specific keys
+            chrome.storage.local.set({ 
+              [`ctrlKeyPressed_tab_${tabId}`]: true,
+              [`ctrlClickPending_tab_${tabId}`]: true,
+              [`ctrlKeyPressTimestamp_tab_${tabId}`]: timestamp
+            });
+            
+            // For backward compatibility, also update global state
+            // but only if we don't have a more recent timestamp from another tab
+            if (!ctrlKeyPressTimestamp || timestamp > ctrlKeyPressTimestamp) {
+              ctrlKeyPressTimestamp = timestamp;
+            ctrlClickPending = true;
+              lastCtrlKeyState = true;
+            }
+          } else {
+            // Fallback to global state for backward compatibility
+            ctrlClickPending = true;
+            ctrlKeyPressTimestamp = timestamp;
+            lastCtrlKeyState = true;
+            
+            // Store in local storage
+            chrome.storage.local.set({ 
+              'ctrlKeyPressed': true,
+              'ctrlClickPending': true,
+              'ctrlKeyPressTimestamp': timestamp
+            });
+          }
+          
+          // Reset after a delay to prevent auto-execution issues
+          setTimeout(() => {
+            if (tabId && tabCtrlKeyStates[tabId]) {
+              console.log(`Auto-clearing ctrlClickPending after timeout for tab ${tabId}`);
+              tabCtrlKeyStates[tabId].pending = false;
+            } else {
+              console.log('Auto-clearing global ctrlClickPending after timeout');
                 ctrlClickPending = false;
               }
             }, 5000);
           }
           
-          // Update last state
-          lastCtrlKeyState = isPressed;
-          
           return { success: true };
+      },
+      
+      'getCtrlKeyState': async () => {
+        const tabId = message.tabId;
+        
+        console.log(`Getting Ctrl key state for tab ${tabId || 'global'}`);
+        
+        let finalCtrlKeyState = false;
+        let finalCtrlClickPending = false;
+        let finalTimestamp = 0;
+        
+        try {
+          // First check tab-specific states if tabId is provided
+          if (tabId) {
+            // Define tab-specific storage keys
+            const tabStorageKeys = [
+              `ctrlKeyPressed_tab_${tabId}`, 
+              `ctrlClickPending_tab_${tabId}`, 
+              `ctrlKeyPressTimestamp_tab_${tabId}`
+            ];
+            
+            // Get values from storage
+            const storedTabState = await chrome.storage.local.get(tabStorageKeys);
+            
+            // Use explicit equality checks for booleans
+            finalCtrlKeyState = storedTabState[`ctrlKeyPressed_tab_${tabId}`] === true;
+            finalCtrlClickPending = storedTabState[`ctrlClickPending_tab_${tabId}`] === true;
+            finalTimestamp = storedTabState[`ctrlKeyPressTimestamp_tab_${tabId}`] || 0;
+            
+            console.log(`Tab-specific Ctrl state for tab ${tabId}:`, {
+              pressed: finalCtrlKeyState,
+              pending: finalCtrlClickPending,
+              timestamp: finalTimestamp
+            });
+            
+            // Check in-memory tab state as fallback
+            const tabState = tabCtrlKeyStates[tabId];
+            if (tabState) {
+              if (!finalCtrlKeyState && tabState.pressed === true) {
+                finalCtrlKeyState = true;
+              }
+              if (!finalCtrlClickPending && tabState.pending === true) {
+                finalCtrlClickPending = true;
+              }
+              if (!finalTimestamp && tabState.timestamp) {
+                finalTimestamp = tabState.timestamp;
+              }
+            }
+          }
+          
+          // Check global state as fallback if we don't have definitive tab state
+          if (!finalCtrlKeyState && !finalCtrlClickPending) {
+            // Define global storage keys
+            const globalStorageKeys = [
+              'ctrlKeyPressed', 
+              'ctrlClickPending', 
+              'ctrlKeyPressTimestamp'
+            ];
+            
+            // Get values from storage
+            const storedGlobalState = await chrome.storage.local.get(globalStorageKeys);
+            
+            // Only use global values if we don't have tab-specific values
+            if (!finalCtrlKeyState) {
+              finalCtrlKeyState = storedGlobalState.ctrlKeyPressed === true;
+            }
+            if (!finalCtrlClickPending) {
+              finalCtrlClickPending = storedGlobalState.ctrlClickPending === true;
+            }
+            if (!finalTimestamp && storedGlobalState.ctrlKeyPressTimestamp) {
+              finalTimestamp = storedGlobalState.ctrlKeyPressTimestamp;
+            }
+            
+            console.log('Global Ctrl state (fallback):', {
+              pressed: storedGlobalState.ctrlKeyPressed === true,
+              pending: storedGlobalState.ctrlClickPending === true,
+              timestamp: storedGlobalState.ctrlKeyPressTimestamp || 0
+            });
+            
+            // Also check in-memory global variables
+            if (!finalCtrlKeyState && lastCtrlKeyState === true) {
+              finalCtrlKeyState = true;
+            }
+            if (!finalCtrlClickPending && ctrlClickPending === true) {
+              finalCtrlClickPending = true;
+            }
+            if (!finalTimestamp && ctrlKeyPressTimestamp) {
+              finalTimestamp = ctrlKeyPressTimestamp;
+            }
+          }
         } catch (error) {
-          console.error('Error updating ctrl key state:', error);
-          return { success: false, error: error.message };
+          console.error('Error checking stored Ctrl state:', error);
+        }
+        
+        // Add a debug log with final result
+        console.log('Final Ctrl key state to return:', {
+          ctrlKeyPressed: finalCtrlKeyState,
+          ctrlClickPending: finalCtrlClickPending,
+          timestamp: finalTimestamp
+        });
+        
+        return { 
+          ctrlKeyPressed: finalCtrlKeyState,
+          ctrlClickPending: finalCtrlClickPending,
+          timestamp: finalTimestamp
+        };
+      },
+      
+      'clearCtrlKeyState': async () => {
+        const tabId = message.tabId;
+        
+        // Different log message based on whether we're clearing globally or for a specific tab
+        if (tabId) {
+          console.log(`Clearing Ctrl key state for tab ${tabId}`);
+        } else {
+          console.log('Clearing global Ctrl key state');
+        }
+        
+        // Reset memory state
+        if (tabId && tabCtrlKeyStates[tabId]) {
+          delete tabCtrlKeyStates[tabId];
+        } else {
+          // Reset global state if not tab-specific
+          ctrlClickPending = false;
+          lastCtrlKeyState = false;
+          ctrlKeyPressTimestamp = 0;
+        }
+        
+        // Clear storage keys
+        if (tabId) {
+          await chrome.storage.local.remove([
+            `ctrlKeyPressed_tab_${tabId}`, 
+            `ctrlClickPending_tab_${tabId}`, 
+            `ctrlKeyPressTimestamp_tab_${tabId}`
+          ]);
+          } else {
+          // Clear all Ctrl key state entries for cleanup
+          const allStorageItems = await chrome.storage.local.get(null);
+          const keysToRemove = Object.keys(allStorageItems).filter(key => 
+            key.startsWith('ctrlKey') || key.startsWith('ctrlClick')
+          );
+          
+          if (keysToRemove.length > 0) {
+            await chrome.storage.local.remove(keysToRemove);
+            console.log('Cleared all Ctrl key storage entries:', keysToRemove);
+          }
+        }
+        
+        return { success: true };
+      },
+      
+      // Default handler
+      'default': async () => {
+        console.warn('Unknown message type:', messageType);
+        return { success: false, error: 'Unknown message type' };
+      },
+      
+      'getTabId': async () => {
+        // Get the tab ID of the sender tab
+        if (sender && sender.tab && sender.tab.id) {
+          console.log(`Content script requested its tab ID, returning: ${sender.tab.id}`);
+          return { 
+            success: true, 
+            tabId: sender.tab.id
+          };
+        }
+        return { success: false, error: 'Unable to determine tab ID' };
+      },
+      
+      // Add handler for check_ctrl_key message type
+      'check_ctrl_key': async () => {
+        const tabId = message.tabId;
+        console.log(`Received check_ctrl_key message for tab ${tabId}`);
+        
+        let ctrlKeyPressed = false;
+        
+        try {
+          // Check tab-specific Ctrl key state first
+          if (tabId) {
+            // Get the stored state
+            const tabStorageKey = `ctrlKeyPressed_tab_${tabId}`;
+            const result = await chrome.storage.local.get(tabStorageKey);
+            
+            ctrlKeyPressed = result[tabStorageKey] === true;
+            
+            // Also check in-memory state
+            if (!ctrlKeyPressed && tabCtrlKeyStates[tabId] && tabCtrlKeyStates[tabId].pressed === true) {
+              ctrlKeyPressed = true;
+            }
+          }
+          
+          // Fallback to global state if needed
+          if (!ctrlKeyPressed) {
+            const globalResult = await chrome.storage.local.get('ctrlKeyPressed');
+            ctrlKeyPressed = globalResult.ctrlKeyPressed === true;
+            
+            // Check in-memory global state as well
+            if (!ctrlKeyPressed && lastCtrlKeyState === true) {
+              ctrlKeyPressed = true;
+            }
+          }
+          
+          console.log(`Ctrl key state for tab ${tabId}: ${ctrlKeyPressed}`);
+          
+          return {
+            ctrlKeyPressed: ctrlKeyPressed,
+            success: true
+          };
+        } catch (error) {
+          console.error('Error checking Ctrl key state:', error);
+          return {
+            ctrlKeyPressed: false,
+            success: false,
+            error: error.message
+          };
         }
       },
       
-      // Sending user message
+      // Add handler for ctrlKeyState message type
+      'ctrlKeyState': async () => {
+        const isPressed = message.isPressed;
+        const tabId = sender && sender.tab && sender.tab.id;
+        
+        console.log(`Received ctrlKeyState message, isPressed=${isPressed}, tabId=${tabId}`);
+        
+        if (tabId) {
+          // Initialize tab state object if needed
+          if (!tabCtrlKeyStates[tabId]) {
+            tabCtrlKeyStates[tabId] = { pressed: false, pending: false, timestamp: 0 };
+          }
+          
+          // Update tab-specific state
+          tabCtrlKeyStates[tabId].pressed = isPressed;
+          
+          // If key is being pressed, set pending flag for auto-execution prevention
+          if (isPressed) {
+            tabCtrlKeyStates[tabId].pending = true;
+            tabCtrlKeyStates[tabId].timestamp = Date.now();
+            
+            // Also update storage
+            await chrome.storage.local.set({
+              [`ctrlKeyPressed_tab_${tabId}`]: true,
+              [`ctrlClickPending_tab_${tabId}`]: true,
+              [`ctrlKeyPressTimestamp_tab_${tabId}`]: Date.now()
+            });
+            
+            // Auto-clear after timeout
+            setTimeout(() => {
+              if (tabCtrlKeyStates[tabId]) {
+                console.log(`Auto-clearing ctrlClickPending for tab ${tabId} after timeout`);
+                tabCtrlKeyStates[tabId].pending = false;
+                chrome.storage.local.set({
+                  [`ctrlClickPending_tab_${tabId}`]: false
+                });
+              }
+            }, 5000);
+          } else {
+            // Key released, update storage
+            await chrome.storage.local.set({
+              [`ctrlKeyPressed_tab_${tabId}`]: false
+            });
+          }
+        }
+        
+        return { success: true };
+      },
+      
+      // Add handler for linkedinContentUpdated message type
+      'linkedinContentUpdated': async () => {
+        console.log('LinkedIn content updated, potentially refreshing scraper data');
+        
+        // Extract any relevant data from message
+        const url = message.url || (sender && sender.tab && sender.tab.url);
+        const tabId = sender && sender.tab && sender.tab.id;
+        
+        // Store info about the updated content if needed
+        if (tabId && url) {
+          // You could store information about the updated content here
+          console.log(`LinkedIn content updated for tab ${tabId} at ${url}`);
+        }
+        
+        return { success: true };
+      },
+      
+      // Add handler for windowFocusChanged message type
+      'windowFocusChanged': async () => {
+        console.log('Window focus changed event received');
+        
+        const tabId = sender && sender.tab && sender.tab.id;
+        const hasFocus = message.hasFocus === true;
+        
+        if (tabId) {
+          console.log(`Window focus for tab ${tabId} changed to: ${hasFocus}`);
+          
+          // You might want to update tab focus tracking here
+          // This is useful for knowing which tab the user is currently looking at
+        }
+        
+        return { success: true };
+      },
+      
+      // Add handler for send_user_message message type
       'send_user_message': async () => {
+        console.log('Handling send_user_message request');
+        
         try {
           const { 
             pageLoadId, 
             message: userMessage, 
-            url, 
-            title,
-            sessionData, 
-            pageContent,
-            enablePageScraping = true,
-            enableWebSearch = false,
-            selectedModel = 'gpt-4o-mini',
-            temperature = 0.7
+            pageContent, 
+            webSearch,
+            model,
+            temperature,
+            url,
+            title
           } = message.data || {};
           
-          if (!pageLoadId) {
-            throw new Error('pageLoadId is required for sending messages');
-          }
-          
+          // Validate required inputs
           if (!userMessage) {
-            throw new Error('Message content is required');
+            throw new Error('User message is required');
           }
           
-          console.log('Processing user message:', userMessage);
-          console.log('Page scraping enabled:', enablePageScraping);
-          console.log('Web search enabled:', enableWebSearch);
-          console.log('Page content available:', pageContent ? `Yes (${pageContent.length} characters)` : 'No');
+          // Log request details
+          console.log('Send user message request details:', {
+            pageLoadId,
+            messageText: userMessage.substring(0, 50) + (userMessage.length > 50 ? '...' : ''),
+            hasPageContent: !!pageContent,
+            webSearch,
+            model,
+            temperature
+          });
           
-          // Get existing session or create a new one
-          let session = await chatService.getSession(pageLoadId);
+          // Get or create session
+          let session = null;
           
-          if (!session && sessionData) {
-            // Create a new session if it doesn't exist
-            session = await chatService.createSession({
-              ...sessionData,
-              pageLoadId,
+          if (pageLoadId) {
+            // Try to get existing session
+            session = await chatService.getSession(pageLoadId);
+          }
+          
+          // If no session found but we have URL/title, create a new one
+          if (!session && url) {
+            const sessionData = {
+              pageLoadId: pageLoadId || `session_${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
               url,
-              title,
+              title: title || url,
+              messages: [],
               timestamp: Date.now(),
-              lastUpdated: Date.now(),
-              messages: []
+              lastUpdated: Date.now()
+            };
+            
+            console.log('Creating new session:', sessionData);
+            session = await chatService.createSession(sessionData);
+          }
+          
+          if (!session) {
+            throw new Error('Could not get or create a valid session');
+          }
+          
+          // Prepare array of messages for the API call
+          const messages = [];
+          
+          // Add system prompt depending on context
+          let systemPrompt = GENERIC_SYSTEM_PROMPT;
+          
+          if (webSearch && pageContent) {
+            systemPrompt = COMBINED_SYSTEM_PROMPT;
+          } else if (webSearch) {
+            systemPrompt = WEB_SEARCH_SYSTEM_PROMPT;
+          } else if (!pageContent) {
+            systemPrompt = NO_PAGE_CONTENT_SYSTEM_PROMPT;
+          } else {
+            // For page content only, use website-specific prompts if available
+            if (url) {
+              try {
+                const urlObj = new URL(url);
+                const hostname = urlObj.hostname.toLowerCase();
+                
+                if (hostname.includes('linkedin.com')) {
+                  systemPrompt = LINKEDIN_SYSTEM_PROMPT;
+                } else if (hostname.includes('github.com')) {
+                  systemPrompt = GITHUB_SYSTEM_PROMPT;
+                } else if (hostname.includes('stackoverflow.com')) {
+                  systemPrompt = STACKOVERFLOW_SYSTEM_PROMPT;
+                } else {
+                  // Use generic page-aware system prompt
+                  systemPrompt = generatePageAwarePrompt(url);
+                  }
+                } catch (e) {
+                console.error('Error determining site-specific prompt:', e);
+              }
+            }
+          }
+          
+          // Add system message
+          messages.push({
+            role: 'system',
+            content: systemPrompt
+          });
+          
+          // Add previous conversation for context
+          if (session.messages && session.messages.length > 0) {
+            // Only include most recent messages to stay within token limits
+            const recentMessages = session.messages.slice(-10);
+            messages.push(...recentMessages);
+          }
+          
+          // Add page content as context for the assistant if available
+          if (pageContent) {
+            messages.push({
+              role: 'system',
+              content: `Page content:\n${pageContent}`
             });
-          } else if (!session) {
-            throw new Error('Chat session not found and sessionData not provided');
           }
           
-          // Get page content, either from new scrape or existing session
-          let activePageContent = pageContent;
-          
-          // If page scraping is enabled but no new content was provided,
-          // use the existing content stored in the session if available
-          if (enablePageScraping && !activePageContent && session.pageContent) {
-            activePageContent = session.pageContent;
-            console.log(`Using existing page content from session: ${activePageContent.length} characters`);
-          }
-          
-          // Store the page content in the session if available (but not in messages)
-          if (enablePageScraping && activePageContent) {
-            session.pageContent = activePageContent;
-          } else if (!enablePageScraping) {
-            // When page scraping is disabled, ensure we don't use any page content
-            activePageContent = null;
-            console.log('Page scraping is disabled, ignoring any stored page content');
-          }
-          
-          // Add user message to session (without page content)
-          const userMessageObj = {
+          // Add the new user message
+          const newUserMessage = {
             role: 'user',
             content: userMessage,
             timestamp: Date.now()
           };
           
-          // Get the API key from storage
-          const apiKey = await storageService.getValue(STORAGE_KEYS.API_KEY, null);
+          messages.push(newUserMessage);
           
-          if (!apiKey) {
-            throw new Error('API key is not set. Please add your OpenAI API key in settings.');
+          // Update session with the new user message
+          if (!session.messages) {
+            session.messages = [];
           }
           
-          // Create the appropriate system message based on available content and settings
-          let systemContent = '';
-          
-          if (enablePageScraping && activePageContent && enableWebSearch) {
-            // Combined mode: both page content and web search
-            systemContent = COMBINED_SYSTEM_PROMPT;
-          } else if (enablePageScraping && activePageContent) {
-            // Create a page-specific prompt WITHOUT the actual page content
-            systemContent = generatePageAwarePrompt(title, url);
-          } else if (enableWebSearch) {
-            // Use web search specific prompt
-            systemContent = WEB_SEARCH_SYSTEM_PROMPT;
-          } else {
-            systemContent = NO_PAGE_CONTENT_SYSTEM_PROMPT;
-          }
-          
-          const systemMessage = {
-            role: 'system',
-            content: systemContent
-          };
-          
-          // Create the messages array for the API call
-          const messages = [
-            systemMessage,
-            ...session.messages || [],
-            userMessageObj
-          ];
-          
-          // Add the user message to the session (before API call in case it fails)
-          session.messages = session.messages || [];
-          session.messages.push(userMessageObj);
+          session.messages.push(newUserMessage);
+          session.lastUserRequest = userMessage;
           session.lastUpdated = Date.now();
+          
+          // Save session state
           await chatService.updateSession(session);
           
-          // Make the API call using the OpenAI service
-          console.log('Making API call to OpenAI with model:', selectedModel);
+          // Call OpenAI API
+          console.log(`Calling OpenAI API with model ${model || 'default'} and ${messages.length} messages`);
           
-          try {
-            // Format the user message to include page content if needed
-            let formattedUserMessage = userMessage;
-            if (enablePageScraping && activePageContent) {
-              formattedUserMessage = `${userMessage}\n\nHere is the content of the webpage (URL: ${url || 'No URL available'}) to help answer my question:\n\n${activePageContent}`;
-            }
-            
-            // Replace the last message content with the formatted version for API call only
-            const apiMessages = [...messages];
-            apiMessages[apiMessages.length - 1] = {
-              ...apiMessages[apiMessages.length - 1],
-              content: formattedUserMessage
-            };
-            
-            // Use the OpenAI API service to make the request
-            const apiResponse = await openaiApi.sendRequest({
-              apiKey,
-              messages: apiMessages,
-              model: selectedModel,
-              temperature,
-              useWebSearch: enableWebSearch,
-              pageContent: enablePageScraping ? activePageContent : '' // Pass page content separately to API service
-            });
-            
-            // Process the response
-            const processedResponse = openaiApi.processApiResponse(apiResponse);
-            
-            // Create AI response object
-            const aiResponseObj = {
-              role: 'assistant',
-              content: processedResponse.content || 'No response generated from the API.',
-              timestamp: Date.now(),
-              sources: processedResponse.sources || []
-            };
-            
-            // Add the AI response to the session
-            session.messages.push(aiResponseObj);
-            session.lastUpdated = Date.now();
-            await chatService.updateSession(session);
-            
-            // Return the updated session and the AI response
-            return {
-              success: true,
-              data: {
-                session,
-                aiResponse: aiResponseObj
-              }
-            };
-          } catch (apiError) {
-            console.error('API call failed:', apiError);
-            
-            // Add the error to the session so the user can see it
-            const errorResponseObj = {
-              role: 'assistant',
-              content: `Error: ${apiError.message || 'API call failed'}`,
-              timestamp: Date.now(),
-              isError: true
-            };
-            
-            session.messages.push(errorResponseObj);
-            session.lastUpdated = Date.now();
-            await chatService.updateSession(session);
-            
-            return {
-              success: false,
-              error: apiError.message,
-              data: {
-                session,
-                aiResponse: errorResponseObj
-              }
-            };
+          // Get API key
+          const apiKey = await storageService.getValue(STORAGE_KEYS.API_KEY);
+          if (!apiKey) {
+            throw new Error('OpenAI API key not found');
           }
+          
+          // Call API with options
+          const apiOptions = {
+            model: model || 'gpt-4o-mini',  // Default model
+            temperature: temperature !== undefined ? temperature : 0
+          };
+          
+          // Make the actual API call instead of using a mock response
+          const apiResponse = await openaiApi.sendRequest({
+            apiKey,
+            messages,
+            model: apiOptions.model,
+            temperature: apiOptions.temperature,
+            useWebSearch: webSearch || false,
+            pageContent: pageContent || ''
+          });
+          
+          // Process the API response to extract content
+          const processedResponse = openaiApi.processApiResponse(apiResponse);
+          
+          // Add response to the session
+          const assistantResponse = {
+            role: 'assistant',
+            content: processedResponse.content,
+            timestamp: Date.now(),
+            metadata: processedResponse.metadata || {}
+          };
+          
+          // Add sources if they exist in the response
+          if (processedResponse.sources) {
+            assistantResponse.metadata.sources = processedResponse.sources;
+          }
+          
+          // Check if sources are in the apiResponse directly (fallback)
+          if (!assistantResponse.metadata.sources && apiResponse.sources) {
+            assistantResponse.metadata.sources = apiResponse.sources;
+          }
+          
+          // Add response to the session
+          session.messages.push(assistantResponse);
+          session.lastUpdated = Date.now();
+          
+          // Save updated session
+          await chatService.updateSession(session);
+          
+          // Return the response
+          return {
+            success: true,
+            data: {
+              response: assistantResponse,
+              session: session
+            }
+          };
         } catch (error) {
           console.error('Error processing user message:', error);
           return { success: false, error: error.message };
         }
       },
       
-      // Page scraping functionality
-      'scrapeContent': async () => {
+      'scrape_page_content': async () => {
         try {
-          console.log('Handling scrapeContent request');
+          console.log('Handling page content scraping request');
           
-          // Option 1: If we know which tab the popup was opened from, use that
-          if (popupOpenedFromTabId) {
-            console.log(`Using stored popup origin tab ID: ${popupOpenedFromTabId}`);
+          // Get tab to scrape (either specified or active tab)
+          let tab;
+          if (message.tabId) {
             try {
-              // Make sure the tab still exists
-              const tab = await chrome.tabs.get(popupOpenedFromTabId);
-              if (tab) {
-                console.log(`Found popup origin tab still exists: ${tab.id}, ${tab.url}`);
-              }
-              // Process this tab directly instead of querying for active tab
-              return await processScrapeTabRequest(tab);
-            } catch (e) {
-              console.error(`Error getting popup origin tab: ${e.message}`);
-              // If we can't get the stored tab, fall back to normal behavior
-              console.log('Falling back to regular tab detection...');
+              tab = await chrome.tabs.get(message.tabId);
+            } catch (error) {
+              console.error('Failed to get tab with ID:', message.tabId, error);
+              return { success: false, error: 'Tab not found or inaccessible' };
             }
+          } else {
+            // Get active tab in current window
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tabs || !tabs.length) {
+              return { success: false, error: 'No active tab found' };
+            }
+            tab = tabs[0];
           }
           
-          // Option 2: Get the active tab from current window specifically
-          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-          if (!tabs || tabs.length === 0) {
-            // Option 3: If we can't find the active tab in current window, try getting the last focused window's active tab
-            console.log('No active tab found in current window, trying lastFocusedWindow');
-            const lastFocusedTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-            if (!lastFocusedTabs || lastFocusedTabs.length === 0) {
-              // Option 4: If still no tabs found, try using our tracked focus information
-              console.log('No active tab found in lastFocusedWindow, trying tracked focus data');
-              if (lastFocusedWindowId && lastFocusedTabId) {
-                console.log(`Using tracked focus data: Window ${lastFocusedWindowId}, Tab ${lastFocusedTabId}`);
-                try {
-                  const trackedTab = await chrome.tabs.get(lastFocusedTabId);
-                  if (trackedTab) {
-                    console.log('Successfully retrieved tracked tab:', trackedTab.id, trackedTab.url);
-                    return await processScrapeTabRequest(trackedTab);
-                  }
-                } catch (e) {
-                  console.error('Error retrieving tracked tab:', e);
-                }
-              }
-              
-              // If we still don't have a tab, throw the error
-              throw new Error('No active tab found in any window');
-            } else {
-              return await processScrapeTabRequest(lastFocusedTabs[0]);
-            }
-          }
+          console.log('Processing scrape request for tab:', tab.id, tab.url);
           
-          // Process the active tab from the current window
-          return await processScrapeTabRequest(tabs[0]);
+          // Call the helper function that handles the actual scraping
+          const result = await processScrapeTabRequest(tab);
+          return result;
         } catch (error) {
-          console.error('Error in scrapeContent handler:', error);
+          console.error('Error processing page scraping request:', error);
           return { 
             success: false, 
-            error: error.message,
-            data: {
-              content: '',
-              title: '',
-              url: ''
-            }
+            error: error.message || 'Unknown error scraping page',
+            data: { content: '' }
           };
         }
-      },
-      
-      // Track popup initialization
-      'popupInitialized': async () => {
-        try {
-          // Store information about which tab opened the popup
-          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-          if (tabs && tabs.length > 0) {
-            const currentTab = tabs[0];
-            popupOpenedFromTabId = currentTab.id;
-            popupOpenedFromWindowId = currentTab.windowId;
-            popupOpenedFromUrl = currentTab.url;
-            console.log(`Popup initialized from tab: ${popupOpenedFromTabId}, window: ${popupOpenedFromWindowId}, URL: ${popupOpenedFromUrl}`);
-            
-            // If we have the contextId, use it to check if this is a new popup opening
-            // but we won't close other popups here - that happens when the long-lived connection is established
-            if (sender.contextId) {
-              console.log(`Popup has contextId: ${sender.contextId}`);
-              if (lastActivePopupId && lastActivePopupId !== sender.contextId) {
-                console.log(`New popup is opening, previous active popup: ${lastActivePopupId}`);
-              }
-              lastActivePopupId = sender.contextId;
-            }
-          }
-          
-          return { success: true };
-        } catch (error) {
-          console.error('Error handling popup initialization:', error);
-          return { success: false, error: error.message };
-        }
-      },
-      
-      // Ctrl+Click functionality from the original version
-      'checkCtrlClick': async () => {
-        try {
-          console.log('BACKGROUND: Checking Ctrl+Click pending status:', ctrlClickPending);
-          
-          const response = { 
-            success: true, 
-            ctrlClickPending: ctrlClickPending,
-            message: ctrlClickPending ? 'Ctrl+Click detected' : 'No Ctrl+Click pending'
-          };
-          
-          // Reset the flag after sending
-          if (ctrlClickPending) {
-            ctrlClickPending = false;
-            console.log('BACKGROUND: Resetting ctrlClickPending to false after check');
-          }
-          
-          return response;
-        } catch (error) {
-          console.error('Error checking ctrl+click:', error);
-          return { success: false, error: error.message };
-        }
-      },
-      
-      // Track window focus changes
-      'windowFocusChanged': async () => {
-        try {
-          const tabId = sender.tab?.id;
-          const tabUrl = sender.tab?.url || message.url;
-          const windowId = sender.tab?.windowId;
-          const isFocused = message.focused;
-          
-          console.log(`Focus change detected: Window ${windowId}, Tab ${tabId}, URL ${tabUrl}, Focused: ${isFocused}`);
-          
-          if (isFocused && tabId && windowId) {
-            // Update our record of the focused tab for this window
-            focusedTabs[windowId] = tabId;
-            lastFocusedWindowId = windowId;
-            lastFocusedTabId = tabId;
-            
-            console.log(`Updated focused tabs record: Window ${windowId} now has Tab ${tabId} focused`);
-            console.log('Current focused tabs record:', focusedTabs);
-          } else if (!isFocused && tabId && windowId) {
-            // If the current window/tab combination is what we had as focused, clear it
-            if (focusedTabs[windowId] === tabId) {
-              console.log(`Tab ${tabId} in window ${windowId} lost focus`);
-              // We don't delete the entry as it's still the last known focused tab in that window
-            }
-          }
-          
-          return { success: true };
-        } catch (error) {
-          console.error('Error tracking window focus:', error);
-          return { success: false, error: error.message };
-        }
-      },
-      
-      // Default handler for unknown message types
-      'default': async () => {
-        console.warn('Unknown message type:', messageType);
-        return { success: false, error: 'Unknown message type' };
       }
     };
     
@@ -1039,11 +1345,23 @@ async function handleFirstInstall() {
     pageScraping: true,
     webSearch: true,
     currentSiteFilter: true,
-    defaultModel: 'gpt-4o-mini'
+    defaultModel: 'gpt-4o-mini',
+    autoExecute: true // Enable auto-execution by default
   });
   
   // Initialize empty chat sessions list
   await storageService.setValue(STORAGE_KEYS.CHAT_SESSIONS, []);
+  
+  // Initialize empty global_last_user_input
+  await storageService.setValue('global_last_user_input', '');
+  
+  // Initialize empty execute_last_input
+  await storageService.setValue('execute_last_input', {
+    value: '',
+    timestamp: Date.now(),
+    tabId: null,
+    url: ''
+  });
   
   // Log installation
   await storageService.storeDebugLog({
@@ -1257,35 +1575,8 @@ function setupBrowserActionClickHandler() {
     console.log('Browser action clicked, letting Chrome handle popup opening');
   });
   
-  // Add listeners to detect key states (these will track keydown events globally in the browser)
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'ctrlKeyPressed') {
-      wasCtrlKeyPressed = true;
-      console.log('Ctrl key press detected, storing state');
-      // Store in local storage so popup can detect it
-      chrome.storage.local.set({ 'ctrlKeyPressed': true });
-      sendResponse({ success: true });
-      
-      // Reset after a short delay
-      setTimeout(() => {
-        wasCtrlKeyPressed = false;
-        chrome.storage.local.remove('ctrlKeyPressed');
-      }, 2000); // Reset after 2 seconds
-      
-      return true; // Keep the message channel open for async response
-    }
-    
-    if (message.action === 'getCtrlKeyState') {
-      console.log('Popup requested Ctrl key state:', wasCtrlKeyPressed);
-      sendResponse({ ctrlKeyPressed: wasCtrlKeyPressed });
-      
-      // Reset after popup has requested the state
-      wasCtrlKeyPressed = false;
-      chrome.storage.local.remove('ctrlKeyPressed');
-      
-      return true; // Keep the message channel open for async response
-    }
-  });
+  // Note: Ctrl key detection is now handled in the main message listener
+  // in setupMessageListeners() to avoid duplicate handlers
 }
 
 // Keep handleDoubleClick for backward compatibility
@@ -1295,8 +1586,114 @@ async function handleDoubleClick(tab) {
   console.log('Legacy function: handleDoubleClick is no longer used');
 }
 
+/**
+ * Handle keyboard commands for extension functionality
+ */
+function setupKeyboardCommandHandler() {
+  // Listen for keyboard shortcuts
+  chrome.commands.onCommand.addListener(async (command) => {
+    console.log('Keyboard command received:', command);
+    
+    if (command === 'run-page-inference') {
+      try {
+        // Get the active tab
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs || !tabs.length) {
+          console.error('No active tab found');
+          return;
+        }
+        
+        const tab = tabs[0];
+        const tabId = tab.id;
+        const url = tab.url;
+        
+        // Get the most recent chat session for the current domain
+        const chatSessions = await chatService.getSessionList();
+        
+        // Find sessions for the current domain
+        const domainSessions = chatSessions.filter(session => {
+          try {
+            // Compare domain of session URL with current tab URL
+            const sessionUrl = new URL(session.url);
+            const tabUrl = new URL(url);
+            return sessionUrl.hostname === tabUrl.hostname;
+          } catch (e) {
+            return false;
+          }
+        });
+        
+        // Sort by most recent first
+        const sortedSessions = domainSessions.sort((a, b) => 
+          (b.lastUpdated || b.timestamp) - (a.lastUpdated || a.timestamp)
+        );
+        
+        if (sortedSessions.length === 0) {
+          console.log('No previous chat sessions found for current domain');
+          return;
+        }
+        
+        const mostRecentSession = sortedSessions[0];
+        console.log('Found most recent session:', mostRecentSession);
+        
+        // Get the most recent user message
+        let lastUserMessage = null;
+        
+        if (mostRecentSession.messages && mostRecentSession.messages.length > 0) {
+          // Find all user messages
+          const userMessages = mostRecentSession.messages.filter(msg => 
+            msg && msg.role === 'user'
+          );
+          
+          if (userMessages.length > 0) {
+            lastUserMessage = userMessages[userMessages.length - 1].content;
+          }
+        }
+        
+        // If we didn't find a user message, try using lastUserRequest
+        if (!lastUserMessage && mostRecentSession.lastUserRequest) {
+          lastUserMessage = mostRecentSession.lastUserRequest;
+        }
+        
+        if (!lastUserMessage) {
+          console.log('No previous user message found to execute');
+          return;
+        }
+        
+        // Store the message for execution
+        await chrome.storage.local.set({
+          'execute_last_input': {
+            value: lastUserMessage,
+            tabId,
+            url,
+            pageLoadId: mostRecentSession.pageLoadId,
+            timestamp: Date.now()
+          }
+        });
+        
+        console.log('Stored last user input for execution:', lastUserMessage);
+        
+        // Set badge to indicate the shortcut was used
+        await chrome.action.setBadgeText({ text: '↵' });
+        await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+        await chrome.action.setTitle({ title: 'Click to run: "' + lastUserMessage + '"' });
+        
+        // Flash the badge with alternating colors to make it more noticeable
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            chrome.action.setBadgeBackgroundColor({ color: '#FFEB3B' });
+          }, i * 400);
+          setTimeout(() => {
+            chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+          }, i * 400 + 200);
+        }
+      } catch (error) {
+        console.error('Error handling keyboard command:', error);
+      }
+    }
+  });
+}
+
 // Start initialization
 initialize();
-
-// Set up browser action click handler
+setupKeyboardCommandHandler();
 setupBrowserActionClickHandler(); 

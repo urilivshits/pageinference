@@ -66,47 +66,48 @@ let sessionState = {
 };
 
 /**
- * Initialize the chat component
+ * Initialize chat component
  */
 export function initializeChatComponent() {
-  // First, immediately notify the background script that the popup is opening 
-  // This must be done before any other operations to ensure proper tab tracking
-  notifyBackgroundScriptOfPopupOpen();
+  console.log('Initializing chat component');
   
-  // Get DOM elements
-  chatContainer = document.getElementById('chat-container');
-  chatMessages = document.getElementById('chat-messages');
-  messageInput = document.getElementById('message-input');
-  sendButton = document.getElementById('send-button');
-  currentConversationInfo = document.getElementById('current-conversation-info');
-  currentConversationTitle = document.getElementById('current-conversation-title');
-  currentConversationTimestamp = document.getElementById('current-conversation-timestamp');
-  newChatButton = document.getElementById('new-chat-button');
-  reasonButton = document.getElementById('reason-button');
-  searchPageButton = document.getElementById('search-page-button');
-  searchWebButton = document.getElementById('search-web-button');
-  doubleClickArea = document.getElementById('double-click-area');
-  loadingIndicator = document.getElementById('loading-indicator');
-  errorMessage = document.getElementById('error-message');
-  modelSelect = document.getElementById('model-select');
-  
-  // Set up event listeners
-  setupEventListeners();
-  
-  // Load current chat session
-  loadCurrentSession();
-  
-  // Auto-resize input field
-  setupInputAutoResize();
-  
-  // Check for command to execute
-  checkForCommandToExecute();
-  
-  // Initialize button states and toggles based on saved preferences
-  checkToggleState();
-  
-  // Load the global last user input
-  loadGlobalLastUserInput();
+  try {
+    // Initialize UI elements
+    initializeUIElements();
+    
+    // Set up event listeners
+    setupEventListeners();
+    
+    // Load any saved messages and settings
+    loadSessionState().catch(error => {
+      console.error('Error loading session state:', error);
+    });
+    
+    // Initialize button states
+    initializeButtonStates().catch(error => {
+      console.error('Error initializing button states:', error);
+    });
+    
+    // Set up auto-resize for input
+    setupInputAutoResize();
+    
+    // Make sure settings are in sync with UI state
+    checkToggleState().catch(error => {
+      console.error('Error checking toggle state:', error);
+    });
+    
+    // Check for any pending command to execute, such as auto-execution from popup open
+    console.log('Checking for pending commands during initialization');
+    setTimeout(() => {
+      checkForCommandToExecute().catch(error => {
+        console.error('Error checking for command to execute:', error);
+      });
+    }, 300); // Short delay to ensure UI is fully loaded
+    
+    console.log('Chat component initialization complete');
+  } catch (error) {
+    console.error('Error initializing chat component:', error);
+  }
 }
 
 /**
@@ -438,200 +439,179 @@ function handleSettingsChanged(event) {
 }
 
 /**
- * Handle sending a message
+ * Handle sending a new message
+ * @param {Object} options - Options for handling the message
+ * @param {boolean} [options.saveForAutoExecution=true] - Whether to save the message for auto-execution
  */
-async function handleSendMessage() {
-  if (preventDuplicateSubmission()) {
-    return;
-  }
-  
-  // Get the message content
-  const messageText = messageInput.value.trim();
-  if (!messageText) {
-    console.warn('Cannot send empty message');
-    return;
-  }
+async function handleSendMessage(options = {}) {
+  const { saveForAutoExecution = true } = options;
   
   try {
-    // Mark as processing
-    isLoading = true;
-    setLoading(true);
+    // Get message text
+    const messageText = messageInput.value.trim();
     
-    // Save the user input globally (not URL dependent)
-    try {
-      await chrome.storage.local.set({ 'global_last_user_input': messageText });
-      console.log('Saved global last user input:', messageText);
-      
-      // Also update the local lastQuery variable
-      lastQuery = messageText;
-    } catch (storageError) {
-      console.error('Error saving global last user input:', storageError);
+    // Don't send empty messages
+    if (!messageText) {
+      console.log('Ignoring empty message');
+      return;
     }
     
-    // Clear the input
+    // Prevent duplicate submissions
+    if (preventDuplicateSubmission()) {
+      console.log('Preventing duplicate submission');
+      return;
+    }
+    
+    // Show loading state
+    showLoadingState();
+    
+    // Store the message for potential reuse
+    lastQuery = messageText;
+    
+    // Save as global last user input
+    await chrome.storage.local.set({ 'global_last_user_input': messageText });
+    console.log('Saved global last user input:', messageText);
+    
+    // Also save to execute_last_input for auto-execution on next popup open, if enabled
+    if (saveForAutoExecution) {
+      try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const currentTab = tabs[0] || {};
+        
+        await chrome.storage.local.set({
+          'execute_last_input': {
+            value: messageText,
+            timestamp: Date.now(),
+            // Include tab info but don't require it for execution
+            tabId: currentTab.id,
+            url: currentTab.url
+          }
+        });
+        console.log('Saved execute_last_input for auto-execution:', messageText);
+      } catch (error) {
+        console.error('Error saving execute_last_input:', error);
+        // Don't block the main flow if this fails
+      }
+    } else {
+      console.log('Skipping execute_last_input save as saveForAutoExecution is disabled');
+    }
+    
+    // Clear input field
     messageInput.value = '';
-    // Reset textarea height
-    messageInput.style.height = 'auto';
+    clearSavedInputText();
     
-    // Save the cleared input text (in this case, we're setting it to empty)
-    await clearSavedInputText();
-    
-    // Get current tab information
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab) {
-      throw new Error('Could not detect current tab');
-    }
-    
-    // CRITICAL: Check toggle state BEFORE sending message to ensure latest state is used
+    // Ensure settings are up-to-date
     await checkToggleState();
     
-    // Read settings directly from storage for most reliable state
-    const result = await chrome.storage.local.get('userPreferences');
-    const preferences = result.userPreferences || {};
-    
+    // Get current user preferences
+    const preferences = await getUserPreferences();
     console.log('Retrieved user preferences for sending message:', preferences);
     
-    // Read toggle states directly from the UI elements AFTER synchronizing
-    const pageScrapingToggle = document.getElementById('page-scraping-toggle');
-    const webSearchToggle = document.getElementById('web-search-toggle');
+    // Determine settings for this request
+    const settings = {
+      pageScraping: preferences.pageScraping !== undefined ? preferences.pageScraping : false,
+      webSearch: preferences.webSearch !== undefined ? preferences.webSearch : false,
+      selectedModel: preferences.defaultModel || 'gpt-4o-mini',
+      temperature: preferences.temperature !== undefined ? preferences.temperature : 0
+    };
     
-    // Use direct storage values first, then fall back to UI elements if available
-    const pageScraping = preferences.pageScraping !== undefined 
-                       ? preferences.pageScraping 
-                       : (pageScrapingToggle ? pageScrapingToggle.checked : false);
+    console.log('Using settings for message:', settings);
     
-    const webSearch = preferences.webSearch !== undefined 
-                    ? preferences.webSearch 
-                    : (webSearchToggle ? webSearchToggle.checked : false);
+    // Add user message to UI immediately
+    addMessageToUI('user', messageText);
     
-    // Get selected model and temperature from preferences
-    const selectedModel = modelSelect ? modelSelect.value : 
-                         (preferences.defaultModel || 'gpt-4o-mini');
-    
-    const temperature = preferences.temperature !== undefined ? 
-                       preferences.temperature : 0;
-    
-    console.log('Using settings for message:', {
-      pageScraping,
-      webSearch,
-      selectedModel,
-      temperature
-    });
-    
+    // Get page content if enabled
     let pageContent = '';
-    
-    // Only scrape the page content if page scraping is enabled
-    if (pageScraping) {
+    if (settings.pageScraping) {
       try {
-        console.log('Page scraping is enabled, attempting to scrape content');
-        
-        // Use the background script to scrape content
-        const scrapeResponse = await chrome.runtime.sendMessage({
-          type: 'scrapeContent'
-        });
-        
-        if (scrapeResponse && scrapeResponse.success && scrapeResponse.data && scrapeResponse.data.content) {
-          pageContent = scrapeResponse.data.content;
-          console.log(`Page content scraped successfully: ${pageContent.length} characters`);
-        } else if (scrapeResponse && scrapeResponse.data && scrapeResponse.data.content) {
-          // We have content in the data even though success is false
-          pageContent = scrapeResponse.data.content;
-          console.warn('Partial scraping success, using available content:', pageContent.substring(0, 100) + '...');
-        } else {
-          // Handle focus-related issues here
-          console.warn('Failed to scrape content:', scrapeResponse?.error || 'Unknown error');
-          
-          // If the error message contains chrome:// or extension page references, it's likely a focus issue
-          const errorMsg = scrapeResponse?.error || '';
-          const errorContent = scrapeResponse?.data?.content || '';
-          
-          if (errorContent.includes('chrome://') || errorContent.includes('chrome-extension://') || 
-              errorMsg.includes('chrome://') || errorMsg.includes('chrome-extension://')) {
-            // Display a more helpful error to the user about focus issues
-            displayErrorMessage('Content scraping failed. The extension is trying to scrape a Chrome settings page instead of your actual tab. Please click on the webpage you want to scrape first, then reopen the extension.');
-          }
-        }
+        console.log('Page scraping is enabled, extracting content');
+        pageContent = await extractPageContent();
+        console.log('Extracted page content length:', pageContent.length);
       } catch (error) {
-        console.warn('Error during page content scraping:', error);
+        console.error('Error extracting page content:', error);
+        addMessageToUI('system', 'Failed to extract page content. Continuing without it.');
       }
     } else {
       console.log('Page scraping is disabled, skipping content extraction');
     }
     
-    // Check if we have a session, create one if not
-    if (!currentSession) {
+    // Check if we have a current session or need to create one
+    if (!sessionState.pageLoadId) {
       console.log('No current session, creating one');
-      const sessionResponse = await chrome.runtime.sendMessage({
-        type: MESSAGE_TYPES.CREATE_CHAT_SESSION,
-        data: {
-          url: tab.url,
-          title: tab.title,
-          pageLoadId: `session_${Date.now()}_${Math.floor(Math.random() * 1000000)}`
-        }
-      });
       
-      if (!sessionResponse.success) {
-        throw new Error(sessionResponse.error || 'Failed to create chat session');
+      // Get current tab info
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs || tabs.length === 0) {
+        throw new Error('No active tab found');
       }
       
-      currentSession = sessionResponse.data;
-      console.log('Created new session:', currentSession);
+      const currentTab = tabs[0];
+      sessionState.url = currentTab.url;
+      sessionState.title = currentTab.title || currentTab.url;
+      sessionState.pageLoadId = `session_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
     }
     
-    // Add the user message to the UI
-    appendMessage({
-      role: 'user',
-      content: messageText
-    });
+    console.log('Sending message to API with page content length:', pageContent ? pageContent.length : 'disabled');
     
-    // Store page content in the session data, but don't include it in the message history
-    console.log('Sending message to API with page content length:', pageScraping ? (pageContent.length || 0) : 'disabled');
-    
-    // Make the API call
+    // Send message to background script for processing
     const response = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.SEND_USER_MESSAGE,
+      type: 'send_user_message',
       data: {
-        pageLoadId: currentSession.pageLoadId,
+        pageLoadId: sessionState.pageLoadId,
         message: messageText,
-        url: tab.url,
-        title: tab.title,
-        pageContent: pageContent,  // Send page content to be stored in session but not in history
-        enablePageScraping: pageScraping,
-        enableWebSearch: webSearch,
-        selectedModel,
-        temperature  // Add temperature from preferences
+        pageContent: pageContent,
+        webSearch: settings.webSearch,
+        model: settings.selectedModel,
+        temperature: settings.temperature,
+        url: sessionState.url,
+        title: sessionState.title
       }
     });
     
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to send message');
-    }
+    // Hide loading state
+    hideLoadingState();
     
-    // Update the current session with the response
-    if (response.data && response.data.session) {
-      currentSession = response.data.session;
+    // Reset submission state
+    sessionState.isSubmitting = false;
+    
+    // Handle response
+    if (response && response.success) {
+      // Update session with response data
+      const responseData = response.data;
       
-      // Update conversation info
-      updateConversationInfo();
-      
-      // Render all messages
-      if (currentSession.messages) {
-        renderMessages(currentSession.messages);
+      // Display assistant's response
+      if (responseData.response && responseData.response.content) {
+        addMessageToUI('assistant', responseData.response.content);
       } else {
-        console.warn('Session has no messages array:', currentSession);
+        console.error('Invalid response format:', responseData);
+        showErrorMessage('Invalid response from server');
+      }
+      
+      // Update session info if returned
+      if (responseData.session) {
+        sessionState.pageLoadId = responseData.session.pageLoadId;
+        displaySessionInfo(responseData.session);
+        
+        // Notify other components about session update
+        window.dispatchEvent(new CustomEvent('chat-session-updated', {
+          detail: { session: responseData.session }
+        }));
       }
     } else {
-      console.warn('Response missing session data:', response);
+      // Show error message
+      const errorMessage = response && response.error ? response.error : 'Failed to process message';
+      console.error('Error response:', errorMessage);
+      showErrorMessage(errorMessage);
+      
+      // Add error message to chat
+      addMessageToUI('system', `Error: ${errorMessage}`);
     }
-    
-    // Clear any error messages
-    hideErrorMessage();
   } catch (error) {
     console.error('Error sending message:', error);
-    displayErrorMessage(error.message);
-  } finally {
+    hideLoadingState();
     sessionState.isSubmitting = false;
-    setLoading(false);
+    showErrorMessage(error.message || 'Failed to send message');
+    addMessageToUI('system', `Error: ${error.message || 'Failed to send message'}`);
   }
 }
 
@@ -983,26 +963,69 @@ async function loadSavedInputText() {
 }
 
 /**
- * Check for command to execute
+ * Check for any pending command that should be auto-executed
  */
 async function checkForCommandToExecute() {
   try {
-    console.log('Checking for commands to execute...');
+    console.log('Checking for command to execute');
     
-    // First check for the execute_last_input from double-click
+    // First make sure all UI elements are fully initialized
+    initializeUIElements();
+    
+    // Ensure theme is applied from settings
+    const userPrefs = await getUserPreferences();
+    const theme = userPrefs.theme || 'light';
+    document.body.setAttribute('data-theme', theme);
+    console.log('Applied theme from settings:', theme);
+    
+    // Add visual indicator that the UI is ready
+    chatContainer.style.transition = 'opacity 0.3s ease';
+    chatContainer.style.opacity = '1';
+    
+    // Check for auto-execution from storage
     const { execute_last_input } = await chrome.storage.local.get('execute_last_input');
     if (execute_last_input) {
-      console.log('Found execute_last_input:', execute_last_input);
+      console.log('Found execute_last_input in storage:', execute_last_input);
       
-      const { input, tabId, url, timestamp } = execute_last_input;
+      // Clear it from storage to prevent duplicate executions
+      await chrome.storage.local.remove('execute_last_input');
+      console.log('Cleared execute_last_input from storage');
+      
+      // Clear any badge indicators
+      try {
+        await chrome.action.setBadgeText({ text: '' });
+        await chrome.action.setTitle({ title: '' });
+      } catch (error) {
+        console.error('Error clearing badge:', error);
+      }
+      
+      // Extract values, supporting both formats
+      const input = execute_last_input.input || execute_last_input.value || '';
+      const tabId = execute_last_input.tabId || null;
+      const url = execute_last_input.url || '';
+      const timestamp = execute_last_input.timestamp || Date.now();
+      
       const currentTime = Date.now();
       const isRecent = currentTime - timestamp < 30000; // 30 seconds threshold
+      
+      // Validate the command (must have input and be recent)
+      if (!input || !input.trim()) {
+        console.log('Command has empty input, ignoring');
+        return;
+      }
+      
+      if (!isRecent) {
+        console.log('Command is too old, ignoring', { 
+          timeSinceCommand: currentTime - timestamp,
+          threshold: '30 seconds'
+        });
+        return;
+      }
       
       // Try to get current tab info for validation
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tabs || !tabs.length) {
-        console.error('No active tab found');
-        await chrome.storage.local.remove('execute_last_input');
+        console.error('No active tab found for validation');
         return;
       }
       
@@ -1010,52 +1033,81 @@ async function checkForCommandToExecute() {
       const matchesCurrentTab = tabId === currentTab.id && url === currentTab.url;
       
       console.log('Execute_last_input validation:', {
-        input,
+        input: input.substring(0, 50) + (input.length > 50 ? '...' : ''),
         isRecent,
         matchesCurrentTab,
-        timeSinceCommand: currentTime - timestamp
+        timeSinceCommand: currentTime - timestamp,
+        currentTab: { id: currentTab.id, url: currentTab.url },
+        commandTab: { id: tabId, url }
       });
       
-      // Execute if recent and matches current tab, or force execution if just recent
-      if ((isRecent && matchesCurrentTab) || isRecent) {
-        // Clear the stored command to prevent duplicate execution
-        await chrome.storage.local.remove('execute_last_input');
+      // Even if tabs don't perfectly match, we'll still execute if the command is recent
+      // This improves reliability across different browser contexts
+      
+      // Set input value and make sure it's visible
+      messageInput.value = input;
+      
+      // Make sure the input is visible and styled properly
+      messageInput.classList.add('auto-execute');
+      setTimeout(() => messageInput.classList.remove('auto-execute'), 1000);
+      
+      // Resize textarea to fit content
+      messageInput.style.height = 'auto';
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+      messageInput.focus();
+      
+      // Show visual indicator that we're auto-executing
+      const chatHistory = document.querySelector('.chat-history') || document.getElementById('chat-history');
+      if (chatHistory) {
+        const executingNotice = document.createElement('div');
+        executingNotice.className = 'auto-execute-notice';
+        executingNotice.textContent = matchesCurrentTab 
+          ? `Auto-executing: "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}"`
+          : `Auto-executing from different tab: "${input.substring(0, 40)}${input.length > 40 ? '...' : ''}"`;
         
-        // Clear badge
-        await chrome.action.setBadgeText({ text: '' });
-        await chrome.action.setTitle({ title: '' });
+        executingNotice.style.backgroundColor = '#4CAF50';
+        executingNotice.style.color = 'white';
+        executingNotice.style.padding = '8px';
+        executingNotice.style.textAlign = 'center';
+        executingNotice.style.fontWeight = 'bold';
+        executingNotice.style.borderRadius = '4px';
+        executingNotice.style.margin = '8px 0';
         
-        // Set input value
-        messageInput.value = input;
+        chatHistory.insertBefore(executingNotice, chatHistory.firstChild);
         
-        // Resize textarea to fit content
-        messageInput.style.height = 'auto';
-        messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
-        
-        // Execute the query with a slight delay to ensure UI is ready
+        // Fade out after a few seconds
         setTimeout(() => {
-          console.log('Auto-triggering submit from shortcut');
-          handleSendMessage();
-        }, 500);
-        
-        return; // Exit early since we're executing the command
-      } else {
-        // Clear outdated command
-        console.log('Command is outdated or for a different tab, clearing it');
-        await chrome.storage.local.remove('execute_last_input');
+          executingNotice.style.transition = 'opacity 0.5s';
+          executingNotice.style.opacity = '0';
+          setTimeout(() => executingNotice.remove(), 500);
+        }, 3000);
       }
+      
+      // Execute the query with a slight delay to ensure UI is ready
+      setTimeout(() => {
+        console.log('Auto-triggering submit from command');
+        handleSendMessage();
+      }, 800); // Increased delay for more reliable execution
+      
+      return; // Exit early since we're executing the command
     }
     
-    // Fall back to older commandToExecute mechanism
+    // Fall back to older commandToExecute mechanism for backward compatibility
     const { commandToExecute } = await chrome.storage.local.get('commandToExecute');
     if (commandToExecute) {
       console.log('Found legacy command to execute:', commandToExecute);
-      messageInput.value = commandToExecute;
-      handleSendMessage();
+      
+      // Clear the command immediately
       await chrome.storage.local.remove('commandToExecute');
+      
+      // Execute if it's not empty
+      if (commandToExecute && commandToExecute.trim()) {
+        messageInput.value = commandToExecute;
+        handleSendMessage();
+      }
     }
   } catch (error) {
-    console.error('Error checking for command:', error);
+    console.error('Error checking for command to execute:', error);
   }
 }
 
@@ -1252,10 +1304,446 @@ async function loadGlobalLastUserInput() {
       console.log('Loaded global last user input:', result.global_last_user_input);
       lastQuery = result.global_last_user_input;
     } else {
-      console.log('No global last user input found in storage');
+      console.log('No global last user input found in storage, initializing with empty string');
+      // Initialize with empty string if it doesn't exist
+      await chrome.storage.local.set({ 'global_last_user_input': '' });
+      lastQuery = '';
+    }
+    
+    // Also check execute_last_input and ensure it exists
+    const execLastInput = await chrome.storage.local.get('execute_last_input');
+    if (!execLastInput.execute_last_input) {
+      console.log('No execute_last_input found, initializing with empty value');
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const currentTab = tabs[0] || {};
+      
+      await chrome.storage.local.set({
+        'execute_last_input': {
+          value: lastQuery || '',
+          timestamp: Date.now(),
+          tabId: currentTab.id, 
+          url: currentTab.url
+        }
+      });
     }
   } catch (error) {
     console.error('Error loading global last user input:', error);
+    // Initialize with empty values as fallback
+    lastQuery = '';
+    await chrome.storage.local.set({ 'global_last_user_input': '' });
+  }
+}
+
+/**
+ * Initialize UI elements
+ */
+function initializeUIElements() {
+  console.log('Initializing UI elements for chat component');
+  
+  // First, immediately notify the background script that the popup is opening 
+  // This must be done before any other operations to ensure proper tab tracking
+  notifyBackgroundScriptOfPopupOpen();
+  
+  // Get DOM elements
+  chatContainer = document.getElementById('chat-container');
+  chatMessages = document.getElementById('chat-messages');
+  messageInput = document.getElementById('message-input');
+  sendButton = document.getElementById('send-button');
+  currentConversationInfo = document.getElementById('current-conversation-info');
+  currentConversationTitle = document.getElementById('current-conversation-title');
+  currentConversationTimestamp = document.getElementById('current-conversation-timestamp');
+  newChatButton = document.getElementById('new-chat-button');
+  reasonButton = document.getElementById('reason-button');
+  searchPageButton = document.getElementById('search-page-button');
+  searchWebButton = document.getElementById('search-web-button');
+  doubleClickArea = document.getElementById('double-click-area');
+  loadingIndicator = document.getElementById('loading-indicator');
+  errorMessage = document.getElementById('error-message');
+  modelSelect = document.getElementById('model-select');
+  
+  // Load the global last user input for auto-execution
+  loadGlobalLastUserInput();
+  
+  console.log('UI elements initialized');
+}
+
+/**
+ * Load session state
+ */
+async function loadSessionState() {
+  console.log('Loading current session state');
+  
+  try {
+    // Get current tab info to load the appropriate session
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tabs || tabs.length === 0) {
+      console.error('No active tab found');
+      return;
+    }
+    
+    const currentTab = tabs[0];
+    const tabId = currentTab.id;
+    const url = currentTab.url;
+    const title = currentTab.title || '';
+    
+    console.log('Current tab info:', { tabId, url, title });
+    
+    // Try to load existing session for this URL
+    const response = await chrome.runtime.sendMessage({
+      type: 'get_chat_session',
+      data: { url }
+    });
+    
+    if (response.success && response.data) {
+      const session = response.data;
+      console.log('Found existing session:', session);
+      
+      // Store session info
+      sessionState.pageLoadId = session.pageLoadId;
+      sessionState.chatHistory = session.messages || [];
+      sessionState.url = session.url;
+      sessionState.title = session.title;
+      
+      // Update UI with session information
+      displaySessionInfo(session);
+      
+      // Render all messages from this session
+      renderChatHistory(sessionState.chatHistory);
+      
+      // Store the last query for potential reuse
+      if (sessionState.chatHistory && sessionState.chatHistory.length > 0) {
+        const userMessages = sessionState.chatHistory.filter(msg => msg.role === 'user');
+        if (userMessages.length > 0) {
+          lastQuery = userMessages[userMessages.length - 1].content;
+        }
+      }
+    } else {
+      console.log('No existing session found for URL, initializing new session');
+      
+      // Initialize a new empty session for this URL
+      sessionState.pageLoadId = `session_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+      sessionState.chatHistory = [];
+      sessionState.url = url;
+      sessionState.title = title;
+      
+      // Create a new session in the background
+      const createResponse = await chrome.runtime.sendMessage({
+        type: 'create_chat_session',
+        data: {
+          pageLoadId: sessionState.pageLoadId,
+          url: url,
+          title: title,
+          messages: [],
+          timestamp: Date.now()
+        }
+      });
+      
+      if (createResponse.success) {
+        console.log('Created new session:', createResponse.data);
+      } else {
+        console.error('Failed to create new session:', createResponse.error);
+      }
+    }
+  } catch (error) {
+    console.error('Error loading session state:', error);
+  }
+}
+
+/**
+ * Display session information in the UI
+ * @param {Object} session - The session data to display
+ */
+function displaySessionInfo(session) {
+  try {
+    if (!session) {
+      console.error('Cannot display session info: No session provided');
+      return;
+    }
+    
+    console.log('Displaying session info:', {
+      title: session.title,
+      url: session.url,
+      pageLoadId: session.pageLoadId,
+      messageCount: session.messages ? session.messages.length : 0
+    });
+    
+    // Update UI elements if they exist
+    if (currentConversationInfo) {
+      currentConversationInfo.style.display = 'block';
+    }
+    
+    if (currentConversationTitle) {
+      // Set an appropriate title
+      currentConversationTitle.textContent = session.title || 'Untitled Chat';
+      currentConversationTitle.title = session.url || '';
+    }
+    
+    if (currentConversationTimestamp) {
+      // Format the timestamp
+      const timestamp = session.timestamp || session.lastUpdated || Date.now();
+      const date = new Date(timestamp);
+      currentConversationTimestamp.textContent = date.toLocaleString();
+    }
+    
+    // Update any additional UI elements related to the session
+    if (newChatButton) {
+      newChatButton.style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Error displaying session info:', error);
+  }
+}
+
+/**
+ * Render chat history in the UI
+ * @param {Array} messages - Array of chat messages to render
+ */
+function renderChatHistory(messages) {
+  try {
+    if (!chatMessages) {
+      console.error('Cannot render chat history: chatMessages element not found');
+      return;
+    }
+    
+    // Clear existing messages
+    chatMessages.innerHTML = '';
+    
+    // If no messages, show empty state
+    if (!messages || messages.length === 0) {
+      console.log('No messages to render, showing empty state');
+      return;
+    }
+    
+    console.log(`Rendering ${messages.length} chat messages`);
+    
+    // Render each message
+    messages.forEach((msg, index) => {
+      const messageElement = document.createElement('div');
+      messageElement.classList.add('chat-message');
+      messageElement.classList.add(`message-${msg.role}`);
+      
+      // Apply different styling based on role
+      if (msg.role === 'user') {
+        messageElement.classList.add('user-message');
+      } else if (msg.role === 'assistant') {
+        messageElement.classList.add('ai-message');
+      } else if (msg.role === 'system') {
+        messageElement.classList.add('system-message');
+      }
+      
+      // Create content element with proper formatting
+      const contentElement = document.createElement('div');
+      contentElement.classList.add('message-content');
+      
+      // Format the message content with markdown if it's not a system message
+      if (msg.role !== 'system') {
+        // Simple markdown-like formatting (for a real implementation, use a proper markdown library)
+        const formattedContent = msg.content
+          .replace(/\n/g, '<br>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        contentElement.innerHTML = formattedContent;
+      } else {
+        // System messages are shown plainly
+        contentElement.textContent = msg.content;
+      }
+      
+      messageElement.appendChild(contentElement);
+      
+      // Add a timestamp if available
+      if (msg.timestamp) {
+        const timestampElement = document.createElement('div');
+        timestampElement.classList.add('message-timestamp');
+        const date = new Date(msg.timestamp);
+        timestampElement.textContent = date.toLocaleTimeString();
+        messageElement.appendChild(timestampElement);
+      }
+      
+      // Add to the chat container
+      chatMessages.appendChild(messageElement);
+    });
+    
+    // Scroll to the bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  } catch (error) {
+    console.error('Error rendering chat history:', error);
+  }
+}
+
+/**
+ * Show loading state in the UI
+ */
+function showLoadingState() {
+  if (loadingIndicator) {
+    loadingIndicator.style.display = 'block';
+  }
+  
+  if (sendButton) {
+    sendButton.disabled = true;
+    sendButton.classList.add('loading');
+  }
+}
+
+/**
+ * Hide loading state in the UI
+ */
+function hideLoadingState() {
+  if (loadingIndicator) {
+    loadingIndicator.style.display = 'none';
+  }
+  
+  if (sendButton) {
+    sendButton.disabled = false;
+    sendButton.classList.remove('loading');
+  }
+}
+
+/**
+ * Show error message in the UI
+ * @param {string} message - The error message to display
+ */
+function showErrorMessage(message) {
+  if (!errorMessage) return;
+  
+  errorMessage.textContent = message;
+  errorMessage.style.display = 'block';
+  
+  // Auto-hide after a few seconds
+  setTimeout(() => {
+    if (errorMessage) {
+      errorMessage.style.display = 'none';
+    }
+  }, 5000);
+}
+
+/**
+ * Add a message to the UI
+ * @param {string} role - The role of the message sender ('user', 'assistant', 'system')
+ * @param {string} content - The message content
+ */
+function addMessageToUI(role, content) {
+  if (!chatMessages) {
+    console.error('Cannot add message to UI: chatMessages element not found');
+    return;
+  }
+  
+  // Create message element
+  const messageElement = document.createElement('div');
+  messageElement.classList.add('chat-message');
+  messageElement.classList.add(`message-${role}`);
+  
+  // Apply styling based on role
+  if (role === 'user') {
+    messageElement.classList.add('user-message');
+  } else if (role === 'assistant') {
+    messageElement.classList.add('ai-message');
+  } else if (role === 'system') {
+    messageElement.classList.add('system-message');
+  }
+  
+  // Create content element
+  const contentElement = document.createElement('div');
+  contentElement.classList.add('message-content');
+  
+  // Format content (simple markdown-like formatting)
+  if (role !== 'system') {
+    const formattedContent = content
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    contentElement.innerHTML = formattedContent;
+  } else {
+    contentElement.textContent = content;
+  }
+  
+  messageElement.appendChild(contentElement);
+  
+  // Add timestamp
+  const timestampElement = document.createElement('div');
+  timestampElement.classList.add('message-timestamp');
+  const date = new Date();
+  timestampElement.textContent = date.toLocaleTimeString();
+  messageElement.appendChild(timestampElement);
+  
+  // Add to chat container
+  chatMessages.appendChild(messageElement);
+  
+  // Scroll to the bottom
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  // Update session state if needed
+  if (!sessionState.chatHistory) {
+    sessionState.chatHistory = [];
+  }
+  
+  // Add to session state
+  sessionState.chatHistory.push({
+    role: role,
+    content: content,
+    timestamp: Date.now()
+  });
+}
+
+/**
+ * Extract page content from the current tab
+ * 
+ * @returns {Promise<string>} - The extracted page content
+ */
+async function extractPageContent() {
+  try {
+    console.log('Extracting page content from current tab');
+    
+    // Get current tab
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tabs || tabs.length === 0) {
+      throw new Error('No active tab found for content extraction');
+    }
+    
+    const currentTab = tabs[0];
+    console.log('Sending scrape request for tab:', currentTab.id);
+    
+    // Request content scraping from background script
+    const response = await chrome.runtime.sendMessage({
+      type: MESSAGE_TYPES.SCRAPE_PAGE_CONTENT,
+      tabId: currentTab.id,
+      url: currentTab.url
+    });
+    
+    if (!response || !response.success) {
+      const errorMsg = response?.error || 'Unknown error scraping page content';
+      console.error('Error response from content scraping:', errorMsg);
+      throw new Error(errorMsg);
+    }
+    
+    if (!response.data || !response.data.content) {
+      console.warn('No content returned from page scraping');
+      return '';
+    }
+    
+    console.log('Successfully scraped page content, length:', response.data.content.length);
+    return response.data.content;
+  } catch (error) {
+    console.error('Error in extractPageContent:', error);
+    throw error;
+  }
+}
+
+/**
+ * Execute the command currently in the input field
+ * This function is called from popup.js for auto-execution
+ */
+function executeCommand() {
+  try {
+    console.log('executeCommand called from popup.js auto-execution');
+    // Call the handleSendMessage function to process the current input
+    handleSendMessage();
+  } catch (error) {
+    console.error('Error in executeCommand:', error);
+    displayErrorMessage('Failed to execute command: ' + error.message);
   }
 }
 
@@ -1266,5 +1754,6 @@ export default {
   displayErrorMessage,
   hideErrorMessage,
   loadCurrentSession,
-  lastQuery
+  lastQuery,
+  executeCommand
 }; 
