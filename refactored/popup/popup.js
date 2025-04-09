@@ -28,73 +28,77 @@ console.log(`Popup instance ID: ${popupInstanceId}`);
       console.log('THEME DEBUG: Removed any direct "theme" key to avoid conflicts');
     });
     
-    // First try to read from localStorage for instant application
+    // Disable all transitions initially
+    document.documentElement.classList.add('theme-transition-disabled');
+    document.documentElement.classList.add('theme-loading');
+    
+    // 1. First check localStorage for immediate theme application
     const cachedTheme = localStorage.getItem('temp_theme_preference');
     console.log('THEME DEBUG: cachedTheme from localStorage:', cachedTheme);
     
-    if (cachedTheme) {
-      console.debug(`Applying cached theme from localStorage: ${cachedTheme}`);
-      document.documentElement.classList.add('theme-loading');
-      document.body.setAttribute('data-theme', cachedTheme);
-    } else {
-      // Default to system preference if no cached theme
+    // Initial theme application based on localStorage or system preference
+    let initialTheme = cachedTheme;
+    
+    // Ensure we only apply 'light' or 'dark', not 'system' or other values
+    if (!initialTheme || initialTheme === 'system' || (initialTheme !== 'light' && initialTheme !== 'dark')) {
+      // For system theme or no stored preference or invalid value, detect system theme
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const defaultTheme = prefersDark ? 'dark' : 'light';
+      initialTheme = prefersDark ? 'dark' : 'light';
       console.log('THEME DEBUG: System preference detected as:', prefersDark ? 'dark' : 'light');
-      console.debug(`No cached theme, using system preference: ${defaultTheme}`);
-      document.documentElement.classList.add('theme-loading');
-      document.body.setAttribute('data-theme', defaultTheme);
     }
     
-    // Immediately try to get the actual user preference from Chrome storage
-    // This runs asynchronously so it won't block the initial render
+    // Always apply an initial theme immediately to prevent flash
+    console.debug(`Initial theme application: ${initialTheme}`);
+    // Apply theme to HTML element instead of body
+    document.documentElement.setAttribute('data-theme', initialTheme);
+    
+    // 2. Then check Chrome storage for the actual user preference
     chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
       console.log('THEME DEBUG: userPreferences from Chrome storage:', userPreferences);
       
-      if (userPreferences && userPreferences.theme) {
-        const theme = userPreferences.theme;
-        console.log('THEME DEBUG: Theme preference from Chrome storage:', theme);
-        
-        let effectiveTheme = theme;
-        
-        // For "system" theme, detect system preference
-        if (theme === 'system') {
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          effectiveTheme = prefersDark ? 'dark' : 'light';
-          console.log('THEME DEBUG: "system" theme resolved to:', effectiveTheme);
-        }
-        
-        // Only update DOM if the effective theme is different from what's already applied
-        const currentTheme = document.body.getAttribute('data-theme');
-        console.log('THEME DEBUG: Current theme in DOM:', currentTheme, 'New effectiveTheme:', effectiveTheme);
-        
-        if (currentTheme !== effectiveTheme) {
-          console.log('THEME DEBUG: Updating theme from', currentTheme, 'to', effectiveTheme);
-          document.body.setAttribute('data-theme', effectiveTheme);
-        } else {
-          console.log('THEME DEBUG: Theme already correct, no change needed');
-        }
-        
-        // Update localStorage to match for next popup open
-        try {
-          localStorage.setItem('temp_theme_preference', effectiveTheme);
-          console.log('THEME DEBUG: Updated localStorage theme to:', effectiveTheme);
-        } catch (e) {
-          console.warn('Could not update cached theme in localStorage:', e);
-        }
+      // Default to system if no preference is set
+      let themePreference = (userPreferences && userPreferences.theme) || 'system';
+      let effectiveTheme;
+      
+      // For all preferences, make sure we resolve to either 'light' or 'dark'
+      if (themePreference === 'light') {
+        effectiveTheme = 'light';
+      } else if (themePreference === 'dark') {
+        effectiveTheme = 'dark';
+      } else {
+        // For 'system' or any invalid value, detect system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        effectiveTheme = prefersDark ? 'dark' : 'light';
+        console.log('THEME DEBUG: "system" theme resolved to:', effectiveTheme);
       }
       
-      // Add the ready class to signal theme is fully processed
+      // Only update DOM if the effective theme is different from what's already applied
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      console.log('THEME DEBUG: Current theme in DOM:', currentTheme, 'New effectiveTheme:', effectiveTheme);
+      
+      if (currentTheme !== effectiveTheme) {
+        console.log('THEME DEBUG: Updating theme from', currentTheme, 'to', effectiveTheme);
+        document.documentElement.setAttribute('data-theme', effectiveTheme);
+      } else {
+        console.log('THEME DEBUG: Theme already correct, no change needed');
+      }
+      
+      // 3. Always update localStorage with the latest preference
+      try {
+        localStorage.setItem('temp_theme_preference', themePreference); // Store the preference, not the resolved theme
+        console.log('THEME DEBUG: Updated localStorage theme preference to:', themePreference);
+      } catch (e) {
+        console.warn('Could not update cached theme in localStorage:', e);
+      }
+      
+      // Add the ready class to signal theme is fully processed and re-enable transitions
       document.documentElement.classList.add('theme-ready');
       document.documentElement.classList.remove('theme-loading');
-    });
-    
-    // Get all stored keys for diagnosis
-    chrome.storage.local.get(null, (result) => {
-      console.log('THEME DEBUG: All Chrome storage keys:', Object.keys(result));
-      if (result.theme) {
-        console.log('THEME DEBUG: Direct "theme" key found in Chrome storage:', result.theme);
-      }
+      
+      // Re-enable transitions after a short delay
+      setTimeout(() => {
+        document.documentElement.classList.remove('theme-transition-disabled');
+      }, 100);
     });
     
     // Set up a listener for system theme changes
@@ -105,15 +109,24 @@ console.log(`Popup instance ID: ${popupInstanceId}`);
         if (userPreferences?.theme === 'system') {
           const newTheme = e.matches ? 'dark' : 'light';
           console.debug(`System theme changed to: ${newTheme}`);
-          document.body.setAttribute('data-theme', newTheme);
-          localStorage.setItem('temp_theme_preference', newTheme);
+          document.documentElement.setAttribute('data-theme', newTheme);
         }
       });
     });
   } catch (error) {
     console.error('Error in immediate theme application:', error);
-    // Fallback to light theme if all else fails
-    document.body.setAttribute('data-theme', 'light');
+    // Fallback to system preference if all else fails
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const fallbackTheme = prefersDark ? 'dark' : 'light';
+    console.log('THEME DEBUG: Error fallback to system theme:', fallbackTheme);
+    document.documentElement.setAttribute('data-theme', fallbackTheme);
+    
+    // Re-enable transitions even if there was an error
+    document.documentElement.classList.remove('theme-loading');
+    document.documentElement.classList.add('theme-ready');
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-transition-disabled');
+    }, 100);
   }
 })();
 
@@ -269,79 +282,74 @@ let popupInitialized = false;
  * Apply theme from user preferences
  */
 async function applyThemeFromPreferences() {
+  // Avoid multiple theme application attempts in rapid succession
+  if (window.themeApplicationInProgress) {
+    console.log('THEME DEBUG: Theme application already in progress, skipping duplicate call');
+    return;
+  }
+  
+  window.themeApplicationInProgress = true;
+  
   try {
     console.log('THEME DEBUG: applyThemeFromPreferences called');
+    
+    // Get user preferences from Chrome storage
     const { userPreferences } = await chrome.storage.local.get('userPreferences');
     console.log('THEME DEBUG: userPreferences in applyThemeFromPreferences:', userPreferences);
     
-    if (userPreferences && userPreferences.theme) {
-      const theme = userPreferences.theme;
-      console.log('THEME DEBUG: Using theme from userPreferences:', theme);
-      
-      let effectiveTheme = theme;
-      
-      // Special handling for "system" theme - detect system preference
-      if (theme === 'system') {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        effectiveTheme = prefersDark ? 'dark' : 'light';
-        console.log('THEME DEBUG: In applyThemeFromPreferences, "system" resolved to:', effectiveTheme);
-      }
-      
-      // Check if theme already matches what's applied
-      const currentTheme = document.body.getAttribute('data-theme');
-      console.log('THEME DEBUG: In applyThemeFromPreferences, current theme:', currentTheme, 'new theme:', effectiveTheme);
-      
-      if (currentTheme !== effectiveTheme) {
-        console.log('THEME DEBUG: In applyThemeFromPreferences, updating theme from', currentTheme, 'to', effectiveTheme);
-        document.body.setAttribute('data-theme', effectiveTheme);
-        
-        // Cache the effective theme in localStorage for immediate access next time
-        try {
-          localStorage.setItem('temp_theme_preference', effectiveTheme);
-          console.log('THEME DEBUG: In applyThemeFromPreferences, updated localStorage to:', effectiveTheme);
-        } catch (e) {
-          console.warn('Could not cache theme in localStorage:', e);
-        }
-      } else {
-        console.log('THEME DEBUG: In applyThemeFromPreferences, theme already correct, no change needed');
-      }
-      
-      // Add a CSS class to indicate theme is loaded
-      document.documentElement.classList.add('theme-ready');
-      document.documentElement.classList.remove('theme-loading');
+    // Default to system theme if no preference is set
+    const themePreference = (userPreferences && userPreferences.theme) || 'system';
+    console.log('THEME DEBUG: Using theme from userPreferences:', themePreference);
+    
+    let effectiveTheme;
+    
+    // Ensure we only apply 'light' or 'dark', not 'system' or other values
+    if (themePreference === 'light') {
+      effectiveTheme = 'light';
+    } else if (themePreference === 'dark') {
+      effectiveTheme = 'dark';
     } else {
-      console.log('THEME DEBUG: No theme found in storage, using system default');
-      // Apply system theme as default
+      // For 'system' or any invalid value, detect system preference
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const defaultTheme = prefersDark ? 'dark' : 'light';
-      console.log('THEME DEBUG: System preference is:', defaultTheme);
-      
-      // Check if already applied
-      const currentTheme = document.body.getAttribute('data-theme');
-      if (currentTheme !== defaultTheme) {
-        console.log('THEME DEBUG: Updating theme from', currentTheme, 'to', defaultTheme);
-        document.body.setAttribute('data-theme', defaultTheme);
-        
-        // Cache this theme
-        try {
-          localStorage.setItem('temp_theme_preference', defaultTheme);
-          console.log('THEME DEBUG: Updated localStorage to:', defaultTheme);
-        } catch (e) {
-          console.warn('Could not cache theme in localStorage:', e);
-        }
-      } else {
-        console.log('THEME DEBUG: Theme already correct, no change needed');
-      }
-      
-      document.documentElement.classList.add('theme-ready');
-      document.documentElement.classList.remove('theme-loading');
+      effectiveTheme = prefersDark ? 'dark' : 'light';
+      console.log('THEME DEBUG: In applyThemeFromPreferences, "system" resolved to:', effectiveTheme);
     }
-  } catch (error) {
-    console.error('Error applying theme from preferences:', error);
-    // Fallback to light theme
-    document.body.setAttribute('data-theme', 'light');
+    
+    // Check if theme already matches what's applied
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    console.log('THEME DEBUG: In applyThemeFromPreferences, current theme:', currentTheme, 'new theme:', effectiveTheme);
+    
+    if (currentTheme !== effectiveTheme) {
+      console.log('THEME DEBUG: In applyThemeFromPreferences, updating theme from', currentTheme, 'to', effectiveTheme);
+      document.documentElement.setAttribute('data-theme', effectiveTheme);
+    } else {
+      console.log('THEME DEBUG: In applyThemeFromPreferences, theme already correct, no change needed');
+    }
+    
+    // Cache the theme preference in localStorage for immediate access next time
+    try {
+      localStorage.setItem('temp_theme_preference', themePreference); // Store the preference, not the resolved theme
+      console.log('THEME DEBUG: In applyThemeFromPreferences, updated localStorage to:', themePreference);
+    } catch (e) {
+      console.warn('Could not cache theme in localStorage:', e);
+    }
+    
+    // Add a CSS class to indicate theme is loaded
     document.documentElement.classList.add('theme-ready');
     document.documentElement.classList.remove('theme-loading');
+  } catch (error) {
+    console.error('Error applying theme from preferences:', error);
+    // Fallback to system preference if all else fails
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const fallbackTheme = prefersDark ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', fallbackTheme);
+    document.documentElement.classList.add('theme-ready');
+    document.documentElement.classList.remove('theme-loading');
+  } finally {
+    // Reset the flag after a delay to prevent rapid calls but allow later calls
+    setTimeout(() => {
+      window.themeApplicationInProgress = false;
+    }, 200);
   }
 }
 
@@ -441,21 +449,27 @@ function setupComponentCommunication() {
     
     // Apply theme changes immediately
     if (settings.theme) {
-      let effectiveTheme = settings.theme;
+      let effectiveTheme;
       
-      // Special handling for "system" theme - detect system preference
-      if (settings.theme === 'system') {
+      // Ensure we only apply 'light' or 'dark', not 'system' or other values
+      if (settings.theme === 'light') {
+        effectiveTheme = 'light';
+      } else if (settings.theme === 'dark') {
+        effectiveTheme = 'dark';
+      } else {
+        // For 'system' or any invalid value, detect system preference
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         effectiveTheme = prefersDark ? 'dark' : 'light';
         console.debug(`System theme detected as: ${effectiveTheme}`);
       }
       
-      // Apply the theme to the document
-      document.body.setAttribute('data-theme', effectiveTheme);
+      // Apply the theme to the HTML element
+      document.documentElement.setAttribute('data-theme', effectiveTheme);
       
-      // Cache the effective theme in localStorage
+      // Cache the theme preference in localStorage
       try {
-        localStorage.setItem('temp_theme_preference', effectiveTheme);
+        localStorage.setItem('temp_theme_preference', settings.theme); // Store the preference, not the resolved theme
+        console.log('THEME DEBUG: Updated localStorage theme preference to:', settings.theme);
       } catch (e) {
         console.warn('Could not cache theme in localStorage:', e);
       }

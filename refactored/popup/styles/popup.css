@@ -20,7 +20,7 @@
 }
 
 /* Dark theme */
-[data-theme="dark"] {
+html[data-theme="dark"] {
   --background-color: #1f2937;
   --text-color: #e5e7eb;
   --secondary-text-color: #9ca3af;
@@ -40,6 +40,20 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* Theme transition handling */
+.theme-transition-disabled,
+.theme-transition-disabled * {
+  transition: none !important;
+}
+
+.theme-loading {
+  visibility: visible !important;
+}
+
+.theme-ready {
+  visibility: visible !important;
 }
 
 body {
