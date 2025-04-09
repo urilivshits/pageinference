@@ -442,16 +442,16 @@ FORMAT GUIDE - DO NOT DELETE
   - Improved architecture to respect Chrome Extension Manifest V3 requirements
   - Maintained full Ctrl+Click functionality with a more reliable implementation
   - References: background.js, popup.js
-- **[Enhanced Ctrl+Click Implementation]** Improved reliability of Ctrl+Click functionality:
-  - Moved Ctrl key detection to content scripts where document object is consistently available
-  - Implemented message passing between content script and background script for key state
-  - Used a more reliable approach storing key state at click time rather than checking real-time
-  - Added window blur detection to reset key state when focus is lost
-  - Implemented debouncing to prevent excessive message passing 
-  - Enhanced logging in background script for easier troubleshooting
-  - Created a workflow that works reliably across all Chrome extension contexts
-  - Functions without relying on popup's ability to detect keypress events
-  - References: content.js, background.js, popup.js
+- **[Improved Ctrl+Click Detection]** Resolved conflicts between background script and popup-based Ctrl key detection:
+  - Disabled older content script-based Ctrl key detection that was interfering with proper operation
+  - Implemented window-level ctrlKeyPressed variable for consistent cross-component access
+  - Added multiple layered detection methods to ensure reliable Ctrl key state tracking
+  - Created comprehensive validation in checkCtrlKeyBeforeExecution function
+  - Added multiple interception points in checkForCommandToExecute to prevent auto-execution
+  - Updated executeCommand to check for Ctrl key state before execution
+  - Enhanced logging throughout the detection process for better troubleshooting
+  - Eliminated race conditions in Ctrl key detection for more consistent behavior
+  - References: refactored/popup/popup.js, refactored/popup/components/chat.js, refactored/content/ctrl-key-detector.js
 - **[UI Notification Cleanup]** Enhanced user experience with cleaner interface:
   - Removed intrusive error and status notifications for failed or completed operations
   - Eliminated "No previous user request found" error messages in favor of silent failure

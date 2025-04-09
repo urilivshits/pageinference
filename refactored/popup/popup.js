@@ -17,6 +17,84 @@ if (window.popupJsInitialized) {
 const popupInstanceId = Date.now() + '-' + Math.random().toString(36).substring(2, 15);
 console.log(`Popup instance ID: ${popupInstanceId}`);
 
+// Track if Ctrl key is pressed
+let ctrlKeyPressed = false;
+
+// Expose ctrlKeyPressed to window so other components can access it
+window.ctrlKeyPressed = false;
+
+// Function to monitor Ctrl key state changes
+const monitorCtrlKeyState = (newState) => {
+  if (newState !== ctrlKeyPressed) {
+    console.log(`POPUP CTRL KEY STATE CHANGED: ${ctrlKeyPressed} → ${newState}`);
+    ctrlKeyPressed = newState;
+    // Update window variable for other components
+    window.ctrlKeyPressed = newState;
+    
+    // Log the state change for better debugging
+    if (newState === true) {
+      console.log('Ctrl key is now pressed - auto-execution will be skipped');
+    } else {
+      console.log('Ctrl key is now released');
+    }
+  }
+};
+
+// Check if Ctrl key is pressed at startup - most reliable way to catch it
+// Different browsers handle key events differently, so we check both ways
+if (typeof window !== 'undefined') {
+  // Method 1: Check for Ctrl key using keyboard event
+  const checkForCtrl = (e) => {
+    if (e.key === 'Control' || e.ctrlKey) {
+      console.log('POPUP: Ctrl key detected on popup open');
+      monitorCtrlKeyState(true);
+      // Remove this listener once we've detected Ctrl
+      document.removeEventListener('keydown', checkForCtrl, true);
+    }
+  };
+  
+  // Add capture phase listener to catch it as early as possible
+  document.addEventListener('keydown', checkForCtrl, true);
+  
+  // Method 2: Check via mouseup event which might have Ctrl key info
+  document.addEventListener('mouseup', (e) => {
+    if (e.ctrlKey) {
+      console.log('POPUP: Ctrl key detected via mouseup event');
+      monitorCtrlKeyState(true);
+    }
+  }, {once: true, capture: true});
+  
+  // Method 3: Check for current keyboard state
+  try {
+    // Some browsers support this API
+    if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
+      navigator.keyboard.getLayoutMap().then(keyboardLayoutMap => {
+        if (keyboardLayoutMap.has('ControlLeft') || keyboardLayoutMap.has('ControlRight')) {
+          console.log('POPUP: Ctrl key detected via Keyboard API');
+          monitorCtrlKeyState(true);
+        }
+      });
+    }
+  } catch (e) {
+    console.log('Keyboard API not supported');
+  }
+}
+
+// Add event listeners for Ctrl key as early as possible
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Control') {
+    monitorCtrlKeyState(true);
+    console.debug('Ctrl key down detected in popup');
+  }
+});
+
+document.addEventListener('keyup', (event) => {
+  if (event.key === 'Control') {
+    monitorCtrlKeyState(false);
+    console.debug('Ctrl key up detected in popup');
+  }
+});
+
 // Apply theme immediately, before anything else renders
 (function applyThemeImmediately() {
   try {
@@ -404,16 +482,85 @@ async function initializePopup() {
     } else {
       console.debug('API key exists, proceeding with initialization');
       
-      // Set focus on input after everything is properly initialized
-      setTimeout(() => {
+      // Check one more time for Ctrl key state right before auto-execution
+      const checkCtrlKeyBeforeExecution = () => {
+        // Focus on input after everything is properly initialized
         const inputElement = document.getElementById('message-input');
         if (inputElement) {
           inputElement.focus();
         }
         
-        // Only attempt auto-execution after popup is fully initialized and input is focused
-        autoExecuteIfNeeded();
-      }, 100);
+        // We perform multiple checks for the Ctrl key to be extremely reliable
+        let ctrlKeyDetected = false;
+        
+        // Method 1: Check the window.ctrlKeyPressed global variable set by our detection methods
+        if (window.ctrlKeyPressed === true) {
+          ctrlKeyDetected = true;
+          console.debug('Ctrl key detected from window.ctrlKeyPressed global variable');
+        }
+        
+        // Method 2: Check our local ctrlKeyPressed variable
+        if (ctrlKeyPressed === true) {
+          ctrlKeyDetected = true;
+          console.debug('Ctrl key detected from local ctrlKeyPressed variable');
+        }
+        
+        // Method 3: Check if Ctrl key is currently pressed using browser APIs
+        if (navigator.userAgent.indexOf('Mac') !== -1) {
+          // Use Command key on Mac
+          if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
+            navigator.keyboard.getLayoutMap().then(keyMap => {
+              if (keyMap.has('MetaLeft') || keyMap.has('MetaRight')) {
+                ctrlKeyDetected = true;
+                console.debug('Command key detected via Keyboard API on Mac');
+                monitorCtrlKeyState(true);
+              }
+            }).catch(err => console.debug('Keyboard API error:', err));
+          }
+        } else {
+          // Use Ctrl key on other platforms
+          if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
+            navigator.keyboard.getLayoutMap().then(keyMap => {
+              if (keyMap.has('ControlLeft') || keyMap.has('ControlRight')) {
+                ctrlKeyDetected = true;
+                console.debug('Ctrl key detected via Keyboard API');
+                monitorCtrlKeyState(true);
+              }
+            }).catch(err => console.debug('Keyboard API error:', err));
+          }
+        }
+        
+        // Method 4: Use event.ctrlKey if available (unlikely, but worth checking)
+        if (window.event?.ctrlKey) {
+          ctrlKeyDetected = true;
+          console.debug('Ctrl key detected via window.event.ctrlKey');
+          monitorCtrlKeyState(true);
+        } else if (window.event?.metaKey && navigator.userAgent.indexOf('Mac') !== -1) {
+          ctrlKeyDetected = true;
+          console.debug('Command key detected via window.event.metaKey on Mac');
+          monitorCtrlKeyState(true);
+        }
+        
+        // Final check: If any method detected Ctrl key, update all variables
+        if (ctrlKeyDetected) {
+          console.debug('Ctrl key detected in final comprehensive check before auto-execution');
+          monitorCtrlKeyState(true);
+        } else {
+          console.debug('Ctrl key not detected in final comprehensive check');
+        }
+        
+        // Only attempt auto-execution after popup is fully initialized, input is focused,
+        // and the Ctrl key is not pressed
+        if (!ctrlKeyDetected) {
+          console.log('Proceeding with auto-execution - Ctrl key not detected');
+          autoExecuteIfNeeded();
+        } else {
+          console.log('Skipping auto-execution - Ctrl key detected');
+        }
+      };
+      
+      // Small delay to ensure everything is ready and give time to detect key state
+      setTimeout(checkCtrlKeyBeforeExecution, 100);
     }
   } catch (error) {
     console.error('Error in popup initialization:', error);
@@ -572,18 +719,14 @@ async function autoExecuteIfNeeded() {
     
     console.debug('Found potential input for auto-execution:', userInput.substring(0, 30) + (userInput.length > 30 ? '...' : ''));
     
-    // Check if Ctrl key is pressed by asking the background script
-    const ctrlCheckResponse = await chrome.runtime.sendMessage({ 
-      action: 'check_ctrl_key', 
-      tabId: tabId
-    });
-    
-    const ctrlKeyPressed = ctrlCheckResponse && ctrlCheckResponse.ctrlKeyPressed;
-    console.debug('Ctrl key state from background script:', ctrlKeyPressed);
+    // *** CRITICAL: Use window.ctrlKeyPressed directly for the most up-to-date state
+    // We read from window.ctrlKeyPressed which gets updated from all the detection methods
+    const isCtrlPressed = window.ctrlKeyPressed === true;
+    console.debug('Checking Ctrl key state (window.ctrlKeyPressed):', isCtrlPressed);
     
     // If the Ctrl key is not pressed, auto-execute the command
-    if (!ctrlKeyPressed) {
-      console.debug('Auto-executing command, Ctrl key not pressed');
+    if (!isCtrlPressed) {
+      console.debug('Ctrl key not detected, proceeding with auto-execution');
       
       // Set the input in the chat component
       const messageInput = document.getElementById('message-input');
@@ -607,6 +750,12 @@ async function autoExecuteIfNeeded() {
         // Check if we've been trying too long regardless of retry count
         if (Date.now() - startTime > maxWaitTime) {
           console.error(`Timeout reached waiting for chat module initialization after ${maxWaitTime}ms`);
+          return;
+        }
+        
+        // Check again if Ctrl key was pressed during our retry attempts
+        if (window.ctrlKeyPressed === true) {
+          console.debug('Ctrl key detected during execution retry, aborting auto-execution');
           return;
         }
         
@@ -650,6 +799,12 @@ async function autoExecuteIfNeeded() {
             // Continue anyway as we'll retry execution
           }
           
+          // Check again if Ctrl key was pressed during our content script check
+          if (window.ctrlKeyPressed === true) {
+            console.debug('Ctrl key detected after content script initialization, aborting auto-execution');
+            return;
+          }
+          
           // Execute the stored command
           console.debug('Chat module ready, executing command');
           window.chat.executeCommand();
@@ -667,7 +822,7 @@ async function autoExecuteIfNeeded() {
       // Start the execution attempt
       tryExecute();
     } else {
-      console.debug('Ctrl key pressed, not auto-executing');
+      console.debug('Ctrl key detected, skipping auto-execution');
     }
   } catch (error) {
     console.error('Error in auto-execution:', error);

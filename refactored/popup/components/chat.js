@@ -982,10 +982,25 @@ async function checkForCommandToExecute() {
     chatContainer.style.transition = 'opacity 0.3s ease';
     chatContainer.style.opacity = '1';
     
+    // *** CRITICAL: Check if Ctrl key is pressed using the window's global variable
+    // Defined in popup.js for early detection
+    if (window.ctrlKeyPressed === true) {
+      console.log('COMMAND EXECUTION: Ctrl key is pressed, skipping auto-execution');
+      return; // Skip execution if Ctrl key is pressed
+    }
+    
     // Check for auto-execution from storage
     const { execute_last_input } = await chrome.storage.local.get('execute_last_input');
     if (execute_last_input) {
       console.log('Found execute_last_input in storage:', execute_last_input);
+      
+      // Check AGAIN if Ctrl key got pressed while storage was being queried
+      if (window.ctrlKeyPressed === true) {
+        console.log('COMMAND EXECUTION: Ctrl key pressed during command retrieval, skipping auto-execution');
+        // Clear it from storage to prevent future executions
+        await chrome.storage.local.remove('execute_last_input');
+        return;
+      }
       
       // Clear it from storage to prevent duplicate executions
       await chrome.storage.local.remove('execute_last_input');
@@ -1019,6 +1034,12 @@ async function checkForCommandToExecute() {
           timeSinceCommand: currentTime - timestamp,
           threshold: '30 seconds'
         });
+        return;
+      }
+      
+      // Check ONCE MORE if Ctrl key was pressed during our checks
+      if (window.ctrlKeyPressed === true) {
+        console.log('COMMAND EXECUTION: Ctrl key pressed during validation, skipping auto-execution');
         return;
       }
       
@@ -1085,6 +1106,12 @@ async function checkForCommandToExecute() {
       
       // Execute the query with a slight delay to ensure UI is ready
       setTimeout(() => {
+        // Check one final time for Ctrl key before executing
+        if (window.ctrlKeyPressed === true) {
+          console.log('COMMAND EXECUTION: Ctrl key pressed right before execution, skipping auto-execution');
+          return;
+        }
+        
         console.log('Auto-triggering submit from command');
         handleSendMessage();
       }, 800); // Increased delay for more reliable execution
@@ -1095,6 +1122,14 @@ async function checkForCommandToExecute() {
     // Fall back to older commandToExecute mechanism for backward compatibility
     const { commandToExecute } = await chrome.storage.local.get('commandToExecute');
     if (commandToExecute) {
+      // Check if Ctrl key is pressed using the window's global variable
+      if (window.ctrlKeyPressed === true) {
+        console.log('COMMAND EXECUTION: Ctrl key pressed, skipping legacy command execution');
+        // Clear the command still
+        await chrome.storage.local.remove('commandToExecute');
+        return;
+      }
+      
       console.log('Found legacy command to execute:', commandToExecute);
       
       // Clear the command immediately
@@ -1739,6 +1774,13 @@ async function extractPageContent() {
 function executeCommand() {
   try {
     console.log('executeCommand called from popup.js auto-execution');
+    
+    // Check if Ctrl key is pressed using the window's global variable
+    if (window.ctrlKeyPressed === true) {
+      console.log('EXECUTE_COMMAND: Ctrl key is pressed, skipping auto-execution');
+      return; // Skip execution if Ctrl key is pressed
+    }
+    
     // Call the handleSendMessage function to process the current input
     handleSendMessage();
   } catch (error) {

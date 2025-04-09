@@ -3,8 +3,11 @@
  * 
  * This script detects Ctrl key presses when interacting with the extension icon
  * and sends that information to the background script.
+ * 
+ * DISABLED: Now using popup-based detection instead
  */
 
+/*
 // Track the Ctrl key state
 let ctrlKeyDown = false;
 let lastCtrlKeyMessageTime = 0;
@@ -21,134 +24,93 @@ chrome.runtime.sendMessage({ action: 'getTabId' }, (response) => {
   }
 });
 
-// Send message to background with throttling
+// Function to send messages about Ctrl key state
 function sendCtrlKeyMessage(isPressed, isHeartbeat = false) {
   const now = Date.now();
   
-  // More aggressive throttling for heartbeat messages
-  if (isHeartbeat && now - lastCtrlKeyMessageTime < 2000) {
-    return; // Skip heartbeat messages if less than 2 seconds since last message
-  }
-  
-  // Regular throttling for direct key events
-  if (!isHeartbeat && now - lastCtrlKeyMessageTime < MESSAGE_THROTTLE_MS) {
-    return; // Skip if too soon after last message
-  }
-  
-  lastCtrlKeyMessageTime = now;
-  
-  // Only log direct key events, not heartbeats to reduce spam
-  if (!isHeartbeat) {
-    console.log(`Sending Ctrl key state for tab ${currentTabId || 'unknown'}: ${isPressed}`);
-  }
-  
-  // Include the tab ID in the message
-  const messageData = {
-    action: 'ctrlKeyPressed',
-    pressed: isPressed,
-    timestamp: now,
-    isHeartbeat: isHeartbeat,
-    tabId: currentTabId
-  };
-  
-  // Send ctrlKeyPressed message
-  chrome.runtime.sendMessage(messageData, response => {
-    if (!isHeartbeat) { // Only log responses for direct events
-      console.log('Ctrl key message sent, response:', response);
-    }
-  });
-  
-  // Also send ctrlKeyState message to update real-time state
-  chrome.runtime.sendMessage({
-    action: 'ctrlKeyState',
-    isPressed: isPressed,
-    timestamp: now,
-    isHeartbeat: isHeartbeat,
-    tabId: currentTabId
-  });
-  
-  // Also set in local storage as a backup mechanism
-  // But only do full updates for direct key events, not heartbeats
-  if (!isHeartbeat && currentTabId) {
-    // Use tab-specific storage keys
-    const storageData = {
-      [`ctrlKeyPressed_tab_${currentTabId}`]: isPressed,
-      [`ctrlClickPending_tab_${currentTabId}`]: isPressed,
-      [`ctrlKeyPressTimestamp_tab_${currentTabId}`]: now
-    };
+  // For normal updates (not heartbeats), always send them
+  // For heartbeats, only send at most once every 2 seconds (MESSAGE_THROTTLE_MS)
+  if (!isHeartbeat || (now - lastCtrlKeyMessageTime > MESSAGE_THROTTLE_MS)) {
+    lastCtrlKeyMessageTime = now;
     
-    chrome.storage.local.set(storageData);
+    // Clone the current tab ID for logging in case it changes
+    const tabId = currentTabId;
     
-    // Also store in session storage to persist between popup openings
-    try {
-      if (isPressed) {
-        // Use tab-specific key in sessionStorage
-        const tabSpecificKey = `lastCtrlKeyTimestamp_tab_${currentTabId}`;
-        sessionStorage.setItem(tabSpecificKey, now.toString());
-        console.log(`Stored Ctrl key timestamp in session storage for tab ${currentTabId}:`, now);
-      }
-    } catch (e) {
-      console.error('Failed to store in sessionStorage:', e);
-    }
+    // Send message to background script with current tab ID
+    chrome.runtime.sendMessage({
+      action: 'ctrlKeyPressed',
+      pressed: isPressed,
+      timestamp: now,
+      isHeartbeat: isHeartbeat,
+      tabId: tabId
+    });
+    
+    // Also use older format for backward compatibility
+    chrome.runtime.sendMessage({
+      action: 'ctrlKeyState',
+      isPressed: isPressed,
+      timestamp: now,
+      isHeartbeat: isHeartbeat,
+      tabId: tabId
+    });
   }
 }
 
-// Add event listeners for key states
+// Watch for Ctrl key
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Control') {
+  if (event.key === 'Control' || event.key === 'Meta') {
     ctrlKeyDown = true;
-    // Clear any pending key-up timeout
+    
+    // Clear any pending timers for key up
     if (keyUpTimeoutId) {
       clearTimeout(keyUpTimeoutId);
       keyUpTimeoutId = null;
     }
+    
     sendCtrlKeyMessage(true);
   }
 });
 
 document.addEventListener('keyup', (event) => {
-  if (event.key === 'Control') {
+  if (event.key === 'Control' || event.key === 'Meta') {
     ctrlKeyDown = false;
     
-    // Set a delayed message for the key up event
-    // This gives the popup time to open and detect the Ctrl state first
+    // Use a short delay to allow click events to be processed first
     keyUpTimeoutId = setTimeout(() => {
       sendCtrlKeyMessage(false);
       keyUpTimeoutId = null;
-    }, 500); // 500ms delay before sending the "released" state
+    }, 10);
   }
 });
 
-// Set up a heartbeat to keep reporting Ctrl state while held, but with reduced frequency
-setInterval(() => {
-  heartbeatCount++;
-  
+// Handle window blur events which might happen when clicking extension icon
+window.addEventListener('blur', () => {
+  // If Ctrl was down when blur happened, maintain state longer
   if (ctrlKeyDown) {
-    // Send a true state every time when key is actively held
-    sendCtrlKeyMessage(true, true);
-  } else {
-    // Only check for stale states every 5 seconds instead of every second
-    // to dramatically reduce console spam
-    if (heartbeatCount % 5 === 0) {
-      // Only check the tab-specific storage keys
-      if (currentTabId) {
-        chrome.storage.local.get([
-          `ctrlKeyPressed_tab_${currentTabId}`,
-          `ctrlClickPending_tab_${currentTabId}`
-        ], (result) => {
-          // Only send if one of these flags is still true but the key is actually up
-          const storedCtrlKey = result[`ctrlKeyPressed_tab_${currentTabId}`];
-          const storedPending = result[`ctrlClickPending_tab_${currentTabId}`];
-          
-          if (storedCtrlKey || storedPending) {
-            console.log(`Heartbeat detected stale Ctrl key state for tab ${currentTabId}, sending update to false`);
-            sendCtrlKeyMessage(false, true);
-          }
-        });
-      }
-    }
+    // Wait longer before sending key up if blur event happens
+    // This helps ensure the extension gets the Ctrl key state
+    keyUpTimeoutId = setTimeout(() => {
+      ctrlKeyDown = false;
+      sendCtrlKeyMessage(false);
+      keyUpTimeoutId = null;
+    }, 500); // Longer timeout for blur events
   }
-}, 1000); // Keep checking every second, but take action less frequently
+});
+
+// Send heartbeats while Ctrl key is down to maintain state
+setInterval(() => {
+  if (ctrlKeyDown) {
+    // Increment counter and only send every few ticks to reduce message volume
+    heartbeatCount++;
+    if (heartbeatCount % 4 === 0) { // Only send every 4th heartbeat
+      sendCtrlKeyMessage(true, true); // true = isHeartbeat
+    }
+  } else {
+    heartbeatCount = 0;
+  }
+}, 500); // Half-second interval but only sends every 2 seconds
+
+// Keep checking every second, but take action less frequently
 
 // Also detect clicks near the extension icon area to combine with key state
 document.addEventListener('click', (event) => {
@@ -159,28 +121,10 @@ document.addEventListener('click', (event) => {
   }
 });
 
-// Handle window focus events for better detection of alt+tab scenarios
-window.addEventListener('focus', () => {
-  console.log(`Tab ${currentTabId} gained focus`);
-  
-  // When the window gets focus, send the current real Ctrl key state immediately
-  // This ensures we don't rely on possibly stale data after switching back to the tab
-  sendCtrlKeyMessage(ctrlKeyDown, false);
-});
+// Initial state message
+setTimeout(() => {
+  sendCtrlKeyMessage(false);
+}, 1000);
+*/
 
-// Detect when window is about to lose focus
-window.addEventListener('blur', () => {
-  console.log(`Tab ${currentTabId} lost focus`);
-  
-  // If Ctrl is pressed when window loses focus, it might be a Ctrl+click on extension
-  if (ctrlKeyDown) {
-    // Send one final message with a slight delay to ensure it's processed
-    setTimeout(() => {
-      sendCtrlKeyMessage(true);
-    }, 50);
-  } else {
-    // If not pressing Ctrl when tab loses focus, send a false state to be safe
-    // This makes sure we don't have stale Ctrl press data when we return to the tab
-    sendCtrlKeyMessage(false);
-  }
-}); 
+console.log('Ctrl key detector disabled - using popup-based detection instead'); 
