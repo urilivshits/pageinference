@@ -1,8 +1,3 @@
----
-description: Comprehensive coding standards and workflow guidelines to be applied to all interactions.
-globs: 
-alwaysApply: true
----
 # Global Development Guidelines
 
 **IMPORTANT**: This file is the definitive source of truth for all project rules and must never be modified or overwritten without explicit user approval.

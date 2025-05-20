@@ -885,3 +885,26 @@ FORMAT GUIDE - DO NOT DELETE
     - [x] Test Ctrl+Click behavior across different scenarios
     - [x] Verify no conflicts with background script implementation
     - [x] Ensure consistent behavior with the improved detection mechanism
+
+## User Query: "lets now fix our css styling. we previously refactored the logic and it now works very well. but now lets focus on css. currently the css is broken after refactoring that we did earlier. all the refactored extension is at @refactored folder. and the css that worked before the refactoring (and was good) is at the @styles.css in the root of the repo. please review it and lets start updating it tab by tab"
+- Task: Review and update CSS for the refactored extension, tab by tab, using the working styles.css as the base.
+  - [ ] Define test cases for visual and functional correctness of each tab
+      - [ ] Manual UI test: Each tab matches the intended design and is visually consistent (Low)
+      - [ ] Regression test: No new visual bugs are introduced in other tabs (Medium)
+      - [ ] Dependencies: Refactored logic must be working and all tabs must be accessible
+  - [ ] Review the structure and components of each tab in the refactored extension
+      - [ ] Identify which CSS rules from styles.css apply to each tab/component (Low)
+      - [ ] Dependencies: Access to refactored tab/component code
+  - [ ] Update or migrate CSS for each tab/component
+      - [ ] Apply or adapt relevant styles from styles.css to the refactored components (Medium)
+      - [ ] Refactor selectors if component structure or class names have changed (Medium)
+      - [ ] Dependencies: Review of both old and new markup
+  - [ ] Validate implementation
+      - [ ] Manual UI review for each tab/component (Low)
+      - [ ] Automated or snapshot tests if available (Medium)
+      - [ ] Dependencies: Updated CSS and working extension
+
+### Current Step: Chat Tab
+- [ ] Review chat tab structure and markup
+- [ ] Map and update relevant CSS from styles.css to refactored/popup/styles/popup.css
+- [ ] Validate chat tab visually 
