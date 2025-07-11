@@ -129,51 +129,46 @@ export async function addMessage(pageLoadId, message) {
  * @param {Object} request - The chat request with messages and settings
  * @returns {Promise<Object>} - The chat response with content and metadata
  */
+export async function sendMessage(pageLoadId, message, pageContent, options) {
+  const session = await getChatSession(pageLoadId);
+  if (!session) {
+    throw new Error(`Chat session not found: ${pageLoadId}`);
+  }
+
+  const userMessage = createUserMessage(message);
+  let updatedSession = addMessageToSession(session, userMessage);
+
+  const systemPrompt = getSystemPrompt({
+    pageContent: options.usePageContent ? pageContent : undefined,
+    url: updatedSession.url,
+  });
+
+  const messages = [systemPrompt, ...updatedSession.messages];
+
+  const apiKey = await storageService.getApiKey();
+  if (!apiKey) {
+    throw new Error('API key not found');
+  }
+
+  const apiResponse = await sendRequest(apiKey, messages, options.model, options.temperature, options.useWebSearch);
+  const processedResponse = processApiResponse(apiResponse);
+  const assistantMessage = createAssistantMessage(processedResponse.content, processedResponse.metadata);
+
+  updatedSession = addMessageToSession(updatedSession, assistantMessage);
+  await storageService.updateChatSession(pageLoadId, updatedSession);
+
+  return updatedSession;
+}
+
 export async function handleChatMessage(request) {
   try {
     console.log('Chat service processing message:', request);
     
-    const { messages, apiKey, pageContent } = request;
-    if (!messages || !Array.isArray(messages)) {
-      throw new Error('Invalid messages provided');
-    }
+    const { pageLoadId, message, pageContent, options } = request.data;
     
-    // Get user preferences for API calls
-    const userPreferences = await storageService.getUserPreferences();
-    
-    // Prepare API request options
-    const options = {
-      apiKey: apiKey,
-      messages: messages,
-      model: userPreferences.defaultModel || API_CONSTANTS.DEFAULT_MODEL,
-      temperature: parseFloat(userPreferences.temperature || API_CONSTANTS.DEFAULT_TEMPERATURE),
-      useWebSearch: userPreferences.webSearch || false,
-      pageContent: pageContent || ''
-    };
-    
-    // Send request to OpenAI API
-    console.log('Sending request to OpenAI API with options:', JSON.stringify({
-      ...options,
-      apiKey: '***REDACTED***',
-      messages: `[${messages.length} messages]`
-    }));
-    
-    const apiResponse = await openaiApi.sendRequest(options);
-    console.log('Received response from API:', JSON.stringify(apiResponse).substring(0, 500) + '...');
-    
-    // Process the API response to extract content
-    const processedResponse = openaiApi.processApiResponse(apiResponse);
-    
-    // Format the final response with assistant message and metadata
-    return {
-      message: {
-        role: 'assistant',
-        content: processedResponse.content,
-        metadata: processedResponse.metadata || {}
-      },
-      model: apiResponse.model || options.model,
-      timestamp: new Date().toISOString()
-    };
+    const updatedSession = await sendMessage(pageLoadId, message, pageContent, options);
+
+    return { success: true, data: updatedSession };
     
   } catch (error) {
     console.error('Error in chat service:', error);

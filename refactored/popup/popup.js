@@ -434,6 +434,18 @@ async function initializeComponents() {
   // Set up component communication
   setupComponentCommunication();
   
+  // Handle dynamic textarea height
+  const messageInput = document.getElementById('message-input');
+  const chatInputContainer = document.querySelector('.chat-input-container');
+
+  messageInput.addEventListener('input', () => {
+    const maxHeight = window.innerHeight * 0.3;
+    messageInput.style.height = 'auto';
+    const newHeight = Math.min(messageInput.scrollHeight, maxHeight);
+    messageInput.style.height = `${newHeight}px`;
+    chatInputContainer.style.height = `${newHeight + 16}px`;
+  });
+
   logger.success('Components initialized successfully');
   return true;
 }
@@ -450,6 +462,9 @@ async function initializePopup() {
 
     // Initialize the components
     await initializeComponents();
+
+    // Initialize toggle buttons
+    initializeToggleButtons();
 
     // Check for Chrome storage errors
     const lastError = chrome.runtime.lastError;
@@ -569,6 +584,13 @@ function setupComponentCommunication() {
       }
     }));
   });
+
+  // When new chat button is clicked, notify chat component
+  window.addEventListener('new-chat', () => {
+    if (chatComponent && typeof chatComponent.handleNewChat === 'function') {
+      chatComponent.handleNewChat();
+    }
+  });
   
   // When settings are changed, notify other components
   window.addEventListener('settings-changed', (event) => {
@@ -620,7 +642,19 @@ function setupComponentCommunication() {
       detail: { session }
     }));
   });
+
+  // When a tab needs to be shown, handle it here
+  window.addEventListener('show-tab', (event) => {
+    const { tabId } = event.detail;
+    if (tabId) {
+      const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+      if (tabButton) {
+        tabButton.click();
+      }
+    }
+  });
 }
+
 
 /**
  * Check if API key exists in storage
@@ -821,4 +855,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
   logger.init('Document already ready, initializing popup immediately');
   initializePopup();
-} 
+}

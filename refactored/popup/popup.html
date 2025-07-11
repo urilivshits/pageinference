@@ -50,7 +50,7 @@
     
     <!-- Tab navigation -->
     <nav class="tab-navigation">
-      <button id="chat-tab" class="tab-button active" data-tab="chat">Chat</button>
+      <button id="new-chat-button" class="tab-button" title="New Chat">New Chat</button>
       <button id="history-tab" class="tab-button" data-tab="history">History</button>
       <button id="settings-tab" class="tab-button" data-tab="settings">Settings</button>
     </nav>
@@ -71,24 +71,16 @@
       <div id="error-message" class="error-message hidden"></div>
       <div class="chat-input-container">
         <div class="action-buttons">
-          <button id="new-chat-button" class="icon-button" title="New Chat">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
-          <button id="reason-button" class="icon-button" title="Reason">Reason</button>
-          <button id="search-page-button" class="icon-button" title="Search Page">Search Page</button>
-          <button id="search-web-button" class="icon-button" title="Search Web">Search Web</button>
+          <button id="search-page-button" class="text-button" title="Search Page">Search Page</button>
+          <button id="search-web-button" class="text-button" title="Search Web">Search Web</button>
         </div>
-        <textarea id="message-input" placeholder="Ask a question about this page..." rows="1"></textarea>
+        <div class="chat-input-main">
+          <textarea id="message-input" placeholder="Ask a question..." rows="1"></textarea>
+        </div>
         <button id="send-button" class="send-button">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
           </svg>
-          <span class="spinner-container">
-            <div class="spinner" style="display: none;"></div>
-          </span>
         </button>
       </div>
     </div>
@@ -200,4 +192,4 @@
   
   <script type="module" src="popup.js"></script>
 </body>
-</html> 
+</html>

@@ -35,9 +35,19 @@ function setupEventListeners() {
   tabButtons.forEach(button => {
     button.addEventListener('click', () => {
       const tabId = button.getAttribute('data-tab');
-      showTab(tabId);
+      if (tabId) {
+        showTab(tabId);
+      }
     });
   });
+  
+  // New chat button
+  const newChatButton = document.getElementById('new-chat-button');
+  if (newChatButton) {
+    newChatButton.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('new-chat'));
+    });
+  }
   
   // Close button
   if (closeButton) {
@@ -102,8 +112,16 @@ function showTab(tabId) {
   window.dispatchEvent(new CustomEvent('tab-changed', {
     detail: { tabId }
   }));
+  
+  // If we're showing the chat tab, make sure it's active
+  if (tabId === 'chat') {
+    const chatTabButton = document.getElementById('chat-tab');
+    if (chatTabButton) {
+      chatTabButton.classList.add('active');
+    }
+  }
 }
 
 export default {
   initializeControlsComponent
-}; 
+};

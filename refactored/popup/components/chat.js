@@ -83,10 +83,11 @@ export function initializeChatComponent() {
       console.error('Error loading session state:', error);
     });
     
-    // Initialize button states
+    // Initialize button states, including the new toggle buttons
     initializeButtonStates().catch(error => {
       console.error('Error initializing button states:', error);
     });
+    initializeToggleButtons();
     
     // Set up auto-resize for input
     setupInputAutoResize();
@@ -146,16 +147,20 @@ function setupEventListeners() {
   
   // Auto-resize textarea as user types
   messageInput.addEventListener('input', () => {
-    // Reset height to calculate actual content height
+    const maxHeight = window.innerHeight * 0.3;
     messageInput.style.height = 'auto';
-    messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+    const newHeight = Math.min(messageInput.scrollHeight, maxHeight);
+    messageInput.style.height = `${newHeight}px`;
   });
   
   // Action button handlers
   newChatButton.addEventListener('click', handleNewChat);
-  reasonButton.addEventListener('click', () => handleActionButton('reason'));
-  searchPageButton.addEventListener('click', () => handleActionButton('searchPage'));
-  searchWebButton.addEventListener('click', () => handleActionButton('searchWeb'));
+  // The reasonButton is removed, so we don't need this listener
+  // reasonButton.addEventListener('click', () => handleActionButton('reason'));
+  
+  // These are now handled by initializeToggleButtons
+  // searchPageButton.addEventListener('click', () => handleActionButton('searchPage'));
+  // searchWebButton.addEventListener('click', () => handleActionButton('searchWeb'));
   
   // Double-click handler for last query
   doubleClickArea.addEventListener('dblclick', handleDoubleClick);
@@ -210,27 +215,19 @@ function setupEventListeners() {
  */
 async function handleNewChat() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab) {
-      throw new Error('Could not detect current tab');
-    }
-    
-    const response = await chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.CREATE_CHAT_SESSION,
-      data: {
-        url: tab.url,
-        title: tab.title
-      }
-    });
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to create new chat session');
-    }
-    
-    currentSession = response.data;
+    // Clear the current session and UI
+    currentSession = null;
     renderMessages([]);
     updateConversationInfo();
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
     messageInput.focus();
+    
+    // Optionally, you can also clear the saved input text
+    await clearSavedInputText();
+    
+    // Switch to the chat tab
+    window.dispatchEvent(new CustomEvent('show-tab', { detail: { tabId: 'chat' } }));
   } catch (error) {
     console.error('Error creating new chat:', error);
     displayErrorMessage(error.message);
@@ -553,6 +550,9 @@ async function handleSendMessage(options = {}) {
     
     console.log('Sending message to API with page content length:', pageContent ? pageContent.length : 'disabled');
     
+    // Get the current toggle states
+    const { searchPageEnabled, searchWebEnabled } = await chrome.storage.local.get(['searchPageEnabled', 'searchWebEnabled']);
+
     // Send message to background script for processing
     const response = await chrome.runtime.sendMessage({
       type: 'send_user_message',
@@ -560,9 +560,12 @@ async function handleSendMessage(options = {}) {
         pageLoadId: sessionState.pageLoadId,
         message: messageText,
         pageContent: pageContent,
-        webSearch: settings.webSearch,
-        model: settings.selectedModel,
-        temperature: settings.temperature,
+        options: {
+          useWebSearch: searchWebEnabled,
+          usePageContent: searchPageEnabled,
+          model: settings.selectedModel,
+          temperature: settings.temperature,
+        },
         url: sessionState.url,
         title: sessionState.title
       }
@@ -1214,16 +1217,46 @@ async function initializeButtonStates() {
     
     // Initialize search page button state
     const pageScraping = settings.pageScraping !== undefined ? settings.pageScraping : true;
-    searchPageButton.classList.toggle('active', pageScraping);
+    if (searchPageButton) {
+      searchPageButton.classList.toggle('active', pageScraping);
+    }
     
     // Initialize search web button state
     const webSearch = settings.webSearch !== undefined ? settings.webSearch : true;
-    searchWebButton.classList.toggle('active', webSearch);
+    if (searchWebButton) {
+      searchWebButton.classList.toggle('active', webSearch);
+    }
     
     console.log('Button states initialized:', { pageScraping, webSearch });
   } catch (error) {
     console.error('Error initializing button states:', error);
   }
+}
+
+/**
+ * Initialize toggle buttons for search page and search web
+ */
+function initializeToggleButtons() {
+  const setupToggleButton = (button, storageKey) => {
+    if (!button) return;
+
+    // Load initial state from storage
+    chrome.storage.local.get([storageKey], (result) => {
+      if (result[storageKey]) {
+        button.classList.add('active');
+      }
+    });
+
+    // Add click listener
+    button.addEventListener('click', () => {
+      const isActive = button.classList.toggle('active');
+      chrome.storage.local.set({ [storageKey]: isActive });
+      console.log(`${storageKey} toggled to: ${isActive}`);
+    });
+  };
+
+  setupToggleButton(searchPageButton, 'searchPageEnabled');
+  setupToggleButton(searchWebButton, 'searchWebEnabled');
 }
 
 /**
@@ -1797,5 +1830,6 @@ export default {
   hideErrorMessage,
   loadCurrentSession,
   lastQuery,
-  executeCommand
-}; 
+  executeCommand,
+  handleNewChat
+};
