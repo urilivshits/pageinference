@@ -11,7 +11,8 @@ import {
   NO_PAGE_CONTENT_SYSTEM_PROMPT,
   WEB_SEARCH_SYSTEM_PROMPT,
   COMBINED_SYSTEM_PROMPT,
-  generatePageAwarePrompt
+  generatePageAwarePrompt,
+  getSystemPrompt
 } from '../shared/prompts/generic.js';
 
 import {
@@ -1076,96 +1077,60 @@ function setupMessageListeners() {
           
           // Prepare array of messages for the API call
           const messages = [];
-          
-          // Add system prompt depending on context
-          let systemPrompt = GENERIC_SYSTEM_PROMPT;
-          
-          if (webSearch && pageContent) {
-            systemPrompt = COMBINED_SYSTEM_PROMPT;
-          } else if (webSearch) {
-            systemPrompt = WEB_SEARCH_SYSTEM_PROMPT;
-          } else if (!pageContent) {
-            systemPrompt = NO_PAGE_CONTENT_SYSTEM_PROMPT;
-          } else {
-            // For page content only, use website-specific prompts if available
-            if (url) {
-              try {
-                const urlObj = new URL(url);
-                const hostname = urlObj.hostname.toLowerCase();
-                
-                if (hostname.includes('linkedin.com')) {
-                  systemPrompt = LINKEDIN_SYSTEM_PROMPT;
-                } else if (hostname.includes('github.com')) {
-                  systemPrompt = GITHUB_SYSTEM_PROMPT;
-                } else if (hostname.includes('stackoverflow.com')) {
-                  systemPrompt = STACKOVERFLOW_SYSTEM_PROMPT;
-                } else {
-                  // Use generic page-aware system prompt
-                  systemPrompt = generatePageAwarePrompt(url);
-                  }
-                } catch (e) {
-                logger.error('Error determining site-specific prompt:', e);
-              }
-            }
-          }
-          
-          // Add system message
-          messages.push({
-            role: 'system',
-            content: systemPrompt
-          });
-          
-          // Add previous conversation for context
-          if (session.messages && session.messages.length > 0) {
-            // Only include most recent messages to stay within token limits
-            const recentMessages = session.messages.slice(-10);
-            messages.push(...recentMessages);
-          }
-          
-          // Add page content as context for the assistant if available
-          if (pageContent) {
+
+          // Only add the system message if it's not already present in the session
+          if (!session.messages || session.messages.length === 0 || session.messages[0].role !== 'system') {
+            // Add system message with page content if available
             messages.push({
               role: 'system',
-              content: `Page content:\n${pageContent}`
+              content: getSystemPrompt(url, !!pageContent, pageContent)
             });
+          } else {
+            // Use the existing system message from the session
+            messages.push(session.messages[0]);
           }
-          
-          // Add the new user message
+
+          // Add previous conversation for context (excluding any system messages)
+          if (session.messages && session.messages.length > 0) {
+            // Only include most recent messages to stay within token limits, skip system
+            const recentMessages = session.messages.filter(m => m.role !== 'system').slice(-10);
+            messages.push(...recentMessages);
+          }
+
+          // Add the new user message (do NOT append page content)
           const newUserMessage = {
             role: 'user',
             content: userMessage,
             timestamp: Date.now()
           };
-          
           messages.push(newUserMessage);
-          
+
           // Update session with the new user message
           if (!session.messages) {
             session.messages = [];
           }
-          
           session.messages.push(newUserMessage);
           session.lastUserRequest = userMessage;
           session.lastUpdated = Date.now();
-          
+
           // Save session state
           await chatService.updateSession(session);
-          
+
           // Call OpenAI API
           logger.log(`Calling OpenAI API with model ${model || 'default'} and ${messages.length} messages`);
-          
+
           // Get API key
           const apiKey = await storageService.getValue(STORAGE_KEYS.API_KEY);
           if (!apiKey) {
             throw new Error('OpenAI API key not found');
           }
-          
+
           // Call API with options
           const apiOptions = {
             model: model || 'gpt-4o-mini',  // Default model
             temperature: temperature !== undefined ? temperature : 0
           };
-          
+
           // Make the actual API call instead of using a mock response
           const apiResponse = await openaiApi.sendRequest({
             apiKey,
@@ -1173,9 +1138,9 @@ function setupMessageListeners() {
             model: apiOptions.model,
             temperature: apiOptions.temperature,
             useWebSearch: webSearch || false,
-            pageContent: pageContent || ''
+            pageContent: '', // Do not append page content to user message
           });
-          
+
           // Process the API response to extract content
           const processedResponse = openaiApi.processApiResponse(apiResponse);
           

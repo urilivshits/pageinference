@@ -5,7 +5,6 @@
  */
 
 import { createSystemMessage } from './chat-message.js';
-import { getSystemPrompt } from '../prompts/index.js';
 import { getDomain, getTitleFromUrl } from '../utils/url-utils.js';
 import { API_CONSTANTS } from '../constants.js';
 
@@ -17,9 +16,10 @@ import { API_CONSTANTS } from '../constants.js';
  * @param {string} title - The title of the page (optional)
  * @param {Array} messages - Initial messages (optional)
  * @param {Object} metadata - Additional metadata for the session (optional)
+ * @param {string} pageContent - The scraped page content (optional)
  * @return {Object} The created session
  */
-export function createSession(pageLoadId, url, title, messages = [], metadata = {}) {
+export function createSession(pageLoadId, url, title, messages = [], metadata = {}, pageContent = '') {
   if (!pageLoadId) {
     throw new Error('pageLoadId is required');
   }
@@ -30,12 +30,16 @@ export function createSession(pageLoadId, url, title, messages = [], metadata = 
   
   // If no title provided, generate one from URL
   const sessionTitle = title || getTitleFromUrl(url);
-  const domain = getDomain(url) || '';
+  const baseUrl = getDomain(url) || url;
   
-  // If no messages provided, add a default system message
+  // If no messages provided, add the unified system message
   const initialMessages = messages.length > 0 
     ? [...messages] 
-    : [createSystemMessage(getSystemPrompt(url, true, false))];
+    : [createSystemMessage(
+        pageContent
+          ? `This is the content of website ${baseUrl}. If the user asks about it, act upon it.\n\n${pageContent}`
+          : ''
+      )];
   
   // Set default session settings
   const sessionSettings = {

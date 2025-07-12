@@ -67,18 +67,13 @@ export async function sendRequest(options) {
       const isAssistantMessage = message.role === 'assistant';
       const contentType = isAssistantMessage ? 'output_text' : 'input_text';
       
-      // If this is the current user message and we have page content, combine them
-      let messageContent = message.content;
-      if (isUserMessage && i === messages.length - 1 && pageContent) {
-        messageContent = `${message.content}\n\nHere is the content of the webpage to help answer your question:\n\n${pageContent}`;
-      }
-      
+      // Do NOT append page content to user messages
       responsesInput.push({
         role: message.role,
         content: [
           {
             type: contentType,
-            text: messageContent
+            text: message.content
           }
         ]
       });

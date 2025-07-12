@@ -1,11 +1,11 @@
-/**
- * Page Inference - Generic System Prompts
- * 
- * This file contains generic system prompts used when not on specialized websites.
- */
+import { getDomain } from '../utils/url-utils.js';
 
 /**
- * Generic system prompt used when page scraping is enabled
+ * Generate a unified system prompt with page content
+ * @param {string} url - The current URL
+ * @param {boolean} hasPageContent - Whether page content is available
+ * @param {string} pageContent - The scraped page content
+ * @return {string} The system message
  */
 export const GENERIC_SYSTEM_PROMPT = `You are a helpful AI assistant that has access to the content of the web page the user is currently viewing. You can analyze and reference this content when responding to the user's questions.
 
@@ -46,6 +46,7 @@ ${pageContent}
 The user's message reflects their actual query - respond to what they're asking, not to a generic request to analyze the page.`;
 }
 
+// === Legacy/Deprecated Prompt Constants (kept for compatibility) ===
 /**
  * Generate a page-specific prompt without including the actual page content
  * The page content will be appended to user messages instead
@@ -117,3 +118,11 @@ export default {
   generatePageContentPrompt,
   generatePageAwarePrompt
 }; 
+
+export function getSystemPrompt(url, hasPageContent, pageContent = '') {
+  if (hasPageContent && pageContent) {
+    const baseUrl = getDomain(url) || url;
+    return `This is the content of website ${baseUrl}. If the user asks about it, act upon it.\n\n${pageContent}`;
+  }
+  return 'You are a helpful assistant.';
+}

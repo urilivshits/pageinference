@@ -834,6 +834,16 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
   white-space: pre-line;
 }
 
+.message-content ol,
+.message-content ul {
+  padding-left: 1.5em;
+  margin-left: 0;
+}
+.message-content ol li,
+.message-content ul li {
+  padding-left: 0.25em;
+}
+
 /* Chat messages container */
 #chat-messages {
   display: flex;
@@ -1132,7 +1142,7 @@ sup {
   cursor: pointer;
   transition: background 0.18s;
   color: var(--text-color);
-  font-size: 0.97rem;
+  font-size: 0.75rem;
   display: flex;
   align-items: center;
   gap: 6px;
