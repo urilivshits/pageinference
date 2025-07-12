@@ -750,6 +750,10 @@ function renderMessages(messages) {
     }
   });
   
+  // Highlight all code blocks after rendering
+  chatMessages.querySelectorAll('pre code').forEach(block => {
+    window.hljs.highlightElement(block);
+  });
   // Scroll to bottom
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -1544,67 +1548,22 @@ function renderChatHistory(messages) {
       console.error('Cannot render chat history: chatMessages element not found');
       return;
     }
-    
     // Clear existing messages
     chatMessages.innerHTML = '';
-    
     // If no messages, show empty state
     if (!messages || messages.length === 0) {
       console.log('No messages to render, showing empty state');
       return;
     }
-    
     console.log(`Rendering ${messages.length} chat messages`);
-    
-    // Render each message
-    messages.forEach((msg, index) => {
-      const messageElement = document.createElement('div');
-      messageElement.classList.add('chat-message');
-      messageElement.classList.add(`message-${msg.role}`);
-      
-      // Apply different styling based on role
-      if (msg.role === 'user') {
-        messageElement.classList.add('user-message');
-      } else if (msg.role === 'assistant') {
-        messageElement.classList.add('ai-message');
-      } else if (msg.role === 'system') {
-        messageElement.classList.add('system-message');
-      }
-      
-      // Create content element with proper formatting
-      const contentElement = document.createElement('div');
-      contentElement.classList.add('message-content');
-      
-      // Format the message content with markdown if it's not a system message
-      if (msg.role !== 'system') {
-        // Simple markdown-like formatting (for a real implementation, use a proper markdown library)
-        const formattedContent = msg.content
-          .replace(/\n/g, '<br>')
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>');
-        
-        contentElement.innerHTML = formattedContent;
-      } else {
-        // System messages are shown plainly
-        contentElement.textContent = msg.content;
-      }
-      
-      messageElement.appendChild(contentElement);
-      
-      // Add a timestamp if available
-      if (msg.timestamp) {
-        const timestampElement = document.createElement('div');
-        timestampElement.classList.add('message-timestamp');
-        const date = new Date(msg.timestamp);
-        timestampElement.textContent = date.toLocaleTimeString();
-        messageElement.appendChild(timestampElement);
-      }
-      
-      // Add to the chat container
-      chatMessages.appendChild(messageElement);
+    // Render each message using appendMessage for consistent styling
+    messages.forEach(msg => {
+      appendMessage(msg);
     });
-    
+    // Highlight all code blocks after rendering
+    chatMessages.querySelectorAll('pre code').forEach(block => {
+      window.hljs.highlightElement(block);
+    });
     // Scroll to the bottom
     chatMessages.scrollTop = chatMessages.scrollHeight;
   } catch (error) {
@@ -1668,64 +1627,18 @@ function addMessageToUI(role, content) {
     console.error('Cannot add message to UI: chatMessages element not found');
     return;
   }
-  
-  // Create message element
-  const messageElement = document.createElement('div');
-  messageElement.classList.add('chat-message');
-  messageElement.classList.add(`message-${role}`);
-  
-  // Apply styling based on role
-  if (role === 'user') {
-    messageElement.classList.add('user-message');
-  } else if (role === 'assistant') {
-    messageElement.classList.add('ai-message');
-  } else if (role === 'system') {
-    messageElement.classList.add('system-message');
-  }
-  
-  // Create content element
-  const contentElement = document.createElement('div');
-  contentElement.classList.add('message-content');
-  
-  // Format content (simple markdown-like formatting)
-  if (role !== 'system') {
-    const formattedContent = content
-      .replace(/\n/g, '<br>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>');
-    
-    contentElement.innerHTML = formattedContent;
-  } else {
-    contentElement.textContent = content;
-  }
-  
-  messageElement.appendChild(contentElement);
-  
-  // Add timestamp
-  const timestampElement = document.createElement('div');
-  timestampElement.classList.add('message-timestamp');
-  const date = new Date();
-  timestampElement.textContent = date.toLocaleTimeString();
-  messageElement.appendChild(timestampElement);
-  
-  // Add to chat container
-  chatMessages.appendChild(messageElement);
-  
-  // Scroll to the bottom
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-  
+  // Create message object for consistent rendering
+  const message = { role, content, timestamp: Date.now() };
+  appendMessage(message);
+  // Highlight all code blocks after rendering
+  chatMessages.querySelectorAll('pre code').forEach(block => {
+    window.hljs.highlightElement(block);
+  });
   // Update session state if needed
   if (!sessionState.chatHistory) {
     sessionState.chatHistory = [];
   }
-  
-  // Add to session state
-  sessionState.chatHistory.push({
-    role: role,
-    content: content,
-    timestamp: Date.now()
-  });
+  sessionState.chatHistory.push(message);
 }
 
 /**
