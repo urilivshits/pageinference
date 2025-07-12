@@ -225,8 +225,15 @@ async function handleNewChat() {
     // Dispatch chat-session-updated to refresh sidebar
     window.dispatchEvent(new CustomEvent('chat-session-updated', { detail: { session: null } }));
     // Reset session state so next message creates a new session
-    sessionState.pageLoadId = null;
     sessionState.chatHistory = [];
+    sessionState.isSubmitting = false;
+    sessionState.lastSubmittedQuestion = '';
+    // Generate a new pageLoadId and set url/title from current tab
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const currentTab = tabs[0] || {};
+    sessionState.pageLoadId = await generateNewPageLoadId();
+    sessionState.url = currentTab.url || '';
+    sessionState.title = currentTab.title || currentTab.url || '';
   } catch (error) {
     console.error('Error creating new chat:', error);
     displayErrorMessage(error.message);
@@ -1190,15 +1197,8 @@ function preventDuplicateSubmission() {
     console.log('Submission already in progress, preventing duplicate');
     return true;
   }
-  
-  const currentQuestion = messageInput.value.trim();
-  if (currentQuestion === sessionState.lastSubmittedQuestion) {
-    console.log('Duplicate question detected, preventing submission');
-    return true;
-  }
-  
   sessionState.isSubmitting = true;
-  sessionState.lastSubmittedQuestion = currentQuestion;
+  sessionState.lastSubmittedQuestion = messageInput.value.trim();
   return false;
 }
 

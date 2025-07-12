@@ -49,25 +49,22 @@ const SOURCE_COLORS = {
  * @returns {string} The detected context: 'popup', 'content', 'background', or 'default'
  */
 function detectContext() {
-  // Check if we're in a background script context
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getBackgroundPage) {
-    try {
-      const bgPage = chrome.runtime.getBackgroundPage();
-      if (bgPage === window) {
-        return 'background';
-      }
-    } catch (e) {
-      // Not in background context or error accessing API
-    }
-  }
-  
-  // Check if we're in a popup context
+  // Manifest V3: background page access is not supported, skip getBackgroundPage
+  // if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getBackgroundPage) {
+  //   try {
+  //     const bgPage = chrome.runtime.getBackgroundPage();
+  //     if (bgPage === window) {
+  //       return 'background';
+  //     }
+  //   } catch (e) {
+  //     // Not in background context or error accessing API
+  //   }
+  // }
+  // Use other context detection methods
   if (typeof document !== 'undefined' && document.body) {
     if (document.body.dataset && document.body.dataset.context === 'popup') {
       return 'popup';
     }
-    
-    // Check URL patterns that might suggest we're in the popup
     if (window.location && window.location.href) {
       const url = window.location.href;
       if (url.includes('popup.html') || url.includes('chrome-extension') && url.includes('popup')) {
@@ -75,19 +72,14 @@ function detectContext() {
       }
     }
   }
-  
-  // Check if we're in a content script context by looking for page elements
   if (typeof document !== 'undefined' && document.body) {
-    // Content scripts run in the context of a web page
     if (window.location && window.location.href) {
       const url = window.location.href;
-      // If not a chrome-extension URL, likely a content script
       if (!url.includes('chrome-extension://')) {
         return 'content';
       }
     }
   }
-  
   return 'default';
 }
 

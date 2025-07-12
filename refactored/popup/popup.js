@@ -321,7 +321,7 @@ if (window.MutationObserver) {
 // Import components
 import chatComponent from './components/chat.js';
 import settingsComponent from './components/settings.js';
-import historyComponent from './components/history.js';
+// import historyComponent from './components/history.js'; // Removed as per edit hint
 import controlsComponent from './components/controls.js';
 
 // Track initialization status
@@ -425,7 +425,11 @@ async function initializeComponents() {
   // Initialize all UI components
   chatComponent.initializeChatComponent();
   settingsComponent.initializeSettingsComponent();
-  historyComponent.initializeHistoryComponent();
+  // Only initialize history component if the old history tab exists (legacy)
+  // const historyTab = document.getElementById('history-tab');
+  // if (historyTab) {
+  //   initializeHistoryComponent();
+  // }
   controlsComponent.initializeControlsComponent();
   
   // Assign chatComponent to window.chat for access from autoExecuteIfNeeded
@@ -464,8 +468,8 @@ async function initializePopup() {
     // Initialize the components
     await initializeComponents();
 
-    // Initialize toggle buttons
-    initializeToggleButtons();
+    // Remove call to initializeToggleButtons (not defined)
+    // initializeToggleButtons();
 
     // Check for Chrome storage errors
     const lastError = chrome.runtime.lastError;

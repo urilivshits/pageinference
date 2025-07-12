@@ -168,33 +168,59 @@ function toggleApiKeyVisibility() {
 function applySettingsToUI(settings) {
 	console.log("Applying settings to UI:", settings);
 
+	// Defensive: check for required elements before setting values
+	const apiKeyInput = document.getElementById('api-key-input');
+	if (apiKeyInput) {
+		apiKeyInput.value = settings.apiKey || '';
+	} else {
+		console.warn('[Settings] api-key-input not found, skipping value set');
+	}
+
 	// Apply theme setting
 	const themeValue = settings.theme || "system";
-	for (let option of themeOptions) {
-		if (option.value === themeValue) {
-			option.checked = true;
-			break;
+	if (themeOptions && themeOptions.length) {
+		for (let option of themeOptions) {
+			if (option.value === themeValue) {
+				option.checked = true;
+			}
 		}
+	} else {
+		console.warn('[Settings] themeOptions not found, skipping theme set');
 	}
 
 	// Apply temperature setting
 	const temperature = settings.temperature !== undefined ? parseFloat(settings.temperature) : defaultSettings.temperature;
-
-	temperatureSlider.value = temperature;
-	temperatureValue.textContent = temperature.toFixed(1);
-	updateSliderGradient(temperatureSlider);
+	if (temperatureSlider) {
+		temperatureSlider.value = temperature;
+		updateSliderGradient(temperatureSlider);
+	} else {
+		console.warn('[Settings] temperatureSlider not found, skipping temperature set');
+	}
+	if (temperatureValue) {
+		temperatureValue.textContent = temperature.toFixed(1);
+	} else {
+		console.warn('[Settings] temperatureValue not found, skipping temperature value set');
+	}
 
 	// Apply model setting
 	const defaultModel = settings.defaultModel || "gpt-4o-mini";
-	modelSelector.value = defaultModel;
+	if (modelSelector) {
+		modelSelector.value = defaultModel;
+	} else {
+		console.warn('[Settings] modelSelector not found, skipping model set');
+	}
 
 	// Apply toggle settings
 	if (webSearchToggle) {
 		webSearchToggle.checked = settings.webSearch === true;
+	} else {
+		console.warn('[Settings] webSearchToggle not found, skipping webSearch set');
 	}
 
 	if (pageScrapingToggle) {
 		pageScrapingToggle.checked = settings.pageScraping === true;
+	} else {
+		console.warn('[Settings] pageScrapingToggle not found, skipping pageScraping set');
 	}
 
 	console.log("Settings applied to UI - Theme:", themeValue, "Temperature:", temperature);
