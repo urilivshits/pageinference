@@ -87,7 +87,6 @@ export function initializeChatComponent() {
     initializeButtonStates().catch(error => {
       console.error('Error initializing button states:', error);
     });
-    initializeToggleButtons();
     
     // Set up auto-resize for input
     setupInputAutoResize();
@@ -159,8 +158,8 @@ function setupEventListeners() {
   // reasonButton.addEventListener('click', () => handleActionButton('reason'));
   
   // These are now handled by initializeToggleButtons
-  // searchPageButton.addEventListener('click', () => handleActionButton('searchPage'));
-  // searchWebButton.addEventListener('click', () => handleActionButton('searchWeb'));
+  searchPageButton.addEventListener('click', () => handleActionButton('searchPage'));
+  searchWebButton.addEventListener('click', () => handleActionButton('searchWeb'));
   
   // Double-click handler for last query
   doubleClickArea.addEventListener('dblclick', handleDoubleClick);
@@ -1233,31 +1232,6 @@ async function initializeButtonStates() {
   }
 }
 
-/**
- * Initialize toggle buttons for search page and search web
- */
-function initializeToggleButtons() {
-  const setupToggleButton = (button, storageKey) => {
-    if (!button) return;
-
-    // Load initial state from storage
-    chrome.storage.local.get([storageKey], (result) => {
-      if (result[storageKey]) {
-        button.classList.add('active');
-      }
-    });
-
-    // Add click listener
-    button.addEventListener('click', () => {
-      const isActive = button.classList.toggle('active');
-      chrome.storage.local.set({ [storageKey]: isActive });
-      console.log(`${storageKey} toggled to: ${isActive}`);
-    });
-  };
-
-  setupToggleButton(searchPageButton, 'searchPageEnabled');
-  setupToggleButton(searchWebButton, 'searchWebEnabled');
-}
 
 /**
  * Set up auto-resize for the input field
