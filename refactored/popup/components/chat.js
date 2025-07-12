@@ -255,11 +255,6 @@ async function handleActionButton(action) {
     // Save the setting
     await updateSettings({ pageScraping });
     
-    // Notify other components of the settings change
-    window.dispatchEvent(new CustomEvent('settings-updated', {
-      detail: { settings: { pageScraping } }
-    }));
-    
     console.log('Page scraping is now', pageScraping ? 'enabled' : 'disabled');
   } else if (action === 'searchWeb') {
     // Get current settings
@@ -278,11 +273,6 @@ async function handleActionButton(action) {
     
     // Save the setting
     await updateSettings({ webSearch });
-    
-    // Notify other components of the settings change
-    window.dispatchEvent(new CustomEvent('settings-updated', {
-      detail: { settings: { webSearch } }
-    }));
     
     console.log('Web search is now', webSearch ? 'enabled' : 'disabled');
   } else if (action === 'reason') {
