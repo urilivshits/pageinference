@@ -7,6 +7,7 @@
 
 // Import our new logger
 import logger from '../shared/utils/logger.js';
+import { getDomain } from '../shared/utils/url-utils.js';
 
 // Prevent multiple initializations with a global flag
 if (window.popupJsInitialized) {
@@ -655,6 +656,144 @@ function setupComponentCommunication() {
   });
 }
 
+// Sidebar chat list rendering and logic
+function renderSidebarSessions(sessions) {
+  const list = document.getElementById('sidebar-sessions-list');
+  const noMsg = document.getElementById('sidebar-no-sessions-message');
+  if (!list) return;
+  list.innerHTML = '';
+  console.log('[Sidebar] Loaded sessions:', sessions); // Debug log
+  if (!sessions || sessions.length === 0) {
+    if (noMsg) noMsg.style.display = '';
+    return;
+  }
+  if (noMsg) noMsg.style.display = 'none';
+  sessions.forEach(session => {
+    const li = document.createElement('li');
+    li.textContent = session.title || session.url || session.pageLoadId || 'Untitled Chat';
+    li.title = session.url || session.pageLoadId || '';
+    li.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('open-session', { detail: session }));
+    });
+    list.appendChild(li);
+  });
+}
+
+// Sidebar search logic
+function filterSidebarSessions(sessions, query) {
+  if (!query) return sessions;
+  const q = query.toLowerCase();
+  return sessions.filter(s => (s.title || '').toLowerCase().includes(q) || (s.url || '').toLowerCase().includes(q));
+}
+
+// Sidebar new chat logic
+function setupSidebar() {
+  let allSessions = [];
+  const searchInput = document.getElementById('sidebar-search-input');
+  const newChatBtn = document.getElementById('sidebar-new-chat');
+  const domainFilterToggle = document.getElementById('sidebar-domain-filter-toggle');
+  let currentBaseDomain = null;
+  let domainFilterEnabled = false;
+
+  // Load persisted toggle state
+  chrome.storage.local.get('sidebarDomainFilterEnabled', (result) => {
+    domainFilterEnabled = !!result.sidebarDomainFilterEnabled;
+    if (domainFilterToggle) domainFilterToggle.checked = domainFilterEnabled;
+  });
+
+  // Get current tab's base domain
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs && tabs[0] && tabs[0].url) {
+      currentBaseDomain = getBaseDomain(tabs[0].url);
+      // Always set the label to the static text (no domain)
+      const label = document.getElementById('sidebar-domain-filter-label');
+      if (label) {
+        label.textContent = 'Only show chats from this site';
+      }
+    }
+    // After domain is set, load sessions
+    loadSessions();
+  });
+
+  // Load sessions from storage or background
+  function loadSessions() {
+    chrome.storage.local.get(['chatSessions', 'chat_sessions', 'sessions'], (result) => {
+      allSessions = result.chatSessions || result.chat_sessions || result.sessions || [];
+      // Sort by lastUpdated (descending)
+      allSessions.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
+      renderSidebarSessions(applySidebarFilters(allSessions));
+    });
+  }
+
+  // Apply both search and domain filters
+  function getBaseDomain(url) {
+    try {
+      const urlObj = new URL(url);
+      const parts = urlObj.hostname.split('.');
+      if (parts.length > 2) {
+        return parts.slice(-2).join('.');
+      }
+      return urlObj.hostname;
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function applySidebarFilters(sessions) {
+    let filtered = sessions;
+    // Domain filter (use getBaseDomain logic from history.js)
+    if (domainFilterEnabled && currentBaseDomain) {
+      filtered = filtered.filter(s => {
+        if (!s.url) return false;
+        return getBaseDomain(s.url) === currentBaseDomain;
+      });
+    }
+    // Search filter
+    if (searchInput && searchInput.value) {
+      const q = searchInput.value.toLowerCase();
+      filtered = filtered.filter(s => (s.title || '').toLowerCase().includes(q) || (s.url || '').toLowerCase().includes(q));
+    }
+    return filtered;
+  }
+
+  // Search filter
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      renderSidebarSessions(applySidebarFilters(allSessions));
+    });
+  }
+  // Domain filter toggle
+  if (domainFilterToggle) {
+    domainFilterToggle.addEventListener('change', () => {
+      domainFilterEnabled = domainFilterToggle.checked;
+      chrome.storage.local.set({ sidebarDomainFilterEnabled: domainFilterEnabled });
+      renderSidebarSessions(applySidebarFilters(allSessions));
+    });
+  }
+
+  // New chat
+  if (newChatBtn) {
+    newChatBtn.addEventListener('click', () => {
+      // Always trigger a new chat session and clear chat area
+      if (window.chat && typeof window.chat.handleNewChat === 'function') {
+        window.chat.handleNewChat();
+      } else {
+        // Fallback: clear chat area directly
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) chatMessages.innerHTML = '';
+        const titleElem = document.getElementById('current-conversation-title');
+        if (titleElem) titleElem.textContent = '';
+        const tsElem = document.getElementById('current-conversation-timestamp');
+        if (tsElem) tsElem.textContent = '';
+      }
+      // Optionally reload sessions to reflect new session
+      setTimeout(loadSessions, 300);
+    });
+  }
+  // Listen for session updates
+  window.addEventListener('chat-session-updated', loadSessions);
+}
+
 
 /**
  * Check if API key exists in storage
@@ -849,6 +988,63 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Continue with normal initialization
   await initializePopup();
+  setupSidebar(); // Initialize sidebar after popup is fully loaded
+  
+  // Debug: log all storage keys/values
+  chrome.storage.local.get(null, (all) => {
+    console.log('[DEBUG] chrome.storage.local contents:', all);
+  });
+});
+
+// Ensure theme is always system default
+chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
+  if (!userPreferences || userPreferences.theme !== 'system') {
+    chrome.storage.local.set({ userPreferences: { ...userPreferences, theme: 'system' } });
+  }
+});
+
+// API key show/hide toggle logic
+function setupApiKeyToggle() {
+  const apiKeyInput = document.getElementById('api-key-input');
+  const toggleBtn = document.getElementById('toggle-api-key-button');
+  if (!apiKeyInput || !toggleBtn) return;
+  const eye = toggleBtn.querySelector('.icon-eye');
+  const eyeOff = toggleBtn.querySelector('.icon-eye-off');
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = apiKeyInput.type === 'password';
+    apiKeyInput.type = isHidden ? 'text' : 'password';
+    if (isHidden) {
+      eye.style.display = 'none';
+      eyeOff.style.display = '';
+    } else {
+      eye.style.display = '';
+      eyeOff.style.display = 'none';
+    }
+  });
+}
+function fillApiKeyInput() {
+  const apiKeyInput = document.getElementById('api-key-input');
+  if (!apiKeyInput) return;
+  chrome.storage.local.get('openai_api_key', (result) => {
+    if (result.openai_api_key) {
+      apiKeyInput.value = result.openai_api_key;
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const profileBtn = document.getElementById('profile-settings-button');
+  const settingsPanel = document.getElementById('settings-panel');
+  if (profileBtn && settingsPanel) {
+    profileBtn.addEventListener('click', () => {
+      settingsPanel.classList.toggle('hidden');
+      if (!settingsPanel.classList.contains('hidden')) {
+        fillApiKeyInput();
+      }
+    });
+  }
+  setupApiKeyToggle();
+  fillApiKeyInput(); // Also fill on load in case panel is open by default
 });
 
 // Also try to initialize immediately if document is already complete
@@ -856,3 +1052,37 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
   logger.init('Document already ready, initializing popup immediately');
   initializePopup();
 }
+
+function renderSessionInChatArea(session) {
+  // Update chat title and timestamp
+  const titleElem = document.getElementById('current-conversation-title');
+  const tsElem = document.getElementById('current-conversation-timestamp');
+  const infoElem = document.getElementById('current-conversation-info');
+  if (titleElem) titleElem.textContent = session.title || session.url || session.pageLoadId || 'Untitled Chat';
+  if (tsElem && session.timestamp) {
+    const date = new Date(session.timestamp);
+    tsElem.textContent = date.toLocaleString();
+  }
+  if (infoElem) infoElem.classList.remove('hidden');
+  // Render messages
+  const chatMessages = document.getElementById('chat-messages');
+  if (chatMessages) {
+    chatMessages.innerHTML = '';
+    (session.messages || []).forEach(msg => {
+      const div = document.createElement('div');
+      div.className = 'message ' + (msg.role || 'user');
+      div.innerHTML = `<div class="message-content">${msg.content || ''}</div>`;
+      chatMessages.appendChild(div);
+    });
+  }
+}
+
+window.addEventListener('open-session', (event) => {
+  console.log('[Sidebar] open-session event fired:', event.detail);
+  if (window.chat && typeof window.chat.handleShowSession === 'function') {
+    window.chat.handleShowSession({ detail: event.detail });
+  } else {
+    console.warn('[Sidebar] window.chat.handleShowSession not found. Rendering directly.');
+    renderSessionInChatArea(event.detail);
+  }
+});

@@ -72,8 +72,8 @@ export function initializeChatComponent() {
   console.log('Initializing chat component');
   
   try {
-    // Initialize UI elements
-    initializeUIElements();
+    // Defensive: abort if UI elements are missing
+    if (!initializeUIElements()) return;
     
     // Set up event listeners
     setupEventListeners();
@@ -133,19 +133,16 @@ function notifyBackgroundScriptOfPopupOpen() {
  * Set up event listeners for chat interactions
  */
 function setupEventListeners() {
-  // Send message when button is clicked
-  sendButton.addEventListener('click', handleSendMessage);
+  if (sendButton) sendButton.addEventListener('click', handleSendMessage);
   
-  // Send message when Enter is pressed (but not with Shift)
-  messageInput.addEventListener('keydown', (event) => {
+  if (messageInput) messageInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSendMessage();
     }
   });
   
-  // Auto-resize textarea as user types
-  messageInput.addEventListener('input', () => {
+  if (messageInput) messageInput.addEventListener('input', () => {
     const maxHeight = window.innerHeight * 0.3;
     messageInput.style.height = 'auto';
     const newHeight = Math.min(messageInput.scrollHeight, maxHeight);
@@ -153,16 +150,16 @@ function setupEventListeners() {
   });
   
   // Action button handlers
-  newChatButton.addEventListener('click', handleNewChat);
+  if (newChatButton) newChatButton.addEventListener('click', handleNewChat);
   // The reasonButton is removed, so we don't need this listener
   // reasonButton.addEventListener('click', () => handleActionButton('reason'));
   
   // These are now handled by initializeToggleButtons
-  searchPageButton.addEventListener('click', () => handleActionButton('searchPage'));
-  searchWebButton.addEventListener('click', () => handleActionButton('searchWeb'));
+  if (searchPageButton) searchPageButton.addEventListener('click', () => handleActionButton('searchPage'));
+  if (searchWebButton) searchWebButton.addEventListener('click', () => handleActionButton('searchWeb'));
   
   // Double-click handler for last query
-  doubleClickArea.addEventListener('dblclick', handleDoubleClick);
+  if (doubleClickArea) doubleClickArea.addEventListener('dblclick', handleDoubleClick);
   
   // Auto-save input text when popup closes
   window.addEventListener('unload', () => {
@@ -221,12 +218,15 @@ async function handleNewChat() {
     messageInput.value = '';
     messageInput.style.height = 'auto';
     messageInput.focus();
-    
     // Optionally, you can also clear the saved input text
     await clearSavedInputText();
-    
     // Switch to the chat tab
     window.dispatchEvent(new CustomEvent('show-tab', { detail: { tabId: 'chat' } }));
+    // Dispatch chat-session-updated to refresh sidebar
+    window.dispatchEvent(new CustomEvent('chat-session-updated', { detail: { session: null } }));
+    // Reset session state so next message creates a new session
+    sessionState.pageLoadId = null;
+    sessionState.chatHistory = [];
   } catch (error) {
     console.error('Error creating new chat:', error);
     displayErrorMessage(error.message);
@@ -353,6 +353,7 @@ async function handleShowSession(event) {
   
   // Show loading indicator and clear current messages
   setLoading(true);
+  setInputEnabled(false);
   chatMessages.innerHTML = '';
   
   try {
@@ -363,40 +364,33 @@ async function handleShowSession(event) {
       type: MESSAGE_TYPES.GET_CHAT_SESSION,
       data: { pageLoadId }
     });
-    
-    // First check if we got a successful response
-    if (!response || !response.success) {
-      throw new Error(response?.error || 'Failed to load session');
+    const session = response?.data;
+    if (!session) {
+      displayErrorMessage('Session not found');
+      setLoading(false);
+      setInputEnabled(true);
+      return;
     }
-    
-    // Check if session exists in the response
-    if (!response.data) {
-      throw new Error('Session not found');
-    }
-    
-    currentSession = response.data;
-    
-    // Check if session has messages array
-    if (!currentSession.messages || !Array.isArray(currentSession.messages)) {
-      console.warn('Session has no messages array or invalid messages:', currentSession);
-      currentSession.messages = [];
-    }
-    
-    renderMessages(currentSession.messages);
+    // Set session state for continuation
+    sessionState.pageLoadId = session.pageLoadId;
+    sessionState.url = session.url;
+    sessionState.title = session.title;
+    sessionState.chatHistory = session.messages || [];
+    currentSession = session;
+    renderMessages(session.messages || []);
     updateConversationInfo();
-    
-    // Clear any error messages
-    hideErrorMessage();
-  } catch (error) {
-    console.error('Error showing session:', error);
-    displayErrorMessage(`Error loading chat: ${error.message}`);
-    
-    // Reset current session if we couldn't load it
-    if (!currentSession || !currentSession.messages) {
-      currentSession = null;
-    }
-  } finally {
     setLoading(false);
+    setInputEnabled(true);
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    messageInput.focus();
+    // Optionally, clear saved input text
+    await clearSavedInputText();
+  } catch (err) {
+    console.error('Failed to load session:', err);
+    displayErrorMessage('Failed to load session');
+    setLoading(false);
+    setInputEnabled(true);
   }
 }
 
@@ -445,6 +439,13 @@ async function handleSendMessage(options = {}) {
     // Prevent duplicate submissions
     if (preventDuplicateSubmission()) {
       console.log('Preventing duplicate submission');
+      return;
+    }
+    
+    // === GUARD: Must have a session ID to send ===
+    if (!sessionState.pageLoadId) {
+      displayErrorMessage('No chat session loaded. Please select or start a chat.');
+      setInputEnabled(true);
       return;
     }
     
@@ -521,20 +522,18 @@ async function handleSendMessage(options = {}) {
       console.log('Page scraping is disabled, skipping content extraction');
     }
     
-    // Check if we have a current session or need to create one
-    if (!sessionState.pageLoadId) {
-      console.log('No current session, creating one');
-      
-      // Get current tab info
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tabs || tabs.length === 0) {
-        throw new Error('No active tab found');
+    // Use sessionState.pageLoadId if set, do not create new session if continuing
+    let pageLoadId = sessionState.pageLoadId;
+    if (!pageLoadId) {
+      // New chat: ensure url and title are set
+      if (!sessionState.url || !sessionState.title) {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const currentTab = tabs[0] || {};
+        sessionState.url = currentTab.url || '';
+        sessionState.title = currentTab.title || currentTab.url || '';
       }
-      
-      const currentTab = tabs[0];
-      sessionState.url = currentTab.url;
-      sessionState.title = currentTab.title || currentTab.url;
-      sessionState.pageLoadId = `session_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+      pageLoadId = await generateNewPageLoadId();
+      sessionState.pageLoadId = pageLoadId;
     }
     
     console.log('Sending message to API with page content length:', pageContent ? pageContent.length : 'disabled');
@@ -585,6 +584,12 @@ async function handleSendMessage(options = {}) {
         displaySessionInfo(responseData.session);
         
         // Notify other components about session update
+        window.dispatchEvent(new CustomEvent('chat-session-updated', {
+          detail: { session: responseData.session }
+        }));
+      }
+      // Always dispatch chat-session-updated after sending a message
+      if (responseData.session) {
         window.dispatchEvent(new CustomEvent('chat-session-updated', {
           detail: { session: responseData.session }
         }));
@@ -1392,11 +1397,14 @@ function initializeUIElements() {
   loadingIndicator = document.getElementById('loading-indicator');
   errorMessage = document.getElementById('error-message');
   modelSelect = document.getElementById('model-select');
-  
-  // Load the global last user input for auto-execution
+  // Defensive: check for required elements
+  if (!chatMessages || !messageInput || !sendButton) {
+    console.error('Critical chat UI elements missing. Aborting chat initialization.');
+    return false;
+  }
   loadGlobalLastUserInput();
-  
   console.log('UI elements initialized');
+  return true;
 }
 
 /**
@@ -1784,6 +1792,29 @@ function executeCommand() {
     console.error('Error in executeCommand:', error);
     displayErrorMessage('Failed to execute command: ' + error.message);
   }
+}
+
+// Add this helper function near the top (after imports)
+async function generateNewPageLoadId() {
+  try {
+    // Try to get a new pageLoadId from the background script
+    const response = await chrome.runtime.sendMessage({
+      type: MESSAGE_TYPES.GENERATE_PAGE_LOAD_ID
+    });
+    if (response && response.pageLoadId) {
+      return response.pageLoadId;
+    }
+  } catch (err) {
+    // Ignore and fallback
+  }
+  // Fallback: use timestamp-based ID
+  return `session_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+}
+
+// Helper to enable/disable input and send button
+function setInputEnabled(enabled) {
+  if (messageInput) messageInput.disabled = !enabled;
+  if (sendButton) sendButton.disabled = !enabled;
 }
 
 // Export the chat component

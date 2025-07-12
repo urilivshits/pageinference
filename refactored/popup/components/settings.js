@@ -330,7 +330,8 @@ function applyTheme(theme) {
  * Populate the model selector with available models
  */
 function populateModelSelector() {
-	// Clear existing options
+	const modelSelector = document.getElementById('model-selector');
+	if (!modelSelector) return;
 	modelSelector.innerHTML = "";
 
 	// Add options for each available model
@@ -425,6 +426,8 @@ async function checkModelAvailability() {
  * Update model selector based on availability
  */
 function updateModelSelector() {
+	const modelSelector = document.getElementById('model-selector');
+	if (!modelSelector) return;
 	Array.from(modelSelector.options).forEach((option) => {
 		const model = option.value;
 		const isAvailable = modelAvailability[model] !== false;

@@ -36,103 +36,71 @@
 <body data-theme="light">
   <div id="double-click-area" title="Double-click to run last query"></div>
   <div class="popup-container">
-    <!-- Header with controls -->
-    <header class="popup-header">
-      <div class="logo">
-        <img src="../icons/default_icon48.png" alt="Page Inference Logo">
-        <h1>Page Inference</h1>
-      </div>
-      <!-- <div class="window-controls">
-        <button id="minimize-button" class="window-control minimize" title="Minimize">−</button>
-        <button id="close-button" class="window-control close" title="Close">×</button>
-      </div> -->
-    </header>
-    
-    <!-- Tab navigation -->
-    <nav class="tab-navigation">
-      <button id="new-chat-button" class="tab-button" title="New Chat">New Chat</button>
-      <button id="history-tab" class="tab-button" data-tab="history">History</button>
-      <button id="settings-tab" class="tab-button" data-tab="settings">Settings</button>
-    </nav>
-
-    <!-- Current conversation info -->
-    <div id="current-conversation-info" class="conversation-info hidden">
-      <div id="current-conversation-title" class="chat-session-title"></div>
-      <div id="current-conversation-timestamp" class="session-meta"></div>
-    </div>
-    
-    <!-- Chat tab -->
-    <div id="chat-container" class="tab-container active" data-tab="chat">
-      <div id="chat-messages" class="chat-messages"></div>
-      <div id="loading-indicator" class="loading-indicator hidden">
-        <div class="spinner"></div>
-        <span>AI is thinking...</span>
-      </div>
-      <div id="error-message" class="error-message hidden"></div>
-      <div class="chat-input-container">
-        <!-- <div class="action-buttons"> -->
-          <!-- Buttons removed as per new requirements -->
-        <!-- </div> -->
-        <div class="chat-input-main">
-          <textarea id="message-input" placeholder="Ask a question..." rows="1"></textarea>
-          <button id="send-button" class="send-button">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-            </svg>
-          </button>
+    <!-- Sidebar for chat navigation -->
+    <aside class="sidebar">
+      <button id="sidebar-new-chat" class="sidebar-new-chat">
+        <span class="sidebar-new-chat-icon" aria-hidden="true" style="display: inline-flex; align-items: center; justify-content: center; margin-right: 8px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        </span>
+        New Chat
+      </button>
+      <div class="sidebar-search-container">
+        <input id="sidebar-search-input" type="text" placeholder="Search chats...">
+        <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="sidebar-domain-filter-toggle" style="margin: 0;">
+          <label for="sidebar-domain-filter-toggle" id="sidebar-domain-filter-label" style="cursor: pointer; user-select: none; white-space: nowrap;">Only show chats from this site</label>
         </div>
       </div>
-    </div>
-    
-    <!-- History tab -->
-    <div id="history-container" class="tab-container" data-tab="history">
-      <div class="history-header">
-        <div class="filter-container">
-          <input id="filter-input" type="text" placeholder="Search sessions...">
-          <div class="domain-filter">
-            <input id="domain-filter-toggle" type="checkbox">
-            <label id="domain-filter-label" for="domain-filter-toggle">Only show current site</label>
+      <ul id="sidebar-sessions-list" class="sidebar-sessions-list"></ul>
+      <div id="sidebar-no-sessions-message" class="sidebar-no-sessions-message">No chat sessions found</div>
+    </aside>
+    <!-- Main content area -->
+    <div class="main-content">
+      <div id="current-conversation-info" class="conversation-info hidden">
+        <div id="current-conversation-title" class="chat-session-title"></div>
+        <div id="current-conversation-timestamp" class="session-meta"></div>
+      </div>
+      <div id="chat-container" class="tab-container active" data-tab="chat">
+        <div id="chat-messages" class="chat-messages"></div>
+        <div id="loading-indicator" class="loading-indicator hidden">
+          <div class="spinner"></div>
+          <span>AI is thinking...</span>
+        </div>
+        <div id="error-message" class="error-message hidden"></div>
+        <div class="chat-input-container">
+          <div class="chat-input-main">
+            <textarea id="message-input" placeholder="Ask a question..." rows="1"></textarea>
+            <button id="send-button" class="send-button">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
-      <ul id="sessions-list" class="sessions-list"></ul>
-      <div id="no-sessions-message" class="no-sessions-message">No chat sessions found</div>
-    </div>
-    
-    <!-- Settings tab -->
-    <div id="settings-container" class="tab-container" data-tab="settings">
-      <div class="settings-section">
-        <h2>API Key</h2>
-        <div class="setting-item">
-          <div class="api-key-input-container">
-            <input id="api-key-input" type="password" placeholder="sk-...">
-            <button id="toggle-api-key-button" class="icon-button small" title="Show/Hide API Key">👁️</button>
-            <button id="save-api-key-button" class="primary-button">Save</button>
-          </div>
-          <p class="setting-description">Your API key is stored locally and never sent to our servers.</p>
-        </div>
-      </div>
-      
-      <div class="settings-section">
-        <div class="setting-item">
-          <label>Theme</label>
-          <div class="theme-options">
-            <label class="theme-option">
-              <input type="radio" name="theme" value="system" checked>
-              System
-            </label>
-            <label class="theme-option">
-              <input type="radio" name="theme" value="light">
-              Light
-            </label>
-            <label class="theme-option">
-              <input type="radio" name="theme" value="dark">
-              Dark
-            </label>
+      <!-- Settings floating panel (hidden by default) -->
+      <div id="settings-panel" class="settings-panel hidden">
+        <div id="settings-container" class="settings-container">
+          <div class="settings-section">
+            <h2>API Key</h2>
+            <div class="setting-item">
+              <div class="api-key-input-container">
+                <input id="api-key-input" type="password" placeholder="sk-...">
+                <button id="toggle-api-key-button" class="icon-button small" title="Show/Hide API Key">
+                  <span class="icon-eye">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </span>
+                  <span class="icon-eye-off" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06M1 1l22 22"/><path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/></svg>
+                  </span>
+                </button>
+                <button id="save-api-key-button" class="primary-button">Save</button>
+              </div>
+              <p class="setting-description">Your API key is stored locally and never sent to our servers.</p>
+            </div>
           </div>
         </div>
       </div>
-      
     </div>
   </div>
   
