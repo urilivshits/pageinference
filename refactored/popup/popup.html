@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Page Inference</title>
+  <title>Iuliia's Lil Helper</title>
   <link rel="stylesheet" href="styles/popup.css">
   <link rel="stylesheet" href="../lib/highlight.min.css">
   <script src="../lib/highlight.min.js"></script>
@@ -42,10 +42,10 @@
         <img src="../icons/default_icon48.png" alt="Page Inference Logo">
         <h1>Page Inference</h1>
       </div>
-      <div class="window-controls">
+      <!-- <div class="window-controls">
         <button id="minimize-button" class="window-control minimize" title="Minimize">−</button>
         <button id="close-button" class="window-control close" title="Close">×</button>
-      </div>
+      </div> -->
     </header>
     
     <!-- Tab navigation -->
@@ -70,18 +70,17 @@
       </div>
       <div id="error-message" class="error-message hidden"></div>
       <div class="chat-input-container">
-        <div class="action-buttons">
-          <button id="search-page-button" class="text-button" title="Search Page">Search Page</button>
-          <button id="search-web-button" class="text-button" title="Search Web">Search Web</button>
-        </div>
+        <!-- <div class="action-buttons"> -->
+          <!-- Buttons removed as per new requirements -->
+        <!-- </div> -->
         <div class="chat-input-main">
           <textarea id="message-input" placeholder="Ask a question..." rows="1"></textarea>
+          <button id="send-button" class="send-button">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+            </svg>
+          </button>
         </div>
-        <button id="send-button" class="send-button">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-          </svg>
-        </button>
       </div>
     </div>
     
@@ -105,7 +104,6 @@
       <div class="settings-section">
         <h2>API Key</h2>
         <div class="setting-item">
-          <label for="api-key-input">OpenAI API Key</label>
           <div class="api-key-input-container">
             <input id="api-key-input" type="password" placeholder="sk-...">
             <button id="toggle-api-key-button" class="icon-button small" title="Show/Hide API Key">👁️</button>
@@ -116,45 +114,6 @@
       </div>
       
       <div class="settings-section">
-        <h2>Chat Settings</h2>
-        <div class="setting-item">
-          <label for="model-selector">AI Model</label>
-          <select id="model-selector">
-            <option value="gpt-4o-mini">GPT-4o mini (Default, Search-enabled)</option>
-            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-            <option value="gpt-4">GPT-4</option>
-            <option value="gpt-4o">GPT-4o</option>
-          </select>
-          <p class="setting-description">Note: Only GPT-4o mini supports web search functionality. Other models may require additional API access permissions.</p>
-        </div>
-        
-        <div class="setting-item">
-          <label for="temperature-slider">Temperature: <span id="temperature-value">0.7</span></label>
-          <input id="temperature-slider" type="range" min="0" max="1" step="0.1" value="0.7">
-          <p class="setting-description">Higher values make the output more random, lower values make it more deterministic.</p>
-        </div>
-        
-        <div class="setting-item">
-          <label for="web-search-toggle">Web Search</label>
-          <div class="toggle-container">
-            <input id="web-search-toggle" type="checkbox" class="toggle-input">
-            <label for="web-search-toggle" class="toggle-label"></label>
-          </div>
-          <p class="setting-description">Allow the AI to search the web for more up-to-date information.</p>
-        </div>
-        
-        <div class="setting-item">
-          <label for="page-scraping-toggle">Page Content</label>
-          <div class="toggle-container">
-            <input id="page-scraping-toggle" type="checkbox" class="toggle-input" checked>
-            <label for="page-scraping-toggle" class="toggle-label"></label>
-          </div>
-          <p class="setting-description">Allow the AI to access the current page content.</p>
-        </div>
-      </div>
-      
-      <div class="settings-section">
-        <h2>Appearance</h2>
         <div class="setting-item">
           <label>Theme</label>
           <div class="theme-options">
@@ -171,22 +130,9 @@
               Dark
             </label>
           </div>
-          <p class="setting-description">Choose your preferred theme.</p>
         </div>
       </div>
       
-      <div class="settings-section">
-        <h2>About</h2>
-        <div class="about-content">
-          <p>Page Inference v1.0.0</p>
-          <p>© 2023 Page Inference</p>
-          <div class="links">
-            <a href="https://pageinference.com" target="_blank">Website</a>
-            <a href="https://pageinference.com/privacy" target="_blank">Privacy Policy</a>
-            <a href="https://pageinference.com/terms" target="_blank">Terms of Service</a>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
   

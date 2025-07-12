@@ -1211,7 +1211,7 @@ async function initializeButtonStates() {
     }
     
     // Initialize search web button state
-    const webSearch = settings.webSearch !== undefined ? settings.webSearch : true;
+    const webSearch = settings.webSearch !== undefined ? settings.webSearch : false;
     if (searchWebButton) {
       searchWebButton.classList.toggle('active', webSearch);
     }
@@ -1246,7 +1246,7 @@ export async function getUserPreferences() {
     const defaultPreferences = {
       theme: 'system',
       temperature: 0,
-      pageScraping: false,
+      pageScraping: true,
       webSearch: false,
       currentSiteFilter: true,
       defaultModel: 'gpt-4o-mini'
