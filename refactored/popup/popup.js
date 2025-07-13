@@ -964,7 +964,7 @@ async function autoExecuteIfNeeded() {
     // Check user preferences for auto-execute setting
     const { userPreferences } = await chrome.storage.local.get('userPreferences');
     const autoExecuteEnabled = userPreferences?.autoExecute !== false; // Default to true if not specified
-    const repeatMessageTrigger = userPreferences?.repeatMessageTrigger || 'auto'; // Default to 'auto'
+    const repeatMessageTrigger = userPreferences?.repeatMessageTrigger || 'manual'; // Default to 'manual' to match settings
     
     if (!autoExecuteEnabled) {
       logger.debug('Auto-execute disabled in preferences');
@@ -986,11 +986,8 @@ async function autoExecuteIfNeeded() {
       window.ctrlKeyPressed = isCtrlPressed;
       monitorCtrlKeyState(isCtrlPressed);
       
-      // Clear the pending state now that we've checked it
-      if (wasCtrlClickPending) {
-        logger.debug('Clearing ctrl click pending state after checking');
-        await chrome.runtime.sendMessage({ action: 'clearCtrlKeyState', tabId });
-      }
+      // DON'T clear the pending state here - let the execution functions handle it
+      // This ensures the ctrl state persists through the entire execution chain
     } catch (error) {
       logger.error('Error getting ctrl key state:', error);
       // Fallback to window global
@@ -1013,13 +1010,24 @@ async function autoExecuteIfNeeded() {
         shouldAutoExecute = false;
         break;
       default:
-        // Fallback to 'auto' behavior
-        shouldAutoExecute = !isCtrlPressed;
+        // Fallback to 'manual' behavior
+        shouldAutoExecute = isCtrlPressed;
         break;
     }
 
     if (!shouldAutoExecute) {
       logger.debug(`Auto-execute skipped based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${isCtrlPressed}`);
+      
+      // Clear ctrl state after a delay since we're not executing anything
+      setTimeout(async () => {
+        try {
+          await chrome.runtime.sendMessage({ action: 'clearCtrlKeyState', tabId });
+          logger.debug('Cleared ctrl key state after skipping auto-execute');
+        } catch (error) {
+          logger.error('Error clearing ctrl key state after skip:', error);
+        }
+      }, 1000);
+      
       return;
     }
     

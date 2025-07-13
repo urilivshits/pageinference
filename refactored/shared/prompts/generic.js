@@ -124,5 +124,5 @@ export function getSystemPrompt(url, hasPageContent, pageContent = '') {
     const baseUrl = getDomain(url) || url;
     return `This is the content of website ${baseUrl}. If the user asks about it, act upon it.\n\n${pageContent}`;
   }
-  return 'You are a helpful assistant.';
+  return '';
 }

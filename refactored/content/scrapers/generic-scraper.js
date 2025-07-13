@@ -32,23 +32,114 @@ const extractMetadata = () => {
 };
 
 /**
- * Extract main content from the page
+ * Check if an element is hidden
+ * 
+ * @param {Element} element - The element to check
+ * @returns {boolean} - Whether the element is hidden
+ */
+const isElementHidden = (element) => {
+  if (!element || !element.style) return false;
+  
+  const style = window.getComputedStyle(element);
+  return (
+    style.display === 'none' ||
+    style.visibility === 'hidden' ||
+    style.opacity === '0' ||
+    element.hasAttribute('hidden')
+  );
+};
+
+/**
+ * Check if an element is a block element
+ * 
+ * @param {Element} element - The element to check
+ * @returns {boolean} - Whether the element is a block element
+ */
+const isBlockElement = (element) => {
+  if (!element || !element.tagName) return false;
+  
+  const blockElements = ['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'NAV', 'ASIDE', 'MAIN', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'PRE', 'HR', 'TABLE', 'TR', 'TD', 'TH'];
+  return blockElements.includes(element.tagName.toUpperCase());
+};
+
+/**
+ * Get visible text from an element and its children (comprehensive extraction)
+ * 
+ * @param {Element|Node} element - The root element to start from
+ * @returns {string} - The visible text content
+ */
+const getVisibleText = (element) => {
+  // Check if element is null or undefined
+  if (!element) {
+    return '';
+  }
+  
+  // If it's a text node, return its text
+  if (element.nodeType === Node.TEXT_NODE) {
+    return element.textContent.trim() + ' ';
+  }
+  
+  // Skip if not an element node and not a text node
+  if (element.nodeType !== Node.ELEMENT_NODE) {
+    return '';
+  }
+  
+  // Skip certain elements
+  const tagName = element.tagName?.toLowerCase();
+  
+  // Skip invisible elements and irrelevant tags
+  if (
+    isElementHidden(element) ||
+    ['script', 'style', 'noscript', 'svg', 'img', 'meta'].includes(tagName)
+  ) {
+    return '';
+  }
+  
+  // If it has children, recursively get their text
+  let text = '';
+  try {
+    for (const child of element.childNodes) {
+      text += getVisibleText(child);
+    }
+    
+    // Add extra spacing for block elements
+    if (isBlockElement(element)) {
+      text = '\n' + text + '\n';
+    }
+    
+    return text;
+  } catch (error) {
+    console.warn('Error processing element:', element, error);
+    return '';
+  }
+};
+
+/**
+ * Extract main content from the page using comprehensive DOM traversal
  * 
  * @returns {string} - The main content text
  */
 const extractMainContent = () => {
-  // Try to find main content area
-  const mainContent = document.querySelector('main')?.innerText || '';
-  
-  // If no main content, try article content
-  const articleContent = Array.from(document.querySelectorAll('article'))
-    .map(article => article.innerText)
-    .join('\n\n');
-  
-  // If no specific content areas found, use body text
-  const bodyContent = document.body.innerText;
-  
-  return cleanText(mainContent || articleContent || bodyContent);
+  try {
+    // Get body element or fallback to document
+    const bodyEl = document.body || document.documentElement;
+    
+    if (!bodyEl) {
+      console.warn('Could not find body element, returning empty content');
+      return '';
+    }
+    
+    // Get all visible text nodes using comprehensive extraction
+    const textContent = getVisibleText(bodyEl);
+    
+    // Return the text content with a reasonable size limit
+    const result = textContent.substring(0, 100000);
+    console.log(`Extracted ${result.length} characters of content`);
+    return result;
+  } catch (error) {
+    console.error('Error extracting page content:', error);
+    return `Error extracting content from ${window.location.href}. ${error.message}`;
+  }
 };
 
 /**
@@ -129,5 +220,8 @@ export default {
   cleanText,
   extractMetadata,
   extractMainContent,
-  extractLinks
+  extractLinks,
+  getVisibleText,
+  isElementHidden,
+  isBlockElement
 }; 

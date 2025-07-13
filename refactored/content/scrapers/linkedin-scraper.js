@@ -73,7 +73,20 @@ const scrapeLinkedInProfile = () => {
     sections.push('\nSkills:', skills);
   }
   
-  return sections.join('\n\n');
+  const result = sections.join('\n\n');
+  
+  console.log(`[LinkedIn Scraper] Profile result: "${result}" (${result.length} characters)`);
+  
+  // If we didn't get substantial content (less than 100 characters), fall back to generic scraper
+  if (result.length < 100) {
+    console.log('[LinkedIn Scraper] Profile content too minimal, falling back to generic scraper');
+    const genericResult = genericScraper.scrapePageContent({ includeMetadata: true, includeLinks: false });
+    console.log(`[LinkedIn Scraper] Generic fallback result length: ${genericResult.length}`);
+    return genericResult;
+  }
+  
+  console.log('[LinkedIn Scraper] Profile content sufficient, using LinkedIn-specific result');
+  return result;
 };
 
 /**
@@ -101,7 +114,20 @@ const scrapeLinkedInJob = () => {
     sections.push('\nRequirements:', requirements);
   }
   
-  return sections.join('\n\n');
+  const result = sections.join('\n\n');
+  
+  console.log(`[LinkedIn Scraper] Job result: "${result}" (${result.length} characters)`);
+  
+  // If we didn't get substantial content (less than 100 characters), fall back to generic scraper
+  if (result.length < 100) {
+    console.log('[LinkedIn Scraper] Job content too minimal, falling back to generic scraper');
+    const genericResult = genericScraper.scrapePageContent({ includeMetadata: true, includeLinks: false });
+    console.log(`[LinkedIn Scraper] Generic fallback result length: ${genericResult.length}`);
+    return genericResult;
+  }
+  
+  console.log('[LinkedIn Scraper] Job content sufficient, using LinkedIn-specific result');
+  return result;
 };
 
 /**
@@ -112,22 +138,33 @@ const scrapeLinkedInJob = () => {
  */
 const scrapeLinkedInContent = (options = {}) => {
   try {
+    // TEMPORARY: Always use generic scraper to test if fallback works
+    console.log('[LinkedIn Scraper] TEMPORARILY using generic scraper for all LinkedIn pages');
+    const genericResult = genericScraper.scrapePageContent({ includeMetadata: true, includeLinks: false });
+    console.log(`[LinkedIn Scraper] Generic scraper result length: ${genericResult.length}`);
+    return genericResult;
+    
     // Determine the page type and scrape accordingly
     const path = window.location.pathname.toLowerCase();
+    console.log(`[LinkedIn Scraper] Current path: ${path}`);
     
     if (path.includes('/in/') || path.match(/\/profile\/view/)) {
       // Profile page
+      console.log('[LinkedIn Scraper] Detected profile page, using profile scraper');
       return scrapeLinkedInProfile();
     } else if (path.includes('/jobs/view/') || path.includes('/jobs/detail/')) {
       // Job posting page
+      console.log('[LinkedIn Scraper] Detected job page, using job scraper');
       return scrapeLinkedInJob();
     } else {
       // For other LinkedIn pages, use the generic scraper
+      console.log('[LinkedIn Scraper] Unknown page type, using generic scraper');
       return genericScraper.scrapePageContent(options);
     }
   } catch (error) {
     console.error('Error in LinkedIn scraper:', error);
     // Fall back to generic scraper
+    console.log('[LinkedIn Scraper] Error occurred, falling back to generic scraper');
     return genericScraper.scrapePageContent(options);
   }
 };

@@ -68,7 +68,10 @@ async function checkScriptAvailability(path) {
 // Load the refactored content script when this loader is executed
 (async function() {
   try {
+    logMessage('Starting content script loading process');
+    
     // First check if the script is available
+    logMessage('Checking content script availability at ./content/content.js');
     const isContentScriptAvailable = await checkScriptAvailability('./content/content.js');
     
     if (!isContentScriptAvailable) {
@@ -76,10 +79,15 @@ async function checkScriptAvailability(path) {
       return;
     }
     
+    logMessage('Content script is available, proceeding with load');
     logMessage('Loading refactored content script from content/content.js');
     const contentScript = await loadModule('./content/content.js');
     logMessage('Refactored content script loaded successfully');
+    
+    // Log that the module loading completed
+    logMessage('Module loading process completed');
   } catch (error) {
     logMessage(`Failed to load refactored content script: ${error.message}`, 'error');
+    logMessage(`Error stack: ${error.stack}`, 'error');
   }
 })(); 

@@ -19,10 +19,12 @@ function initialize() {
   // Only initialize once
   if (window.__pageInferenceInitialized) {
     logger.debug('Content script already initialized, skipping re-initialization');
+    console.log('[Page Inference] Content script already initialized, skipping re-initialization');
     return;
   }
   
   logger.init(`Initializing content script on ${window.location.href}`);
+  console.log(`[Page Inference] INIT: Starting content script initialization on ${window.location.href}`);
   
   // If document isn't ready yet, wait for it
   if (document.readyState !== 'complete' && document.readyState !== 'interactive') {
@@ -44,20 +46,30 @@ function initialize() {
 
 // Set up the content script functionality
 function setupContentScript() {
-  if (window.__pageInferenceInitialized) return;
+  if (window.__pageInferenceInitialized) {
+    console.log('[Page Inference] SETUP: Already initialized, skipping setup');
+    return;
+  }
+  
+  console.log('[Page Inference] SETUP: Starting content script functionality setup');
   
   // Listen for messages from the popup or background script
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('[Page Inference] CONTENT: Received message:', request);
     logger.debug(`Received message: ${request.action}`);
     
     // Handle content scraping request
     if (request.action === 'scrapeContent') {
+      console.log('[Page Inference] CONTENT: Processing scrapeContent request');
       logger.debug('Scraping page content');
       try {
         const pageContent = scrapeCurrentPage();
+        console.log(`[Page Inference] CONTENT: Scraped ${pageContent.length} characters`);
         logger.debug(`Scraped content length: ${pageContent.length} characters`);
         sendResponse({ content: pageContent });
+        console.log('[Page Inference] CONTENT: Sent response with content');
       } catch (error) {
+        console.error('[Page Inference] CONTENT: Error during scraping:', error);
         logger.error('Error during content scraping:', error);
         sendResponse({ 
           error: 'Error scraping content: ' + error.message,
@@ -80,30 +92,60 @@ function setupContentScript() {
 
   window.__pageInferenceInitialized = true;
   logger.success('Content script initialized successfully');
+  console.log('[Page Inference] SETUP: Content script core setup completed - starting ctrl key detection');
+  
+  // Set up keyboard event listeners (for Ctrl key state)
+  setupKeyListeners();
   
   // Broadcast initialization status to ensure background script knows we're ready
+  console.log('[Page Inference] SETUP: Sending initialization confirmation to background');
   try {
     chrome.runtime.sendMessage({ 
       type: 'contentScriptInitialized',
       action: 'contentScriptInitialized',
       url: window.location.href,
       timestamp: Date.now()
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Page Inference] Error sending initialization confirmation:', chrome.runtime.lastError.message);
+      } else {
+        console.log('[Page Inference] COMPLETE: Sent initialization confirmation to background, response:', response);
+      }
     });
     logger.debug('Sent initialization confirmation to background');
   } catch (e) {
     logger.warn('Failed to send initialization confirmation:', e);
+    console.error('[Page Inference] Failed to send initialization confirmation:', e);
   }
   
-  // Set up keyboard event listeners (for Ctrl key state)
-  setupKeyListeners();
+  console.log('[Page Inference] COMPLETE: Content script initialized successfully - ctrl key detection active');
 }
 
 /**
  * Set up keyboard event listeners to track key states
  */
 function setupKeyListeners() {
+  console.log('[Page Inference] SETUP: Setting up keyboard event listeners for ctrl detection');
   let ctrlKeyPressed = false;
   let keyEventTimeout = null;
+  let currentTabId = null;
+
+  // Get current tab ID first
+  console.log('[Page Inference] SETUP: Requesting tab ID from background');
+  chrome.runtime.sendMessage({ action: 'getTabId' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[Page Inference] Error getting tab ID:', chrome.runtime.lastError.message);
+      // Try to continue without tab ID
+      currentTabId = null;
+    } else if (response && response.tabId) {
+      currentTabId = response.tabId;
+      logger.debug(`Content script initialized for tab ${currentTabId}`);
+      console.log(`[Page Inference] Content script initialized for tab ${currentTabId}`);
+    } else {
+      console.error('[Page Inference] Failed to get tab ID for content script - no response or no tabId in response');
+      currentTabId = null;
+    }
+  });
 
   // Function to send Ctrl key state with less delay when pressed
   function sendCtrlKeyState(isPressed) {
@@ -113,17 +155,29 @@ function setupKeyListeners() {
     const delay = isPressed ? 0 : 10;
     
     keyEventTimeout = setTimeout(() => {
-      chrome.runtime.sendMessage({ 
+      console.log(`[Page Inference] Sending Ctrl key state: ${isPressed ? 'pressed' : 'released'} for tab ${currentTabId}`);
+      
+      const message = { 
         action: 'ctrlKeyState', 
-        isPressed: isPressed 
-      }, (response) => {
-        logger.ctrl(`Sent Ctrl key state: ${isPressed ? 'pressed' : 'released'}`);
+        isPressed: isPressed,
+        tabId: currentTabId // Include tab ID for better tracking
+      };
+      
+      chrome.runtime.sendMessage(message, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('[Page Inference] Error sending ctrl key state:', chrome.runtime.lastError.message);
+        } else {
+          logger.ctrl(`Sent Ctrl key state: ${isPressed ? 'pressed' : 'released'} for tab ${currentTabId}`);
+          console.log(`[Page Inference] Background response:`, response);
+        }
       });
     }, delay);
   }
 
+  console.log('[Page Inference] SETUP: Adding keydown and keyup event listeners');
   document.addEventListener('keydown', function(event) {
     if (event.key === 'Control') {
+      console.log('[Page Inference] Ctrl key DOWN detected in content script');
       if (!ctrlKeyPressed) {
         ctrlKeyPressed = true;
         // Send immediate message when Ctrl is pressed
@@ -134,6 +188,7 @@ function setupKeyListeners() {
 
   document.addEventListener('keyup', function(event) {
     if (event.key === 'Control') {
+      console.log('[Page Inference] Ctrl key UP detected in content script');
       ctrlKeyPressed = false;
       // Send slightly delayed message when Ctrl is released
       sendCtrlKeyState(false);
@@ -157,15 +212,18 @@ function setupKeyListeners() {
   });
 
   // Send initial state
+  console.log('[Page Inference] SETUP: Sending initial ctrl state (false) to background');
   chrome.runtime.sendMessage({ 
     action: 'ctrlKeyState', 
     isPressed: false 
   });
   
   logger.debug('Keyboard event listeners initialized');
+  console.log('[Page Inference] SETUP: Keyboard event listeners setup completed');
 }
 
 // Start initialization
+console.log('[Page Inference] STARTUP: Content script file loaded, starting initialization');
 initialize();
 
 // Add a failsafe initialization for slow loading pages

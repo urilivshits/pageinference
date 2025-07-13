@@ -747,7 +747,7 @@ function setupMessageListeners() {
               logger.log('Auto-clearing global ctrlClickPending after timeout');
                 ctrlClickPending = false;
               }
-            }, 5000);
+            }, 10000); // Increased timeout for better ctrl+click detection
           }
           
           return { success: true };
@@ -939,7 +939,8 @@ function setupMessageListeners() {
       // Add handler for ctrlKeyState message type
       'ctrlKeyState': async () => {
         const isPressed = message.isPressed;
-        const tabId = sender && sender.tab && sender.tab.id;
+        // Use tabId from message if available, fallback to sender tab ID
+        const tabId = message.tabId || (sender && sender.tab && sender.tab.id);
         
         logger.log(`Received ctrlKeyState message, isPressed=${isPressed}, tabId=${tabId}`);
         
@@ -973,7 +974,7 @@ function setupMessageListeners() {
                   [`ctrlClickPending_tab_${tabId}`]: false
                 });
               }
-            }, 5000);
+            }, 10000); // Increased timeout for better ctrl+click detection
           } else {
             // Key released - update pressed state but keep pending state for popup detection
             // Do NOT clear the pending flag here - let popup check it or timeout clear it
@@ -1199,11 +1200,12 @@ function setupMessageListeners() {
           
           // Get tab to scrape (either specified or active tab)
           let tab;
-          if (message.tabId) {
+          const tabId = message.tabId || (message.data && message.data.tabId);
+          if (tabId) {
             try {
-              tab = await chrome.tabs.get(message.tabId);
+              tab = await chrome.tabs.get(tabId);
             } catch (error) {
-              logger.error('Failed to get tab with ID:', message.tabId, error);
+              logger.error('Failed to get tab with ID:', tabId, error);
               return { success: false, error: 'Tab not found or inaccessible' };
             }
           } else {
@@ -1395,10 +1397,10 @@ async function injectContentScriptIfNeeded(tabId) {
       func: () => true,
     });
     
-    // Inject the content script
+    // Inject the module loader which loads the refactored content script
     await chrome.scripting.executeScript({
       target: { tabId },
-      files: ['content.js']
+      files: ['module-loader.js']
     });
     
     logger.success('Content script injected successfully', null, 'background');
@@ -1432,8 +1434,10 @@ async function processScrapeTabRequest(tab) {
   
   // Try to send a message to the content script
   try {
+    console.log('[Page Inference] BACKGROUND: Sending scrapeContent message to tab:', tab.id, 'URL:', tab.url);
     logger.log('Sending scrapeContent message to tab:', tab.id);
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
+    console.log('[Page Inference] BACKGROUND: Received response from content script:', response);
     
     if (!response || !response.content) {
       logger.warn('Content script returned empty or invalid response');
@@ -1465,8 +1469,18 @@ async function processScrapeTabRequest(tab) {
     try {
       await injectContentScriptIfNeeded(tab.id);
       
-      // Wait a moment for the script to initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait longer for the script to fully initialize and set up message listeners
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // First test if content script is responding with a ping
+      logger.log('Testing content script connectivity with ping');
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+        logger.log('Content script ping successful');
+      } catch (pingError) {
+        logger.warn('Content script still not responding after injection, trying longer wait');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
       
       // Try again after injection
       logger.log('Retrying scrapeContent after script injection');
@@ -1487,13 +1501,15 @@ async function processScrapeTabRequest(tab) {
       };
     } catch (retryError) {
       logger.error('Failed to scrape content after script injection:', retryError);
+      // Return success with empty content to allow the request to proceed without page content
+      // This prevents the "Failed to extract page content" error from stopping the entire request
       return { 
-        success: false, 
-        error: 'Failed to scrape page content after script injection',
+        success: true, 
         data: {
-          content: `Failed to extract content from ${tab.url}. Please refresh the page and try again.`,
+          content: '', // Empty content, will trigger "without page content" flow
           title: tab.title || '',
-          url: tab.url || ''
+          url: tab.url || '',
+          note: 'Page content extraction failed, proceeding without page context'
         }
       };
     }

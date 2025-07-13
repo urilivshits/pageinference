@@ -1,29 +1,24 @@
 /**
  * Page Scraper Index
  * 
- * Exports scraper functions and handles scraper detection.
+ * Unified scraper that works on all pages using the generic scraper.
  */
 
 import genericScraper from './generic-scraper.js';
-import linkedInScraper from './linkedin-scraper.js';
 
 /**
  * Detect which scraper to use for the current page
+ * Now always returns the generic scraper for unified behavior
  * 
- * @returns {Object} - The appropriate scraper for the current page
+ * @returns {Object} - The generic scraper for all pages
  */
 export const detectScraper = () => {
-  // Check for LinkedIn pages first
-  if (linkedInScraper.isLinkedInPage()) {
-    return linkedInScraper;
-  }
-  
-  // Default to generic scraper
+  // Always use generic scraper for unified behavior across all pages
   return genericScraper;
 };
 
 /**
- * Scrape content from the current page
+ * Scrape content from the current page using the unified generic scraper
  * 
  * @param {Object} options - Scraping options
  * @param {boolean} options.includeMetadata - Whether to include page metadata
@@ -32,14 +27,8 @@ export const detectScraper = () => {
  */
 export const scrapeCurrentPage = (options = {}) => {
   try {
-    const scraper = detectScraper();
-    
-    // Use LinkedIn scraper's specialized function
-    if (scraper === linkedInScraper) {
-      return scraper.scrapeLinkedInContent(options);
-    }
-    
-    // Use generic scraper for all other pages
+    // Always use the generic scraper for all pages
+    const scraper = genericScraper;
     return scraper.scrapePageContent(options);
   } catch (error) {
     console.error('Error scraping page:', error);
@@ -49,7 +38,5 @@ export const scrapeCurrentPage = (options = {}) => {
 
 export default {
   detectScraper,
-  scrapeCurrentPage,
-  genericScraper,
-  linkedInScraper
+  scrapeCurrentPage
 }; 

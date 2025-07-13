@@ -311,7 +311,7 @@ function applySettingsToUI(settings) {
 	}
 
 	// Apply repeat message trigger setting
-	const repeatTrigger = settings.repeatMessageTrigger || "auto";
+	  const repeatTrigger = settings.repeatMessageTrigger || "manual";
 	if (repeatMessageTrigger) {
 		repeatMessageTrigger.value = repeatTrigger;
 	} else {

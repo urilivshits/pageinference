@@ -593,6 +593,18 @@ async function handleSendMessage(options = {}) {
     // Reset submission state
     sessionState.isSubmitting = false;
     
+    // Clear any ctrl key pending state after successful message submission
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tabId = tabs[0]?.id;
+      if (tabId) {
+        await chrome.runtime.sendMessage({ action: 'clearCtrlKeyState', tabId });
+        console.log('Cleared ctrl key state after message submission');
+      }
+    } catch (error) {
+      console.error('Error clearing ctrl key state after submission:', error);
+    }
+    
     // Handle response
     if (response && response.success) {
       // Update session with response data
@@ -995,10 +1007,12 @@ async function loadSavedInputText() {
  */
 async function checkForCommandToExecute() {
   try {
-    console.log('Checking for command to execute');
+    console.log('🔍 COMMAND EXECUTION: Starting checkForCommandToExecute');
     
     // First make sure all UI elements are fully initialized
     initializeUIElements();
+    
+    // Content script injection no longer needed - using working popup-level ctrl detection
     
     // Ensure theme is applied from settings
     const userPrefs = await getUserPreferences();
@@ -1012,58 +1026,88 @@ async function checkForCommandToExecute() {
     
     // *** CRITICAL: Check repeat message trigger setting to determine execution behavior
     const currentUserPrefs = await getUserPreferences();
-    const repeatMessageTrigger = currentUserPrefs.repeatMessageTrigger || 'auto';
+    const repeatMessageTrigger = currentUserPrefs.repeatMessageTrigger || 'manual';
     
-    // Query background script for current ctrl key state instead of relying on window global
+    // Use the working popup-level ctrl detection instead of broken background script approach
     let isCtrlPressed = false;
     let wasCtrlClickPending = false;
+    
+    // Use the same comprehensive detection methods as the working popup.js system
+    let ctrlKeyDetected = false;
+    
+    // Method 1: Check the window.ctrlKeyPressed global variable set by popup.js detection
+    if (window.ctrlKeyPressed === true) {
+      ctrlKeyDetected = true;
+      console.log('Ctrl key detected via window.ctrlKeyPressed (working popup detection)');
+    }
+    
+    // Method 2: Check if Ctrl key is currently pressed using browser APIs
     try {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const tabId = tabs[0]?.id;
-      const ctrlState = await chrome.runtime.sendMessage({ action: 'getCtrlKeyState', tabId });
-      // Check for pending state (ctrl was pressed during click) rather than current pressed state
-      isCtrlPressed = ctrlState?.ctrlClickPending === true || ctrlState?.ctrlKeyPressed === true;
-      wasCtrlClickPending = ctrlState?.ctrlClickPending === true;
-      console.log('Ctrl key state from background:', { pressed: ctrlState?.ctrlKeyPressed, pending: ctrlState?.ctrlClickPending, final: isCtrlPressed });
-      
-      // Update the window global for consistency
-      window.ctrlKeyPressed = isCtrlPressed;
-      
-      // Clear the pending state now that we've checked it
-      if (wasCtrlClickPending) {
-        console.log('Clearing ctrl click pending state after checking');
-        await chrome.runtime.sendMessage({ action: 'clearCtrlKeyState', tabId });
+      if (navigator.userAgent.indexOf('Mac') !== -1) {
+        // Check Command key on Mac
+        if (window.event?.metaKey) {
+          ctrlKeyDetected = true;
+          console.log('Command key detected via window.event.metaKey on Mac');
+        }
+      } else {
+        // Check Ctrl key on other platforms
+        if (window.event?.ctrlKey) {
+          ctrlKeyDetected = true;
+          console.log('Ctrl key detected via window.event.ctrlKey');
+        }
       }
     } catch (error) {
-      console.error('Error getting ctrl key state:', error);
-      // Fallback to window global
-      isCtrlPressed = window.ctrlKeyPressed === true;
+      console.warn('Error checking browser event state:', error);
     }
+    
+    isCtrlPressed = ctrlKeyDetected;
+    wasCtrlClickPending = ctrlKeyDetected;
+    
+    console.log('Ctrl key state from popup-level detection:', { 
+      ctrlKeyPressed: isCtrlPressed, 
+      ctrlClickPending: wasCtrlClickPending,
+      windowCtrlKeyPressed: window.ctrlKeyPressed,
+      detectionMethod: 'popup-level'
+    });
     
     let shouldAutoExecute = false;
     switch (repeatMessageTrigger) {
       case 'auto':
         // Normal click → Auto-execute, Ctrl+click → Just open
         shouldAutoExecute = !isCtrlPressed;
+        console.log(`AUTO mode: Normal click executes, Ctrl+click opens. Ctrl pressed: ${isCtrlPressed}, should execute: ${shouldAutoExecute}`);
+        if (isCtrlPressed) {
+          console.log('💡 TIP: If you want Ctrl+click to execute commands, switch to MANUAL mode in settings');
+        }
         break;
       case 'manual':
         // Normal click → Just open, Ctrl+click → Auto-execute
         shouldAutoExecute = isCtrlPressed;
+        console.log(`MANUAL mode: Normal click opens, Ctrl+click executes. Ctrl pressed: ${isCtrlPressed}, should execute: ${shouldAutoExecute}`);
         break;
       case 'disabled':
         // Never auto-execute
         shouldAutoExecute = false;
+        console.log(`DISABLED mode: Never auto-execute. Should execute: ${shouldAutoExecute}`);
         break;
       default:
-        // Fallback to 'auto' behavior
-        shouldAutoExecute = !isCtrlPressed;
+        // Fallback to 'manual' behavior
+        shouldAutoExecute = isCtrlPressed;
+        console.log(`DEFAULT mode (fallback to manual): Ctrl pressed: ${isCtrlPressed}, should execute: ${shouldAutoExecute}`);
         break;
     }
     
     if (!shouldAutoExecute) {
-      console.log(`COMMAND EXECUTION: Skipping auto-execution based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${isCtrlPressed}`);
+      if (isCtrlPressed) {
+        console.log('Skipping auto-execution - Ctrl key detected');
+      } else {
+        console.log(`Auto-execute skipped based on trigger setting: ${repeatMessageTrigger}`);
+      }
       return;
     }
+    
+    // If we reach here, auto-execution should proceed
+    console.log('Proceeding with auto-execution - Ctrl key not detected');
     
     // Check for auto-execution from storage
     const { execute_last_input } = await chrome.storage.local.get('execute_last_input');
@@ -1084,7 +1128,7 @@ async function checkForCommandToExecute() {
           finalShouldExecute = false;
           break;
         default:
-          finalShouldExecute = !finalIsCtrlPressed;
+          finalShouldExecute = finalIsCtrlPressed;
           break;
       }
       
@@ -1144,7 +1188,7 @@ async function checkForCommandToExecute() {
           validationShouldExecute = false;
           break;
         default:
-          validationShouldExecute = !validationIsCtrlPressed;
+          validationShouldExecute = validationIsCtrlPressed;
           break;
       }
       
@@ -1230,7 +1274,7 @@ async function checkForCommandToExecute() {
             finalExecuteAllowed = false;
             break;
           default:
-            finalExecuteAllowed = !finalCtrlPressed;
+            finalExecuteAllowed = finalCtrlPressed;
             break;
         }
         
@@ -1240,6 +1284,11 @@ async function checkForCommandToExecute() {
         }
         
         console.log('Auto-triggering submit from command');
+        // Double-check that input still has the value before submitting
+        if (!messageInput.value || !messageInput.value.trim()) {
+          console.error('Input is empty right before submission, refilling:', input);
+          messageInput.value = input;
+        }
         handleSendMessage();
       }, 800); // Increased delay for more reliable execution
       
@@ -1263,7 +1312,7 @@ async function checkForCommandToExecute() {
           legacyShouldExecute = false;
           break;
         default:
-          legacyShouldExecute = !legacyCtrlPressed;
+          legacyShouldExecute = legacyCtrlPressed;
           break;
       }
       
@@ -1785,11 +1834,14 @@ async function extractPageContent() {
     console.log('Sending scrape request for tab:', currentTab.id);
     
     // Request content scraping from background script
-    const response = await chrome.runtime.sendMessage({
+    const scrapeMessage = {
       type: MESSAGE_TYPES.SCRAPE_PAGE_CONTENT,
       tabId: currentTab.id,
       url: currentTab.url
-    });
+    };
+    console.log('[Page Inference] POPUP: Sending scrape message:', scrapeMessage);
+    const response = await chrome.runtime.sendMessage(scrapeMessage);
+    console.log('[Page Inference] POPUP: Received scrape response:', response);
     
     if (!response || !response.success) {
       const errorMsg = response?.error || 'Unknown error scraping page content';
@@ -1799,6 +1851,9 @@ async function extractPageContent() {
     
     if (!response.data || !response.data.content) {
       console.warn('No content returned from page scraping');
+      if (response.data?.note) {
+        console.info('Scraper note:', response.data.note);
+      }
       return '';
     }
     
@@ -1820,7 +1875,7 @@ async function executeCommand() {
     
     // Get current user preferences to check repeat message trigger setting
     const execUserPrefs = await getUserPreferences();
-    const execRepeatTrigger = execUserPrefs.repeatMessageTrigger || 'auto';
+    const execRepeatTrigger = execUserPrefs.repeatMessageTrigger || 'manual';
     
     // Query background script for current ctrl key state
     let execCtrlPressed = false;
@@ -1834,11 +1889,8 @@ async function executeCommand() {
       execWasCtrlClickPending = ctrlState?.ctrlClickPending === true;
       console.log('Ctrl key state for execution:', { pressed: ctrlState?.ctrlKeyPressed, pending: ctrlState?.ctrlClickPending, final: execCtrlPressed });
       
-      // Clear the pending state now that we've checked it
-      if (execWasCtrlClickPending) {
-        console.log('Clearing ctrl click pending state after execution check');
-        await chrome.runtime.sendMessage({ action: 'clearCtrlKeyState', tabId });
-      }
+      // DON'T clear the pending state here - let the message submission handle it
+      // This ensures ctrl state persists through the entire execution chain
     } catch (error) {
       console.error('Error getting ctrl key state for execution:', error);
       // Fallback to window global
@@ -1857,7 +1909,7 @@ async function executeCommand() {
         execShouldExecute = false;
         break;
       default:
-        execShouldExecute = !execCtrlPressed;
+        execShouldExecute = execCtrlPressed;
         break;
     }
     

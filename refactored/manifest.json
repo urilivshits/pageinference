@@ -38,7 +38,13 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "shared/prompts/*.js"
+        "content/*.js",
+        "content/scrapers/*.js",
+        "shared/*.js",
+        "shared/utils/*.js",
+        "shared/models/*.js",
+        "shared/prompts/*.js",
+        "lib/*.js"
       ],
       "matches": ["<all_urls>"]
     }
