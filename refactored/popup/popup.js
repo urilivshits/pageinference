@@ -1156,47 +1156,40 @@ chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
 });
 
 // API key show/hide toggle logic
-function setupApiKeyToggle() {
-  const apiKeyInput = document.getElementById('api-key-input');
-  const toggleBtn = document.getElementById('toggle-api-key-button');
-  if (!apiKeyInput || !toggleBtn) return;
-  const eye = toggleBtn.querySelector('.icon-eye');
-  const eyeOff = toggleBtn.querySelector('.icon-eye-off');
-  toggleBtn.addEventListener('click', () => {
-    const isHidden = apiKeyInput.type === 'password';
-    apiKeyInput.type = isHidden ? 'text' : 'password';
-    if (isHidden) {
-      eye.style.display = 'none';
-      eyeOff.style.display = '';
-    } else {
-      eye.style.display = '';
-      eyeOff.style.display = 'none';
-    }
-  });
-}
-function fillApiKeyInput() {
-  const apiKeyInput = document.getElementById('api-key-input');
-  if (!apiKeyInput) return;
-  chrome.storage.local.get('openai_api_key', (result) => {
-    if (result.openai_api_key) {
-      apiKeyInput.value = result.openai_api_key;
-    }
-  });
-}
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const profileBtn = document.getElementById('profile-settings-button');
   const settingsPanel = document.getElementById('settings-panel');
   if (profileBtn && settingsPanel) {
-    profileBtn.addEventListener('click', () => {
+    profileBtn.addEventListener('click', (event) => {
+      event.stopPropagation(); // Prevent event from bubbling to document
+      const wasHidden = settingsPanel.classList.contains('hidden');
       settingsPanel.classList.toggle('hidden');
-      if (!settingsPanel.classList.contains('hidden')) {
-        fillApiKeyInput();
+      
+      // If the panel was just opened, trigger API key loading
+      if (wasHidden && !settingsPanel.classList.contains('hidden')) {
+        // Dispatch an event to notify the settings component that the panel is now visible
+        window.dispatchEvent(new CustomEvent('settings-panel-opened'));
       }
     });
+    
+    // Add click-outside-to-close functionality
+    document.addEventListener('click', (event) => {
+      // Check if the settings panel is visible
+      if (!settingsPanel.classList.contains('hidden')) {
+        // Check if the click was outside the settings panel
+        if (!settingsPanel.contains(event.target)) {
+          settingsPanel.classList.add('hidden');
+        }
+      }
+    });
+    
+    // Prevent clicks inside the settings panel from closing it
+    settingsPanel.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
   }
-  setupApiKeyToggle();
-  fillApiKeyInput(); // Also fill on load in case panel is open by default
 });
 
 // Also try to initialize immediately if document is already complete

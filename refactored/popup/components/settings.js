@@ -49,6 +49,13 @@ export async function initializeSettingsComponent() {
 	apiKeyInput = document.getElementById("api-key-input");
 	toggleApiKeyButton = document.getElementById("toggle-api-key-button");
 	saveApiKeyButton = document.getElementById("save-api-key-button");
+	
+	console.log("Settings DOM elements found:", {
+		settingsContainer: !!settingsContainer,
+		apiKeyInput: !!apiKeyInput,
+		toggleApiKeyButton: !!toggleApiKeyButton,
+		saveApiKeyButton: !!saveApiKeyButton
+	});
 	temperatureSlider = document.getElementById("temperature-slider");
 	temperatureValue = document.getElementById("temperature-value");
 	themeOptions = document.getElementsByName("theme");
@@ -73,6 +80,11 @@ export async function initializeSettingsComponent() {
 		updateSliderGradient(temperatureSlider);
 	}
 
+	// Listen for settings panel being opened to reload API key
+	window.addEventListener('settings-panel-opened', () => {
+		loadApiKey();
+	});
+
 	console.log("Settings component initialized");
 }
 
@@ -86,6 +98,17 @@ function setupEventListeners() {
 	}
 	if (toggleApiKeyButton) {
 		toggleApiKeyButton.addEventListener("click", toggleApiKeyVisibility);
+		
+		// Initialize the icon state correctly
+		const eyeIcon = toggleApiKeyButton.querySelector('.icon-eye');
+		const eyeOffIcon = toggleApiKeyButton.querySelector('.icon-eye-off');
+		if (eyeIcon && eyeOffIcon) {
+			// Start with password hidden (eye icon visible)
+			eyeIcon.style.display = '';
+			eyeOffIcon.style.display = 'none';
+		}
+	} else {
+		console.warn("Toggle API key button not found");
 	}
 
 	// Temperature slider - only add listener if element exists
@@ -171,9 +194,45 @@ function setupEventListeners() {
  * Toggle API key visibility
  */
 function toggleApiKeyVisibility() {
+	if (!apiKeyInput) {
+		console.error("API key input not found");
+		return;
+	}
+	
 	const type = apiKeyInput.type === "password" ? "text" : "password";
 	apiKeyInput.type = type;
-	toggleApiKeyButton.textContent = type === "password" ? "👁️" : "🔒";
+	
+	// Toggle the SVG icons
+	const eyeIcon = toggleApiKeyButton.querySelector('.icon-eye');
+	const eyeOffIcon = toggleApiKeyButton.querySelector('.icon-eye-off');
+	
+	if (!eyeIcon || !eyeOffIcon) {
+		console.error("Eye icons not found", { eyeIcon, eyeOffIcon });
+		return;
+	}
+	
+	// Get the full API key from data attribute
+	const fullApiKey = apiKeyInput.getAttribute('data-full-key') || '';
+	const maskedApiKey = apiKeyInput.getAttribute('data-masked-key') || '';
+	
+	if (type === "password") {
+		// Hide the key - show masked version
+		apiKeyInput.value = maskedApiKey;
+		apiKeyInput.title = "API key is hidden";
+		eyeIcon.style.display = '';
+		eyeOffIcon.style.display = 'none';
+	} else {
+		// Show the key - show full version for copying
+		apiKeyInput.value = fullApiKey;
+		apiKeyInput.title = "Click to select all and copy the full API key";
+		eyeIcon.style.display = 'none';
+		eyeOffIcon.style.display = '';
+		
+		// Auto-select the text for easier copying
+		setTimeout(() => {
+			apiKeyInput.select();
+		}, 100);
+	}
 }
 
 /**
@@ -406,12 +465,21 @@ async function loadApiKey() {
 				new Promise((_, reject) => setTimeout(() => reject(new Error("API key request timed out")), 5000)),
 			]);
 
-			if (response.success && response.data) {
-				// Mask the API key for display
-				apiKeyInput.value = response.data.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, "$1***$3");
-				apiKeyInput.setAttribute("data-has-key", "true");
-				return;
-			}
+					if (response.success && response.data) {
+			// Store both full and masked versions
+			const fullKey = response.data;
+			const maskedKey = fullKey.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, "$1***$3");
+			
+			apiKeyInput.setAttribute("data-full-key", fullKey);
+			apiKeyInput.setAttribute("data-masked-key", maskedKey);
+			apiKeyInput.setAttribute("data-has-key", "true");
+			
+			// Show masked version by default
+			apiKeyInput.value = maskedKey;
+			apiKeyInput.type = "password";
+			apiKeyInput.title = "API key is hidden";
+			return;
+		}
 		} catch (error) {
 			console.error("Error requesting API key via message, trying direct storage:", error);
 		}
@@ -421,17 +489,30 @@ async function loadApiKey() {
 		const apiKey = result[STORAGE_KEYS.API_KEY];
 
 		if (apiKey) {
-			// Mask the API key for display
-			apiKeyInput.value = apiKey.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, "$1***$3");
+			// Store both full and masked versions
+			const fullKey = apiKey;
+			const maskedKey = fullKey.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, "$1***$3");
+			
+			apiKeyInput.setAttribute("data-full-key", fullKey);
+			apiKeyInput.setAttribute("data-masked-key", maskedKey);
 			apiKeyInput.setAttribute("data-has-key", "true");
+			
+			// Show masked version by default
+			apiKeyInput.value = maskedKey;
+			apiKeyInput.type = "password";
+			apiKeyInput.title = "API key is hidden";
 		} else {
 			apiKeyInput.value = "";
 			apiKeyInput.setAttribute("data-has-key", "false");
+			apiKeyInput.setAttribute("data-full-key", "");
+			apiKeyInput.setAttribute("data-masked-key", "");
 		}
 	} catch (error) {
 		console.error("Error loading API key:", error);
 		apiKeyInput.value = "";
 		apiKeyInput.setAttribute("data-has-key", "false");
+		apiKeyInput.setAttribute("data-full-key", "");
+		apiKeyInput.setAttribute("data-masked-key", "");
 	}
 }
 
@@ -552,6 +633,15 @@ async function handleSaveApiKey() {
 
 		// Reload the key display
 		loadApiKey();
+		
+		// Reset toggle state to hidden after save
+		apiKeyInput.type = "password";
+		const eyeIcon = toggleApiKeyButton.querySelector('.icon-eye');
+		const eyeOffIcon = toggleApiKeyButton.querySelector('.icon-eye-off');
+		if (eyeIcon && eyeOffIcon) {
+			eyeIcon.style.display = '';
+			eyeOffIcon.style.display = 'none';
+		}
 
 		// Check model availability with new key
 		checkModelAvailability();

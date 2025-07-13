@@ -820,6 +820,24 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
   margin-bottom: 16px;
 }
 
+/* API key acquisition link */
+.api-key-link {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.api-key-link a {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s ease;
+}
+
+.api-key-link a:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
 /* Utility classes */
 .hidden {
   display: none !important;
