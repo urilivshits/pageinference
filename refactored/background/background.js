@@ -656,16 +656,18 @@ function setupMessageListeners() {
       // Model availability
       'check_model_availability': async () => {
         try {
-          // In a real implementation, we would check which models are available
-          // For now, we'll just return all models as available
+          // Import constants to use centralized model list
+          const { API_CONSTANTS } = await import('../shared/constants.js');
+          
+          // Create availability object from centralized model list
+          const modelAvailability = {};
+          API_CONSTANTS.AVAILABLE_MODELS.forEach(model => {
+            modelAvailability[model.value] = true;
+          });
+          
           return { 
             success: true, 
-            data: {
-              'gpt-4o-mini': true,
-              'gpt-3.5-turbo': true,
-              'gpt-4': true,
-              'gpt-4o': true
-            }
+            data: modelAvailability
           };
         } catch (error) {
           logger.error('Error checking model availability:', error);

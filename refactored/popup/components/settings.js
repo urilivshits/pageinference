@@ -67,7 +67,7 @@ export async function initializeSettingsComponent() {
 	repeatMessageTrigger = document.getElementById("repeat-message-trigger");
 
 	// Populate model selector
-	populateModelSelector();
+	await populateModelSelector();
 
 	// Load settings first
 	await loadSettings();
@@ -450,25 +450,38 @@ function applyTheme(theme) {
 /**
  * Populate the model selector with available models
  */
-function populateModelSelector() {
+async function populateModelSelector() {
 	const modelSelector = document.getElementById('model-selector');
 	if (!modelSelector) return;
 	modelSelector.innerHTML = "";
 
-	// Add options for each available model
-	const models = [
-		{ value: "gpt-4o-mini", label: "GPT-4o mini (Default, Search-enabled)" },
-		{ value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-		{ value: "gpt-4", label: "GPT-4" },
-		{ value: "gpt-4o", label: "GPT-4o" },
-	];
+	try {
+		// Import constants to use centralized model list
+		const { API_CONSTANTS } = await import('../../shared/constants.js');
+		const models = API_CONSTANTS.AVAILABLE_MODELS;
 
-	models.forEach((model) => {
-		const option = document.createElement("option");
-		option.value = model.value;
-		option.textContent = model.label;
-		modelSelector.appendChild(option);
-	});
+		models.forEach((model) => {
+			const option = document.createElement("option");
+			option.value = model.value;
+			option.textContent = model.label;
+			modelSelector.appendChild(option);
+		});
+	} catch (error) {
+		console.error('Error loading models from constants:', error);
+		// Fallback to default models if import fails
+		const fallbackModels = [
+			{ value: "gpt-4o-mini", label: "GPT-4o mini (Default)" },
+			{ value: "gpt-4.1-nano", label: "GPT-4.1 nano" },
+			{ value: "o4-mini-deep-research", label: "o4-mini Deep Research" },
+		];
+		
+		fallbackModels.forEach((model) => {
+			const option = document.createElement("option");
+			option.value = model.value;
+			option.textContent = model.label;
+			modelSelector.appendChild(option);
+		});
+	}
 }
 
 /**
@@ -551,17 +564,25 @@ function updateSliderGradient(slider) {
  */
 async function checkModelAvailability() {
 	try {
-		// For now, just make all models available since we don't have this endpoint yet
-		modelAvailability = {
-			"gpt-4o-mini": true,
-			"gpt-3.5-turbo": true,
-			"gpt-4": true,
-			"gpt-4o": true,
-		};
+		// Import constants to use centralized model list
+		const { API_CONSTANTS } = await import('../../shared/constants.js');
+		
+		// Create availability object from centralized model list
+		modelAvailability = {};
+		API_CONSTANTS.AVAILABLE_MODELS.forEach(model => {
+			modelAvailability[model.value] = true;
+		});
 
 		updateModelSelector();
 	} catch (error) {
 		console.error("Error checking model availability:", error);
+		// Fallback to default models if import fails
+		modelAvailability = {
+			"gpt-4o-mini": true,
+			"gpt-4.1-nano": true,
+			"o4-mini-deep-research": true,
+		};
+		updateModelSelector();
 	}
 }
 

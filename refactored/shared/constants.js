@@ -56,11 +56,9 @@ export const MESSAGE_TYPES = {
 export const API_CONSTANTS = {
   // Models
   AVAILABLE_MODELS: [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'gpt-4-turbo',
-    'gpt-4',
-    'gpt-3.5-turbo'
+    { value: 'gpt-4o-mini', label: 'GPT-4o mini (Default)' },
+    { value: 'gpt-4.1-nano', label: 'GPT-4.1 nano' },
+    { value: 'o4-mini-deep-research', label: 'o4-mini Deep Research' }
   ],
   DEFAULT_MODEL: 'gpt-4o-mini',
   

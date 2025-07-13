@@ -579,12 +579,9 @@ async function handleSendMessage(options = {}) {
         pageLoadId: sessionState.pageLoadId,
         message: messageText,
         pageContent: pageContent,
-        options: {
-          useWebSearch: searchWebEnabled,
-          usePageContent: searchPageEnabled,
-          model: settings.selectedModel,
-          temperature: settings.temperature,
-        },
+        webSearch: searchWebEnabled,
+        model: settings.selectedModel,
+        temperature: settings.temperature,
         url: sessionState.url,
         title: sessionState.title
       }
