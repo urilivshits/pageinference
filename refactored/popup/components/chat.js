@@ -885,7 +885,70 @@ function appendMessage(message) {
     messageElement.classList.add('error');
   }
   
+  // Add copy button
+  const copyButton = document.createElement('button');
+  copyButton.classList.add('copy-button');
+  copyButton.title = 'Copy message';
+  copyButton.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    </svg>
+  `;
+  
+  copyButton.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      // Get the text content without HTML tags and clean up whitespace
+      const rawText = contentElement.innerText || contentElement.textContent;
+      const cleanedText = rawText
+        .replace(/\n\s*\n\s*\n/g, '\n\n') // Replace multiple newlines with double newline
+        .replace(/[ \t]+/g, ' ') // Replace multiple spaces/tabs with single space
+        .trim(); // Remove leading/trailing whitespace
+      
+      await navigator.clipboard.writeText(cleanedText);
+      
+      // Visual feedback
+      copyButton.classList.add('copied');
+      copyButton.title = 'Copied!';
+      
+      // Reset after 2 seconds
+      setTimeout(() => {
+        copyButton.classList.remove('copied');
+        copyButton.title = 'Copy message';
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy message:', err);
+      // Fallback for older browsers
+      try {
+        const rawText = contentElement.innerText || contentElement.textContent;
+        const cleanedText = rawText
+          .replace(/\n\s*\n\s*\n/g, '\n\n') // Replace multiple newlines with double newline
+          .replace(/[ \t]+/g, ' ') // Replace multiple spaces/tabs with single space
+          .trim(); // Remove leading/trailing whitespace
+        
+        const textArea = document.createElement('textarea');
+        textArea.value = cleanedText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        // Visual feedback for fallback
+        copyButton.classList.add('copied');
+        copyButton.title = 'Copied!';
+        setTimeout(() => {
+          copyButton.classList.remove('copied');
+          copyButton.title = 'Copy message';
+        }, 2000);
+      } catch (fallbackErr) {
+        console.error('Fallback copy also failed:', fallbackErr);
+      }
+    }
+  });
+  
   messageElement.appendChild(contentElement);
+  messageElement.appendChild(copyButton);
   chatMessages.appendChild(messageElement);
   
   // Highlight code blocks
