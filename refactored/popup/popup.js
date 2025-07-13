@@ -598,6 +598,11 @@ function setupComponentCommunication() {
 
   // When new chat button is clicked, notify chat component
   window.addEventListener('new-chat', () => {
+    // Clear active session selection
+    logger.debug('New chat event received - clearing active session selection');
+    currentActivePageLoadId = null;
+    highlightActiveSidebarSession(null);
+    
     if (chatComponent && typeof chatComponent.handleNewChat === 'function') {
       chatComponent.handleNewChat();
     }
@@ -664,15 +669,23 @@ function setupComponentCommunication() {
       }
     }
   });
+
+  // When active session changes, highlight it in sidebar
+  window.addEventListener('active-session-changed', (event) => {
+    const session = event.detail?.session;
+    if (session?.pageLoadId) {
+      currentActivePageLoadId = session.pageLoadId; // Store the active session
+      highlightActiveSidebarSession(session.pageLoadId);
+    }
+  });
 }
 
 // Sidebar chat list rendering and logic
-function renderSidebarSessions(sessions) {
+function renderSidebarSessions(sessions, activePageLoadId = null) {
   const list = document.getElementById('sidebar-sessions-list');
   const noMsg = document.getElementById('sidebar-no-sessions-message');
   if (!list) return;
   list.innerHTML = '';
-  console.log('[Sidebar] Loaded sessions:', sessions); // Debug log
   if (!sessions || sessions.length === 0) {
     if (noMsg) noMsg.style.display = '';
     return;
@@ -682,11 +695,36 @@ function renderSidebarSessions(sessions) {
     const li = document.createElement('li');
     li.textContent = session.title || session.url || session.pageLoadId || 'Untitled Chat';
     li.title = session.url || session.pageLoadId || '';
+    li.setAttribute('data-page-load-id', session.pageLoadId);
+    
+    // Highlight active session
+    if (activePageLoadId && session.pageLoadId === activePageLoadId) {
+      li.classList.add('active');
+    }
+    
     li.addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('open-session', { detail: session }));
     });
     list.appendChild(li);
   });
+}
+
+// Function to highlight active session in sidebar
+function highlightActiveSidebarSession(pageLoadId) {
+  const list = document.getElementById('sidebar-sessions-list');
+  if (!list) return;
+  
+  // Remove active class from all sessions
+  const allItems = list.querySelectorAll('li');
+  allItems.forEach(item => item.classList.remove('active'));
+  
+  // Add active class to current session if pageLoadId is provided
+  if (pageLoadId) {
+    const activeItem = list.querySelector(`li[data-page-load-id="${pageLoadId}"]`);
+    if (activeItem) {
+      activeItem.classList.add('active');
+    }
+  }
 }
 
 // Sidebar search logic
@@ -695,6 +733,9 @@ function filterSidebarSessions(sessions, query) {
   const q = query.toLowerCase();
   return sessions.filter(s => (s.title || '').toLowerCase().includes(q) || (s.url || '').toLowerCase().includes(q));
 }
+
+// Global variable to track the active session
+let currentActivePageLoadId = null;
 
 // Sidebar new chat logic
 function setupSidebar() {
@@ -731,7 +772,27 @@ function setupSidebar() {
       allSessions = result.chatSessions || result.chat_sessions || result.sessions || [];
       // Sort by lastUpdated (descending)
       allSessions.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
-      renderSidebarSessions(applySidebarFilters(allSessions));
+      
+      // Use the stored active session, or try to get it from tab storage as fallback
+      if (currentActivePageLoadId) {
+        renderSidebarSessions(applySidebarFilters(allSessions), currentActivePageLoadId);
+      } else {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          let activePageLoadId = null;
+          if (tabs && tabs[0]) {
+            const tabId = tabs[0].id;
+            chrome.storage.local.get([`pageLoadId_${tabId}`], (result) => {
+              activePageLoadId = result[`pageLoadId_${tabId}`];
+              if (activePageLoadId) {
+                currentActivePageLoadId = activePageLoadId; // Store it for future use
+              }
+              renderSidebarSessions(applySidebarFilters(allSessions), activePageLoadId);
+            });
+          } else {
+            renderSidebarSessions(applySidebarFilters(allSessions));
+          }
+        });
+      }
     });
   }
 
@@ -751,6 +812,16 @@ function setupSidebar() {
 
   function applySidebarFilters(sessions) {
     let filtered = sessions;
+    const originalCount = filtered.length;
+    
+    // Filter out empty sessions (sessions without any messages)
+    filtered = filtered.filter(s => s.messages && s.messages.length > 0);
+    const afterEmptyFilter = filtered.length;
+    
+    if (originalCount !== afterEmptyFilter) {
+      logger.debug(`Filtered out ${originalCount - afterEmptyFilter} empty sessions (${originalCount} -> ${afterEmptyFilter})`);
+    }
+    
     // Domain filter (use getBaseDomain logic from history.js)
     if (domainFilterEnabled && currentBaseDomain) {
       filtered = filtered.filter(s => {
@@ -769,7 +840,7 @@ function setupSidebar() {
   // Search filter
   if (searchInput) {
     searchInput.addEventListener('input', () => {
-      renderSidebarSessions(applySidebarFilters(allSessions));
+      renderSidebarSessions(applySidebarFilters(allSessions), currentActivePageLoadId);
     });
   }
   // Domain filter toggle
@@ -777,13 +848,18 @@ function setupSidebar() {
     domainFilterToggle.addEventListener('change', () => {
       domainFilterEnabled = domainFilterToggle.checked;
       chrome.storage.local.set({ sidebarDomainFilterEnabled: domainFilterEnabled });
-      renderSidebarSessions(applySidebarFilters(allSessions));
+      renderSidebarSessions(applySidebarFilters(allSessions), currentActivePageLoadId);
     });
   }
 
   // New chat
   if (newChatBtn) {
     newChatBtn.addEventListener('click', () => {
+      // Clear active session selection
+      logger.debug('New chat button clicked - clearing active session selection');
+      currentActivePageLoadId = null;
+      highlightActiveSidebarSession(null);
+      
       // Always trigger a new chat session and clear chat area
       if (window.chat && typeof window.chat.handleNewChat === 'function') {
         window.chat.handleNewChat();
@@ -811,12 +887,22 @@ function setupSidebar() {
         const tsElem = document.getElementById('current-conversation-timestamp');
         if (tsElem) tsElem.textContent = '';
       }
-      // Optionally reload sessions to reflect new session
+      // Reload sessions to reflect changes (empty sessions will be filtered out)
       setTimeout(loadSessions, 300);
     });
   }
   // Listen for session updates
-  window.addEventListener('chat-session-updated', loadSessions);
+  window.addEventListener('chat-session-updated', (event) => {
+    const { session } = event.detail || {};
+    if (session?.pageLoadId) {
+      // If this session now has messages and wasn't active before, make it active
+      if (session.messages && session.messages.length > 0) {
+        logger.debug(`Session ${session.pageLoadId} now has ${session.messages.length} messages - making it active`);
+        currentActivePageLoadId = session.pageLoadId;
+      }
+    }
+    loadSessions();
+  });
 }
 
 
@@ -1122,16 +1208,6 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 
 function renderSessionInChatArea(session) {
-  // Update chat title and timestamp
-  const titleElem = document.getElementById('current-conversation-title');
-  const tsElem = document.getElementById('current-conversation-timestamp');
-  const infoElem = document.getElementById('current-conversation-info');
-  if (titleElem) titleElem.textContent = session.title || session.url || session.pageLoadId || 'Untitled Chat';
-  if (tsElem && session.timestamp) {
-    const date = new Date(session.timestamp);
-    tsElem.textContent = date.toLocaleString();
-  }
-  if (infoElem) infoElem.classList.remove('hidden');
   // Render messages
   const chatMessages = document.getElementById('chat-messages');
   if (chatMessages) {
@@ -1161,6 +1237,13 @@ function renderSessionInChatArea(session) {
 
 window.addEventListener('open-session', (event) => {
   console.log('[Sidebar] open-session event fired:', event.detail);
+  
+  // Track the clicked session as active immediately
+  if (event.detail?.pageLoadId) {
+    currentActivePageLoadId = event.detail.pageLoadId;
+    highlightActiveSidebarSession(event.detail.pageLoadId);
+  }
+  
   if (window.chat && typeof window.chat.handleShowSession === 'function') {
     window.chat.handleShowSession({ detail: event.detail });
   } else {

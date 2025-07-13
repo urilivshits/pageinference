@@ -32,9 +32,6 @@ let chatMessages;
 let loadingIndicator;
 let errorMessage;
 let doubleClickArea;
-let currentConversationInfo;
-let currentConversationTitle;
-let currentConversationTimestamp;
 let modelSelect;
 
 // Action buttons
@@ -743,21 +740,20 @@ async function loadCurrentSession() {
  */
 function updateConversationInfo() {
   if (currentSession) {
-    currentConversationTitle.textContent = currentSession.title || 'Untitled Chat';
-    currentConversationTimestamp.textContent = new Date(currentSession.timestamp).toLocaleString();
-    currentConversationInfo.classList.remove('hidden');
-    
     // Update session state
     sessionState.pageLoadId = currentSession.pageLoadId;
     sessionState.url = currentSession.url;
     sessionState.title = currentSession.title;
     
+    // Notify sidebar to highlight active session
+    window.dispatchEvent(new CustomEvent('active-session-changed', {
+      detail: { session: currentSession }
+    }));
+    
     // Notify history component
     window.dispatchEvent(new CustomEvent('chat-session-updated', {
       detail: { session: currentSession }
     }));
-  } else {
-    currentConversationInfo.classList.add('hidden');
   }
 }
 
@@ -1417,9 +1413,6 @@ function initializeUIElements() {
   chatMessages = document.getElementById('chat-messages');
   messageInput = document.getElementById('message-input');
   sendButton = document.getElementById('send-button');
-  currentConversationInfo = document.getElementById('current-conversation-info');
-  currentConversationTitle = document.getElementById('current-conversation-title');
-  currentConversationTimestamp = document.getElementById('current-conversation-timestamp');
   newChatButton = document.getElementById('new-chat-button');
   reasonButton = document.getElementById('reason-button');
   searchPageButton = document.getElementById('search-page-button');
@@ -1474,9 +1467,13 @@ async function loadSessionState() {
       sessionState.chatHistory = session.messages || [];
       sessionState.url = session.url;
       sessionState.title = session.title;
+      currentSession = session;
       
       // Update UI with session information
       displaySessionInfo(session);
+      
+      // Update conversation info and notify sidebar
+      updateConversationInfo();
       
       // Render all messages from this session
       renderChatHistory(sessionState.chatHistory);
@@ -1497,20 +1494,25 @@ async function loadSessionState() {
       sessionState.url = url;
       sessionState.title = title;
       
+      // Create session object
+      currentSession = {
+        pageLoadId: sessionState.pageLoadId,
+        url: url,
+        title: title,
+        messages: [],
+        timestamp: Date.now()
+      };
+      
       // Create a new session in the background
       const createResponse = await chrome.runtime.sendMessage({
         type: 'create_chat_session',
-        data: {
-          pageLoadId: sessionState.pageLoadId,
-          url: url,
-          title: title,
-          messages: [],
-          timestamp: Date.now()
-        }
+        data: currentSession
       });
       
       if (createResponse.success) {
         console.log('Created new session:', createResponse.data);
+        // Update conversation info and notify sidebar
+        updateConversationInfo();
       } else {
         console.error('Failed to create new session:', createResponse.error);
       }
@@ -1537,24 +1539,6 @@ function displaySessionInfo(session) {
       pageLoadId: session.pageLoadId,
       messageCount: session.messages ? session.messages.length : 0
     });
-    
-    // Update UI elements if they exist
-    if (currentConversationInfo) {
-      currentConversationInfo.style.display = 'block';
-    }
-    
-    if (currentConversationTitle) {
-      // Set an appropriate title
-      currentConversationTitle.textContent = session.title || 'Untitled Chat';
-      currentConversationTitle.title = session.url || '';
-    }
-    
-    if (currentConversationTimestamp) {
-      // Format the timestamp
-      const timestamp = session.timestamp || session.lastUpdated || Date.now();
-      const date = new Date(timestamp);
-      currentConversationTimestamp.textContent = date.toLocaleString();
-    }
     
     // Update any additional UI elements related to the session
     if (newChatButton) {
