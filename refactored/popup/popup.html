@@ -143,6 +143,61 @@
               </p>
             </div>
           </div>
+
+          <div class="settings-section">
+            <h2>Behavior</h2>
+            <div class="setting-item">
+              <label for="repeat-message-trigger">Repeat Last Message Trigger:</label>
+              <select id="repeat-message-trigger">
+                <option value="manual">Normal click → Just open, Ctrl+click → Auto-execute</option>
+                <option value="auto">Normal click → Auto-execute, Ctrl+click → Just open</option>
+                <option value="disabled">Never auto-execute (always just open)</option>
+              </select>
+              <p class="setting-description">Controls when the extension automatically repeats your last message vs. just opening the popup.</p>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h2>Chat Settings</h2>
+            <div class="setting-item">
+              <label for="model-selector">AI Model:</label>
+              <select id="model-selector">
+                <option value="gpt-4o-mini">GPT-4o mini (Default)</option>
+                <option value="gpt-4.1-nano">GPT-4.1 nano</option>
+                <option value="o4-mini-deep-research">o4-mini Deep Research</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="temperature-slider">Temperature: <span id="temperature-value">0.0</span></label>
+              <input type="range" id="temperature-slider" min="0" max="1" step="0.1" value="0">
+              <p class="setting-description">Controls randomness in responses. Lower values (0.0-0.3) for focused answers, higher values (0.7-1.0) for creative responses.</p>
+            </div>
+            <!-- Web search and page scraping toggles hidden but defaults maintained -->
+            <div class="setting-item" style="display: none;">
+              <label for="web-search-toggle">
+                <input type="checkbox" id="web-search-toggle"> Enable Web Search
+              </label>
+              <p class="setting-description">Allow the AI to search the web for current information when needed.</p>
+            </div>
+            <div class="setting-item" style="display: none;">
+              <label for="page-scraping-toggle">
+                <input type="checkbox" id="page-scraping-toggle"> Enable Page Content Analysis
+              </label>
+              <p class="setting-description">Include page content in AI analysis for context-aware responses.</p>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h2>Appearance</h2>
+            <div class="setting-item">
+              <label>Theme:</label>
+              <div class="theme-options">
+                <label><input type="radio" name="theme" value="light"> Light</label>
+                <label><input type="radio" name="theme" value="dark"> Dark</label>
+                <label><input type="radio" name="theme" value="system"> System</label>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

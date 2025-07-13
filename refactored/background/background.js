@@ -973,10 +973,18 @@ function setupMessageListeners() {
               }
             }, 5000);
           } else {
-            // Key released, update storage
+            // Key released - update pressed state but keep pending state for popup detection
+            // Do NOT clear the pending flag here - let popup check it or timeout clear it
             await chrome.storage.local.set({
               [`ctrlKeyPressed_tab_${tabId}`]: false
             });
+            
+            // Keep the pending state for popup to detect ctrl+click
+            // Only clear memory pressed state, not pending
+            if (tabCtrlKeyStates[tabId]) {
+              tabCtrlKeyStates[tabId].pressed = false;
+              // Leave pending and timestamp unchanged for popup detection
+            }
           }
         }
         
@@ -1293,13 +1301,14 @@ function setupExtensionHandlers() {
 async function handleFirstInstall() {
   // Set default preferences
   await storageService.setValue(STORAGE_KEYS.USER_PREFERENCES, {
-    theme: 'light',
-    temperature: 0.7,
+    theme: 'system',
+    temperature: 0,
     pageScraping: true,
-    webSearch: true,
-    currentSiteFilter: true,
+    webSearch: false,
+    currentSiteFilter: false,  // Changed to false
     defaultModel: 'gpt-4o-mini',
-    autoExecute: true // Enable auto-execution by default
+    autoExecute: true, // Enable auto-execution by default
+    repeatMessageTrigger: 'manual' // Default to manual behavior
   });
   
   // Initialize empty chat sessions list

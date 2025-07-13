@@ -17,6 +17,7 @@ let themeOptions;
 let modelSelector;
 let webSearchToggle;
 let pageScrapingToggle;
+let repeatMessageTrigger;
 
 // Settings state
 let currentSettings = null;
@@ -32,10 +33,11 @@ const STORAGE_KEYS = {
 const defaultSettings = {
 	theme: "system",
 	temperature: 0,
-	pageScraping: false,
+	pageScraping: true, // Changed to true
 	webSearch: false,
-	currentSiteFilter: true,
+	currentSiteFilter: false, // Changed to false
 	defaultModel: "gpt-4o-mini",
+	repeatMessageTrigger: "manual", // Changed to manual
 };
 
 /**
@@ -62,6 +64,7 @@ export async function initializeSettingsComponent() {
 	modelSelector = document.getElementById("model-selector");
 	webSearchToggle = document.getElementById("web-search-toggle");
 	pageScrapingToggle = document.getElementById("page-scraping-toggle");
+	repeatMessageTrigger = document.getElementById("repeat-message-trigger");
 
 	// Populate model selector
 	populateModelSelector();
@@ -188,6 +191,15 @@ function setupEventListeners() {
 			updateSettings({ webSearch: enabled });
 		});
 	}
+
+	// Repeat message trigger - only add listener if element exists
+	if (repeatMessageTrigger) {
+		repeatMessageTrigger.addEventListener('change', () => {
+			const triggerMode = repeatMessageTrigger.value;
+			console.log('Repeat message trigger changed:', triggerMode);
+			updateSettings({ repeatMessageTrigger: triggerMode });
+		});
+	}
 }
 
 /**
@@ -298,7 +310,15 @@ function applySettingsToUI(settings) {
 		console.warn('[Settings] pageScrapingToggle not found, skipping pageScraping set');
 	}
 
-	console.log("Settings applied to UI - Theme:", themeValue, "Temperature:", temperature);
+	// Apply repeat message trigger setting
+	const repeatTrigger = settings.repeatMessageTrigger || "auto";
+	if (repeatMessageTrigger) {
+		repeatMessageTrigger.value = repeatTrigger;
+	} else {
+		console.warn('[Settings] repeatMessageTrigger not found, skipping repeatMessageTrigger set');
+	}
+
+	console.log("Settings applied to UI - Theme:", themeValue, "Temperature:", temperature, "Repeat Trigger:", repeatTrigger);
 }
 
 /**

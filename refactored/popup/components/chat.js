@@ -1013,11 +1013,59 @@ async function checkForCommandToExecute() {
     chatContainer.style.transition = 'opacity 0.3s ease';
     chatContainer.style.opacity = '1';
     
-    // *** CRITICAL: Check if Ctrl key is pressed using the window's global variable
-    // Defined in popup.js for early detection
-    if (window.ctrlKeyPressed === true) {
-      console.log('COMMAND EXECUTION: Ctrl key is pressed, skipping auto-execution');
-      return; // Skip execution if Ctrl key is pressed
+    // *** CRITICAL: Check repeat message trigger setting to determine execution behavior
+    const currentUserPrefs = await getUserPreferences();
+    const repeatMessageTrigger = currentUserPrefs.repeatMessageTrigger || 'auto';
+    
+    // Query background script for current ctrl key state instead of relying on window global
+    let isCtrlPressed = false;
+    let wasCtrlClickPending = false;
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tabId = tabs[0]?.id;
+      const ctrlState = await chrome.runtime.sendMessage({ action: 'getCtrlKeyState', tabId });
+      // Check for pending state (ctrl was pressed during click) rather than current pressed state
+      isCtrlPressed = ctrlState?.ctrlClickPending === true || ctrlState?.ctrlKeyPressed === true;
+      wasCtrlClickPending = ctrlState?.ctrlClickPending === true;
+      console.log('Ctrl key state from background:', { pressed: ctrlState?.ctrlKeyPressed, pending: ctrlState?.ctrlClickPending, final: isCtrlPressed });
+      
+      // Update the window global for consistency
+      window.ctrlKeyPressed = isCtrlPressed;
+      
+      // Clear the pending state now that we've checked it
+      if (wasCtrlClickPending) {
+        console.log('Clearing ctrl click pending state after checking');
+        await chrome.runtime.sendMessage({ action: 'clearCtrlKeyState', tabId });
+      }
+    } catch (error) {
+      console.error('Error getting ctrl key state:', error);
+      // Fallback to window global
+      isCtrlPressed = window.ctrlKeyPressed === true;
+    }
+    
+    let shouldAutoExecute = false;
+    switch (repeatMessageTrigger) {
+      case 'auto':
+        // Normal click → Auto-execute, Ctrl+click → Just open
+        shouldAutoExecute = !isCtrlPressed;
+        break;
+      case 'manual':
+        // Normal click → Just open, Ctrl+click → Auto-execute
+        shouldAutoExecute = isCtrlPressed;
+        break;
+      case 'disabled':
+        // Never auto-execute
+        shouldAutoExecute = false;
+        break;
+      default:
+        // Fallback to 'auto' behavior
+        shouldAutoExecute = !isCtrlPressed;
+        break;
+    }
+    
+    if (!shouldAutoExecute) {
+      console.log(`COMMAND EXECUTION: Skipping auto-execution based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${isCtrlPressed}`);
+      return;
     }
     
     // Check for auto-execution from storage
@@ -1025,9 +1073,26 @@ async function checkForCommandToExecute() {
     if (execute_last_input) {
       console.log('Found execute_last_input in storage:', execute_last_input);
       
-      // Check AGAIN if Ctrl key got pressed while storage was being queried
-      if (window.ctrlKeyPressed === true) {
-        console.log('COMMAND EXECUTION: Ctrl key pressed during command retrieval, skipping auto-execution');
+      // Check AGAIN if behavior should allow auto-execution
+      const finalIsCtrlPressed = window.ctrlKeyPressed === true;
+      let finalShouldExecute = false;
+      switch (repeatMessageTrigger) {
+        case 'auto':
+          finalShouldExecute = !finalIsCtrlPressed;
+          break;
+        case 'manual':
+          finalShouldExecute = finalIsCtrlPressed;
+          break;
+        case 'disabled':
+          finalShouldExecute = false;
+          break;
+        default:
+          finalShouldExecute = !finalIsCtrlPressed;
+          break;
+      }
+      
+      if (!finalShouldExecute) {
+        console.log(`COMMAND EXECUTION: Skipping auto-execution during command retrieval based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${finalIsCtrlPressed}`);
         // Clear it from storage to prevent future executions
         await chrome.storage.local.remove('execute_last_input');
         return;
@@ -1068,9 +1133,26 @@ async function checkForCommandToExecute() {
         return;
       }
       
-      // Check ONCE MORE if Ctrl key was pressed during our checks
-      if (window.ctrlKeyPressed === true) {
-        console.log('COMMAND EXECUTION: Ctrl key pressed during validation, skipping auto-execution');
+      // Check ONCE MORE if behavior should allow auto-execution during validation
+      const validationIsCtrlPressed = window.ctrlKeyPressed === true;
+      let validationShouldExecute = false;
+      switch (repeatMessageTrigger) {
+        case 'auto':
+          validationShouldExecute = !validationIsCtrlPressed;
+          break;
+        case 'manual':
+          validationShouldExecute = validationIsCtrlPressed;
+          break;
+        case 'disabled':
+          validationShouldExecute = false;
+          break;
+        default:
+          validationShouldExecute = !validationIsCtrlPressed;
+          break;
+      }
+      
+      if (!validationShouldExecute) {
+        console.log(`COMMAND EXECUTION: Skipping auto-execution during validation based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${validationIsCtrlPressed}`);
         return;
       }
       
@@ -1137,9 +1219,26 @@ async function checkForCommandToExecute() {
       
       // Execute the query with a slight delay to ensure UI is ready
       setTimeout(() => {
-        // Check one final time for Ctrl key before executing
-        if (window.ctrlKeyPressed === true) {
-          console.log('COMMAND EXECUTION: Ctrl key pressed right before execution, skipping auto-execution');
+        // Check one final time if behavior should allow auto-execution
+        const finalCtrlPressed = window.ctrlKeyPressed === true;
+        let finalExecuteAllowed = false;
+        switch (repeatMessageTrigger) {
+          case 'auto':
+            finalExecuteAllowed = !finalCtrlPressed;
+            break;
+          case 'manual':
+            finalExecuteAllowed = finalCtrlPressed;
+            break;
+          case 'disabled':
+            finalExecuteAllowed = false;
+            break;
+          default:
+            finalExecuteAllowed = !finalCtrlPressed;
+            break;
+        }
+        
+        if (!finalExecuteAllowed) {
+          console.log(`COMMAND EXECUTION: Skipping auto-execution right before execution based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${finalCtrlPressed}`);
           return;
         }
         
@@ -1153,9 +1252,26 @@ async function checkForCommandToExecute() {
     // Fall back to older commandToExecute mechanism for backward compatibility
     const { commandToExecute } = await chrome.storage.local.get('commandToExecute');
     if (commandToExecute) {
-      // Check if Ctrl key is pressed using the window's global variable
-      if (window.ctrlKeyPressed === true) {
-        console.log('COMMAND EXECUTION: Ctrl key pressed, skipping legacy command execution');
+      // Check if behavior should allow auto-execution for legacy command
+      const legacyCtrlPressed = window.ctrlKeyPressed === true;
+      let legacyShouldExecute = false;
+      switch (repeatMessageTrigger) {
+        case 'auto':
+          legacyShouldExecute = !legacyCtrlPressed;
+          break;
+        case 'manual':
+          legacyShouldExecute = legacyCtrlPressed;
+          break;
+        case 'disabled':
+          legacyShouldExecute = false;
+          break;
+        default:
+          legacyShouldExecute = !legacyCtrlPressed;
+          break;
+      }
+      
+      if (!legacyShouldExecute) {
+        console.log(`COMMAND EXECUTION: Skipping legacy command execution based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${legacyCtrlPressed}`);
         // Clear the command still
         await chrome.storage.local.remove('commandToExecute');
         return;
@@ -1280,8 +1396,9 @@ export async function getUserPreferences() {
       temperature: 0,
       pageScraping: true,
       webSearch: false,
-      currentSiteFilter: true,
-      defaultModel: 'gpt-4o-mini'
+      currentSiteFilter: false,  // Changed to false
+      defaultModel: 'gpt-4o-mini',
+      repeatMessageTrigger: 'manual'
     };
     
     // If userPreferences doesn't exist, initialize it with defaults
@@ -1700,14 +1817,56 @@ async function extractPageContent() {
  * Execute the command currently in the input field
  * This function is called from popup.js for auto-execution
  */
-function executeCommand() {
+async function executeCommand() {
   try {
     console.log('executeCommand called from popup.js auto-execution');
     
-    // Check if Ctrl key is pressed using the window's global variable
-    if (window.ctrlKeyPressed === true) {
-      console.log('EXECUTE_COMMAND: Ctrl key is pressed, skipping auto-execution');
-      return; // Skip execution if Ctrl key is pressed
+    // Get current user preferences to check repeat message trigger setting
+    const execUserPrefs = await getUserPreferences();
+    const execRepeatTrigger = execUserPrefs.repeatMessageTrigger || 'auto';
+    
+    // Query background script for current ctrl key state
+    let execCtrlPressed = false;
+    let execWasCtrlClickPending = false;
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tabId = tabs[0]?.id;
+      const ctrlState = await chrome.runtime.sendMessage({ action: 'getCtrlKeyState', tabId });
+      // Check for pending state (ctrl was pressed during click) rather than current pressed state
+      execCtrlPressed = ctrlState?.ctrlClickPending === true || ctrlState?.ctrlKeyPressed === true;
+      execWasCtrlClickPending = ctrlState?.ctrlClickPending === true;
+      console.log('Ctrl key state for execution:', { pressed: ctrlState?.ctrlKeyPressed, pending: ctrlState?.ctrlClickPending, final: execCtrlPressed });
+      
+      // Clear the pending state now that we've checked it
+      if (execWasCtrlClickPending) {
+        console.log('Clearing ctrl click pending state after execution check');
+        await chrome.runtime.sendMessage({ action: 'clearCtrlKeyState', tabId });
+      }
+    } catch (error) {
+      console.error('Error getting ctrl key state for execution:', error);
+      // Fallback to window global
+      execCtrlPressed = window.ctrlKeyPressed === true;
+    }
+    
+    let execShouldExecute = false;
+    switch (execRepeatTrigger) {
+      case 'auto':
+        execShouldExecute = !execCtrlPressed;
+        break;
+      case 'manual':
+        execShouldExecute = execCtrlPressed;
+        break;
+      case 'disabled':
+        execShouldExecute = false;
+        break;
+      default:
+        execShouldExecute = !execCtrlPressed;
+        break;
+    }
+    
+    if (!execShouldExecute) {
+      console.log(`EXECUTE_COMMAND: Skipping auto-execution based on trigger setting: ${execRepeatTrigger}, Ctrl pressed: ${execCtrlPressed}`);
+      return;
     }
     
     // Call the handleSendMessage function to process the current input

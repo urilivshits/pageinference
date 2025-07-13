@@ -964,9 +964,62 @@ async function autoExecuteIfNeeded() {
     // Check user preferences for auto-execute setting
     const { userPreferences } = await chrome.storage.local.get('userPreferences');
     const autoExecuteEnabled = userPreferences?.autoExecute !== false; // Default to true if not specified
+    const repeatMessageTrigger = userPreferences?.repeatMessageTrigger || 'auto'; // Default to 'auto'
     
     if (!autoExecuteEnabled) {
       logger.debug('Auto-execute disabled in preferences');
+      return;
+    }
+
+    // Check the repeat message trigger setting to determine behavior
+    // Query background script for current ctrl key state instead of relying on window global
+    let isCtrlPressed = false;
+    let wasCtrlClickPending = false;
+    try {
+      const ctrlState = await chrome.runtime.sendMessage({ action: 'getCtrlKeyState', tabId });
+      // Check for pending state (ctrl was pressed during click) rather than current pressed state
+      isCtrlPressed = ctrlState?.ctrlClickPending === true || ctrlState?.ctrlKeyPressed === true;
+      wasCtrlClickPending = ctrlState?.ctrlClickPending === true;
+      logger.debug('Ctrl key state from background:', { pressed: ctrlState?.ctrlKeyPressed, pending: ctrlState?.ctrlClickPending, final: isCtrlPressed });
+      
+      // Update the window global for consistency
+      window.ctrlKeyPressed = isCtrlPressed;
+      monitorCtrlKeyState(isCtrlPressed);
+      
+      // Clear the pending state now that we've checked it
+      if (wasCtrlClickPending) {
+        logger.debug('Clearing ctrl click pending state after checking');
+        await chrome.runtime.sendMessage({ action: 'clearCtrlKeyState', tabId });
+      }
+    } catch (error) {
+      logger.error('Error getting ctrl key state:', error);
+      // Fallback to window global
+      isCtrlPressed = window.ctrlKeyPressed === true;
+    }
+    
+    let shouldAutoExecute = false;
+
+    switch (repeatMessageTrigger) {
+      case 'auto':
+        // Normal click → Auto-execute, Ctrl+click → Just open
+        shouldAutoExecute = !isCtrlPressed;
+        break;
+      case 'manual':
+        // Normal click → Just open, Ctrl+click → Auto-execute
+        shouldAutoExecute = isCtrlPressed;
+        break;
+      case 'disabled':
+        // Never auto-execute
+        shouldAutoExecute = false;
+        break;
+      default:
+        // Fallback to 'auto' behavior
+        shouldAutoExecute = !isCtrlPressed;
+        break;
+    }
+
+    if (!shouldAutoExecute) {
+      logger.debug(`Auto-execute skipped based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${isCtrlPressed}`);
       return;
     }
     
@@ -981,11 +1034,9 @@ async function autoExecuteIfNeeded() {
     
     logger.debug(`Input for auto-execution: "${userInput.substring(0, 30)}${userInput.length > 30 ? '...' : ''}"`);
     
-    // Use window.ctrlKeyPressed for the most up-to-date state
-    const isCtrlPressed = window.ctrlKeyPressed === true;
-    
+    // Note: isCtrlPressed is already defined above based on trigger settings
     // If the Ctrl key is not pressed, auto-execute the command
-    if (!isCtrlPressed) {
+    if (shouldAutoExecute) {
       logger.info('Auto-executing command - Ctrl key not detected');
       
       // Set the input in the chat component
@@ -1078,7 +1129,7 @@ async function autoExecuteIfNeeded() {
       // Start the execution attempt
       tryExecute();
     } else {
-      logger.info('Skipping auto-execution - Ctrl key detected');
+      logger.info(`Skipping auto-execution based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${isCtrlPressed}`);
     }
   } catch (error) {
     logger.error('Error in auto-execution:', error);

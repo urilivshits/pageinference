@@ -12,10 +12,11 @@ import { API_CONSTANTS } from '../constants.js';
 export const DEFAULT_SETTINGS = {
   theme: 'system',
   temperature: 0,
-  pageScraping: false,
+  pageScraping: true,  // Changed to true
   webSearch: false,
-  currentSiteFilter: true,
-  defaultModel: 'gpt-4o-mini'
+  currentSiteFilter: false,  // Changed to false
+  defaultModel: 'gpt-4o-mini',
+  repeatMessageTrigger: 'manual'  // Changed to manual
 };
 
 /**

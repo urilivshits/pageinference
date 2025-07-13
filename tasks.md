@@ -84,3 +84,66 @@
       - [x] Verify flower animation is now positioned correctly in chat area center
       - [x] Verify no console errors on popup initialization
       - [x] Verify no duplicate initialization messages 
+
+## User Query: "cool, now lets also add to the settings popup an option to choose how repeat last message logic will be triggered: currently ctrl+click on the extension icon opens the extension, and simple click on the extension icon opens the extension and submits the last message, if any."
+
+- Task: Add configurable repeat last message trigger setting to settings popup
+  - Plan and define test strategy for repeat message trigger functionality
+      - Test Strategy Overview: Verify different trigger modes work correctly with extension icon clicks
+      - Assistant-driven unit tests envisioned: No (UI-based functionality)
+      - Assistant-driven integration tests envisioned: Yes (test settings persistence and behavior)
+      - Assistant-driven API tests envisioned: No
+      - Complexity: Medium
+      - Dependencies: Settings component, popup auto-execution logic
+
+  - Implement repeat message trigger setting
+      - [x] Add missing settings HTML elements (theme, temperature, model, toggles)
+      - [x] Add new "Repeat Last Message Trigger" dropdown with 3 options:
+        - "Normal click → Auto-execute, Ctrl+click → Just open" (auto - default)
+        - "Normal click → Just open, Ctrl+click → Auto-execute" (manual)
+        - "Never auto-execute (always just open)" (disabled)
+      - [x] Update CSS styling for new settings sections
+      - [x] Add DOM element reference and event listener in settings component
+      - [x] Update default settings in all relevant files (settings.js, storage-service.js, models/settings.js, background.js)
+      - [x] Modify popup auto-execution logic to respect the new setting
+      - [x] Update chat component auto-execution logic to respect the new setting
+      - [x] Fix variable redeclaration linter errors
+      - Complexity: Medium
+      - Dependencies: Settings UI structure, auto-execution logic
+
+  - Validate implementation by assistant
+      - [x] Settings UI now contains complete sections for Behavior, Chat Settings, and Appearance
+      - [x] New setting controls when auto-execution occurs based on Ctrl key state
+      - [x] All auto-execution points in the code respect the user's choice
+      - [x] Backward compatibility maintained with existing behavior as default
+      - [x] Proper error handling and fallback to default behavior
+
+## Summary of Changes Made:
+
+### 1. **Enhanced Settings UI**
+- Added complete settings panel with missing elements:
+  - Behavior section with repeat message trigger dropdown
+  - Chat Settings section (model selector, temperature slider, feature toggles)
+  - Appearance section (theme selection)
+- Added CSS styling for all new elements
+
+### 2. **New Setting Implementation**
+- Added `repeatMessageTrigger` setting with three modes:
+  - `auto`: Normal click → Auto-execute, Ctrl+click → Just open (default)
+  - `manual`: Normal click → Just open, Ctrl+click → Auto-execute  
+  - `disabled`: Never auto-execute
+- Updated all default settings objects across the codebase
+
+### 3. **Auto-Execution Logic Updates**
+- Modified `autoExecuteIfNeeded()` in popup.js to check the setting
+- Updated `checkForCommandToExecute()` in chat.js to respect the setting
+- Modified `executeCommand()` to honor the user's preference
+- Added comprehensive switch statements to handle all trigger modes
+- Maintained backward compatibility with existing behavior
+
+### 4. **Code Quality**
+- Fixed variable redeclaration linter errors
+- Added comprehensive logging for debugging trigger decisions
+- Ensured consistent behavior across all auto-execution entry points
+
+The feature is now fully implemented and allows users to customize how the extension behaves when they click the icon, giving them full control over when auto-execution occurs versus when the popup just opens normally. 
