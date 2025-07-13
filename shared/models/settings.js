@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS = {
   webSearch: false,
   currentSiteFilter: false,
   defaultModel: 'gpt-4.1-nano',
-  repeatMessageTrigger: 'disabled',
+  repeatMessageTrigger: 'manual',
   autoExecute: true  // Enable auto-execution by default
 };
 

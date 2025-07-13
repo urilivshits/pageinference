@@ -70,7 +70,7 @@ const STORAGE_KEYS_CONSTANTS = {
   CHAT_SESSIONS: 'chatSessions',
   DEBUG_MODE: 'debugMode',
   API_KEY: 'openai_api_key',
-  GLOBAL_LAST_USER_INPUT: 'global_last_user_input', // New storage key for the last user input
+  // Removed GLOBAL_LAST_USER_INPUT - now using unified execute_last_input storage
   // Add other storage keys as needed
 };
 
@@ -860,6 +860,35 @@ function setupMessageListeners() {
         };
       },
       
+      'extendCtrlKeyTimeout': async () => {
+        const tabId = message.tabId;
+        const duration = message.duration || 5000;
+        
+        logger.debug(`Extending Ctrl key timeout for tab ${tabId} by ${duration}ms`);
+        
+        // Clear any existing timeout for this tab
+        if (tabId && tabCtrlKeyStates[tabId]) {
+          // Extend the timeout for this tab
+          setTimeout(() => {
+            if (tabCtrlKeyStates[tabId]) {
+              logger.debug(`Auto-clearing ctrlClickPending for tab ${tabId} after extended timeout`);
+              tabCtrlKeyStates[tabId].pending = false;
+              chrome.storage.local.set({
+                [`ctrlClickPending_tab_${tabId}`]: false
+              });
+            }
+          }, duration);
+          
+          // Also update the timestamp to reflect the extension
+          tabCtrlKeyStates[tabId].timestamp = Date.now();
+          chrome.storage.local.set({
+            [`ctrlKeyPressTimestamp_tab_${tabId}`]: Date.now()
+          });
+        }
+        
+        return { success: true };
+      },
+      
       'clearCtrlKeyState': async () => {
         const tabId = message.tabId;
         
@@ -1310,8 +1339,7 @@ async function handleFirstInstall() {
   // Initialize empty chat sessions list
   await storageService.setValue(STORAGE_KEYS.CHAT_SESSIONS, []);
   
-  // Initialize empty global_last_user_input
-  await storageService.setValue('global_last_user_input', '');
+  // Note: Removed global_last_user_input initialization - now using unified execute_last_input storage
   
   // Initialize empty execute_last_input
   await storageService.setValue('execute_last_input', {

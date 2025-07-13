@@ -454,9 +454,10 @@ function handleSettingsChanged(event) {
  * Handle sending a new message
  * @param {Object} options - Options for handling the message
  * @param {boolean} [options.saveForAutoExecution=true] - Whether to save the message for auto-execution
+ * @param {boolean} [options.isAutoExecution=false] - Whether this is an auto-execution (affects storage clearing)
  */
 async function handleSendMessage(options = {}) {
-  const { saveForAutoExecution = true } = options;
+  const { saveForAutoExecution = true, isAutoExecution = false } = options;
   
   try {
     // Get message text
@@ -466,6 +467,16 @@ async function handleSendMessage(options = {}) {
     if (!messageText) {
       console.log('Ignoring empty message');
       return;
+    }
+    
+    // If this is an auto-execution, clear execute_last_input from storage to prevent retry
+    if (isAutoExecution) {
+      try {
+        await chrome.storage.local.remove('execute_last_input');
+        console.log('Cleared execute_last_input from storage (auto-execution successful)');
+      } catch (error) {
+        console.error('Error clearing execute_last_input:', error);
+      }
     }
     
     // Prevent duplicate submissions
@@ -487,9 +498,7 @@ async function handleSendMessage(options = {}) {
     // Store the message for potential reuse
     lastQuery = messageText;
     
-    // Save as global last user input
-    await chrome.storage.local.set({ 'global_last_user_input': messageText });
-    console.log('Saved global last user input:', messageText);
+    // Note: Removed global_last_user_input - now only using execute_last_input for unified storage
     
     // Also save to execute_last_input for auto-execution on next popup open, if enabled
     if (saveForAutoExecution) {
@@ -1039,9 +1048,8 @@ async function clearSavedInputText() {
       await chrome.storage.local.remove(`input_text_${currentSession.pageLoadId}`);
     }
     
-    // Note: We do NOT clear global_last_user_input here, as it needs to persist
-    // for automatic execution when reopening the popup
-    console.log('Cleared saved input text, global_last_user_input preserved for future use');
+    // Note: execute_last_input is cleared by auto-execution system when used
+    console.log('Cleared saved input text');
   } catch (error) {
     console.error('Error clearing input text:', error);
   }
@@ -1178,12 +1186,10 @@ async function checkForCommandToExecute() {
     if (execute_last_input) {
       console.log('Found execute_last_input in storage:', execute_last_input);
       
-      // CRITICAL: Clear it from storage IMMEDIATELY to prevent duplicate executions
-      // This must happen before any execution checks to prevent race conditions
-      await chrome.storage.local.remove('execute_last_input');
-      console.log('Cleared execute_last_input from storage to prevent duplicate execution');
+      // DON'T clear from storage immediately - only clear after successful execution or final abort
+      // This allows retry if execution gets interrupted
       
-      // Check AGAIN if behavior should allow auto-execution
+      // Check if behavior should allow auto-execution
       const finalIsCtrlPressed = window.ctrlKeyPressed === true;
       let finalShouldExecute = false;
       switch (repeatMessageTrigger) {
@@ -1203,6 +1209,11 @@ async function checkForCommandToExecute() {
       
       if (!finalShouldExecute) {
         console.log(`COMMAND EXECUTION: Skipping auto-execution during command retrieval based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${finalIsCtrlPressed}`);
+        // Only clear storage if we're definitively not executing (to prevent retry issues)
+        if (repeatMessageTrigger === 'disabled') {
+          await chrome.storage.local.remove('execute_last_input');
+          console.log('Cleared execute_last_input from storage (disabled mode)');
+        }
         return;
       }
       
@@ -1238,7 +1249,8 @@ async function checkForCommandToExecute() {
       }
       
       // Check ONCE MORE if behavior should allow auto-execution during validation
-      const validationIsCtrlPressed = window.ctrlKeyPressed === true;
+      // IMPORTANT: Use cached ctrl state instead of current state to prevent timing issues
+      const validationIsCtrlPressed = isCtrlPressed; // Use the initial ctrl state, not current
       let validationShouldExecute = false;
       switch (repeatMessageTrigger) {
         case 'auto':
@@ -1257,6 +1269,9 @@ async function checkForCommandToExecute() {
       
       if (!validationShouldExecute) {
         console.log(`COMMAND EXECUTION: Skipping auto-execution during validation based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${validationIsCtrlPressed}`);
+        // Clear execute_last_input since we're not executing
+        await chrome.storage.local.remove('execute_last_input');
+        console.log('Cleared execute_last_input from storage (validation failed)');
         return;
       }
       
@@ -1284,6 +1299,23 @@ async function checkForCommandToExecute() {
       
       // Set input value and make sure it's visible
       messageInput.value = input;
+      
+      // Protect against premature ctrl key clearing during auto-execution
+      try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const tabId = tabs[0]?.id;
+        if (tabId) {
+          // Request background script to extend ctrl key timeout during execution
+          await chrome.runtime.sendMessage({ 
+            action: 'extendCtrlKeyTimeout', 
+            tabId: tabId,
+            duration: 5000 // 5 seconds should be enough for execution
+          });
+          console.log('Extended ctrl key timeout for auto-execution');
+        }
+      } catch (error) {
+        console.warn('Could not extend ctrl key timeout:', error);
+      }
       
       // Make sure the input is visible and styled properly
       messageInput.classList.add('auto-execute');
@@ -1322,9 +1354,10 @@ async function checkForCommandToExecute() {
       }
       
       // Execute the query with a slight delay to ensure UI is ready
-      setTimeout(() => {
+      setTimeout(async () => {
         // Check one final time if behavior should allow auto-execution
-        const finalCtrlPressed = window.ctrlKeyPressed === true;
+        // IMPORTANT: Use cached ctrl state instead of current state to prevent timing issues
+        const finalCtrlPressed = isCtrlPressed; // Use the initial cached state, not current window state
         let finalExecuteAllowed = false;
         switch (repeatMessageTrigger) {
           case 'auto':
@@ -1343,6 +1376,9 @@ async function checkForCommandToExecute() {
         
         if (!finalExecuteAllowed) {
           console.log(`COMMAND EXECUTION: Skipping auto-execution right before execution based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${finalCtrlPressed}`);
+          // Clear execute_last_input since we're aborting execution
+          await chrome.storage.local.remove('execute_last_input');
+          console.log('Cleared execute_last_input from storage (execution aborted)');
           return;
         }
         
@@ -1352,7 +1388,9 @@ async function checkForCommandToExecute() {
           console.error('Input is empty right before submission, refilling:', input);
           messageInput.value = input;
         }
-        handleSendMessage();
+        
+        // Mark that this is an auto-execution to handle storage clearing
+        handleSendMessage({ isAutoExecution: true });
       }, 800); // Increased delay for more reliable execution
       
       return; // Exit early since we're executing the command
@@ -1575,46 +1613,7 @@ async function checkToggleState() {
   }
 }
 
-/**
- * Load the global last user input from storage
- * This ensures the lastQuery variable is set even when opening the popup in a new tab
- */
-async function loadGlobalLastUserInput() {
-  try {
-    const result = await chrome.storage.local.get('global_last_user_input');
-    if (result.global_last_user_input) {
-      console.log('Loaded global last user input:', result.global_last_user_input);
-      lastQuery = result.global_last_user_input;
-    } else {
-      console.log('No global last user input found in storage, initializing with empty string');
-      // Initialize with empty string if it doesn't exist
-      await chrome.storage.local.set({ 'global_last_user_input': '' });
-      lastQuery = '';
-    }
-    
-    // Also check execute_last_input and ensure it exists
-    const execLastInput = await chrome.storage.local.get('execute_last_input');
-    if (!execLastInput.execute_last_input) {
-      console.log('No execute_last_input found, initializing with empty value');
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const currentTab = tabs[0] || {};
-      
-      await chrome.storage.local.set({
-        'execute_last_input': {
-          value: lastQuery || '',
-          timestamp: Date.now(),
-          tabId: currentTab.id, 
-          url: currentTab.url
-        }
-      });
-    }
-  } catch (error) {
-    console.error('Error loading global last user input:', error);
-    // Initialize with empty values as fallback
-    lastQuery = '';
-    await chrome.storage.local.set({ 'global_last_user_input': '' });
-  }
-}
+// Removed loadGlobalLastUserInput function - now using unified execute_last_input storage
 
 /**
  * Initialize UI elements
@@ -1644,7 +1643,6 @@ function initializeUIElements() {
     console.error('Critical chat UI elements missing. Aborting chat initialization.');
     return false;
   }
-  loadGlobalLastUserInput();
   console.log('UI elements initialized');
   return true;
 }
