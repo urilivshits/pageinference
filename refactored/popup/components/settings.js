@@ -68,8 +68,10 @@ export async function initializeSettingsComponent() {
 	// Check model availability
 	checkModelAvailability();
 
-	// Update slider gradient
-	updateSliderGradient(temperatureSlider);
+	// Update slider gradient - only if element exists
+	if (temperatureSlider) {
+		updateSliderGradient(temperatureSlider);
+	}
 
 	console.log("Settings component initialized");
 }
@@ -78,77 +80,91 @@ export async function initializeSettingsComponent() {
  * Set up event listeners for settings interactions
  */
 function setupEventListeners() {
-	// API key management
-	saveApiKeyButton.addEventListener("click", handleSaveApiKey);
-	toggleApiKeyButton.addEventListener("click", toggleApiKeyVisibility);
+	// API key management - only add listeners if elements exist
+	if (saveApiKeyButton) {
+		saveApiKeyButton.addEventListener("click", handleSaveApiKey);
+	}
+	if (toggleApiKeyButton) {
+		toggleApiKeyButton.addEventListener("click", toggleApiKeyVisibility);
+	}
 
-	// Temperature slider
-	temperatureSlider.addEventListener("input", () => {
-		const value = parseFloat(temperatureSlider.value);
-		temperatureValue.textContent = value.toFixed(1);
-		updateSliderGradient(temperatureSlider);
-		console.log("Temperature changed:", value);
-		updateSettings({ temperature: value });
-	});
-
-	// Theme options
-	themeOptions.forEach((option) => {
-		option.addEventListener("change", () => {
-			if (option.checked) {
-				const theme = option.value;
-				console.log("Theme changed:", theme);
-				updateSettings({ theme });
-				applyTheme(theme);
-			}
+	// Temperature slider - only add listener if element exists
+	if (temperatureSlider && temperatureValue) {
+		temperatureSlider.addEventListener("input", () => {
+			const value = parseFloat(temperatureSlider.value);
+			temperatureValue.textContent = value.toFixed(1);
+			updateSliderGradient(temperatureSlider);
+			console.log("Temperature changed:", value);
+			updateSettings({ temperature: value });
 		});
-	});
+	}
 
-	// Model selection
-	modelSelector.addEventListener("change", () => {
-		const model = modelSelector.value;
-		if (modelAvailability[model] === false) {
-			alert("This model is not available with your current API key");
-			modelSelector.value = currentSettings.defaultModel;
-			return;
-		}
-		console.log("Model changed:", model);
-		updateSettings({ defaultModel: model });
-	});
+	// Theme options - only add listeners if elements exist
+	if (themeOptions && themeOptions.length > 0) {
+		themeOptions.forEach((option) => {
+			option.addEventListener("change", () => {
+				if (option.checked) {
+					const theme = option.value;
+					console.log("Theme changed:", theme);
+					updateSettings({ theme });
+					applyTheme(theme);
+				}
+			});
+		});
+	}
 
-	// Page scraping toggle
-	pageScrapingToggle.addEventListener('change', () => {
-		const enabled = pageScrapingToggle.checked;
-		console.log('Page scraping toggled:', enabled);
-		
-		// Also update the button state in the chat component if it exists
-		const searchPageButton = document.getElementById('search-page-button');
-		if (searchPageButton) {
-			searchPageButton.classList.toggle('active', enabled);
-		}
-		
-		updateSettings({ pageScraping: enabled });
-	});
+	// Model selection - only add listener if element exists
+	if (modelSelector) {
+		modelSelector.addEventListener("change", () => {
+			const model = modelSelector.value;
+			if (modelAvailability[model] === false) {
+				alert("This model is not available with your current API key");
+				modelSelector.value = currentSettings.defaultModel;
+				return;
+			}
+			console.log("Model changed:", model);
+			updateSettings({ defaultModel: model });
+		});
+	}
 
-	// Web search toggle
-	webSearchToggle.addEventListener('change', () => {
-		const enabled = webSearchToggle.checked;
-		
-		if (enabled && !modelAvailability['gpt-4o-mini']) {
-			alert('Web search is only available with GPT-4o mini model');
-			webSearchToggle.checked = false;
-			return;
-		}
-		
-		console.log('Web search toggled:', enabled);
-		
-		// Also update the button state in the chat component if it exists
-		const searchWebButton = document.getElementById('search-web-button');
-		if (searchWebButton) {
-			searchWebButton.classList.toggle('active', enabled);
-		}
-		
-		updateSettings({ webSearch: enabled });
-	});
+	// Page scraping toggle - only add listener if element exists
+	if (pageScrapingToggle) {
+		pageScrapingToggle.addEventListener('change', () => {
+			const enabled = pageScrapingToggle.checked;
+			console.log('Page scraping toggled:', enabled);
+			
+			// Also update the button state in the chat component if it exists
+			const searchPageButton = document.getElementById('search-page-button');
+			if (searchPageButton) {
+				searchPageButton.classList.toggle('active', enabled);
+			}
+			
+			updateSettings({ pageScraping: enabled });
+		});
+	}
+
+	// Web search toggle - only add listener if element exists
+	if (webSearchToggle) {
+		webSearchToggle.addEventListener('change', () => {
+			const enabled = webSearchToggle.checked;
+			
+			if (enabled && !modelAvailability['gpt-4o-mini']) {
+				alert('Web search is only available with GPT-4o mini model');
+				webSearchToggle.checked = false;
+				return;
+			}
+			
+			console.log('Web search toggled:', enabled);
+			
+			// Also update the button state in the chat component if it exists
+			const searchWebButton = document.getElementById('search-web-button');
+			if (searchWebButton) {
+				searchWebButton.classList.toggle('active', enabled);
+			}
+			
+			updateSettings({ webSearch: enabled });
+		});
+	}
 }
 
 /**

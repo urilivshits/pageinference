@@ -54,6 +54,37 @@ let lastSubmittedQuestion = '';
 let lastError = null;
 let errorTimeout = null;
 
+// Helper function to clear chat messages while preserving the flower animation
+function clearChatMessages() {
+  if (!chatMessages) return;
+  
+  // Save the flower element if it exists
+  const flowerElement = document.getElementById('popup-flower-animation');
+  let flowerHTML = '';
+  if (flowerElement) {
+    flowerHTML = flowerElement.outerHTML;
+  }
+  
+  // Clear all messages
+  chatMessages.innerHTML = '';
+  
+  // Restore the flower if it existed
+  if (flowerHTML) {
+    chatMessages.insertAdjacentHTML('afterbegin', flowerHTML);
+    
+    // Restart the animation on the restored flower
+    setTimeout(() => {
+      const restoredFlower = document.getElementById('popup-flower-animation');
+      if (restoredFlower) {
+        console.log('🌸 Restarting animation on restored flower');
+        restoredFlower.style.animation = 'none';
+        restoredFlower.offsetHeight; // Trigger reflow
+        restoredFlower.style.animation = 'flowerGrowAndFade 5s ease-out forwards';
+      }
+    }, 50); // Small delay to ensure DOM is updated
+  }
+}
+
 // Add session state
 let sessionState = {
   isLoading: false,
@@ -358,10 +389,9 @@ async function handleShowSession(event) {
     return;
   }
   
-  // Show loading indicator and clear current messages
-  setLoading(true);
+  // Clear current messages without showing loading indicator
   setInputEnabled(false);
-  chatMessages.innerHTML = '';
+  clearChatMessages();
   
   try {
     console.log('Loading session with pageLoadId:', pageLoadId);
@@ -374,7 +404,6 @@ async function handleShowSession(event) {
     const session = response?.data;
     if (!session) {
       displayErrorMessage('Session not found');
-      setLoading(false);
       setInputEnabled(true);
       return;
     }
@@ -386,7 +415,6 @@ async function handleShowSession(event) {
     currentSession = session;
     renderMessages(session.messages || []);
     updateConversationInfo();
-    setLoading(false);
     setInputEnabled(true);
     messageInput.value = '';
     messageInput.style.height = 'auto';
@@ -396,7 +424,6 @@ async function handleShowSession(event) {
   } catch (err) {
     console.error('Failed to load session:', err);
     displayErrorMessage('Failed to load session');
-    setLoading(false);
     setInputEnabled(true);
   }
 }
@@ -627,7 +654,7 @@ async function loadCurrentSession() {
     console.log('Loading current chat session...');
     
     // Clear messages
-    chatMessages.innerHTML = '';
+    clearChatMessages();
     
     // Get current tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -741,7 +768,7 @@ function updateConversationInfo() {
  */
 function renderMessages(messages) {
   // Clear messages
-  chatMessages.innerHTML = '';
+  clearChatMessages();
   
   // Add each message
   messages.forEach(message => {
@@ -1549,7 +1576,7 @@ function renderChatHistory(messages) {
       return;
     }
     // Clear existing messages
-    chatMessages.innerHTML = '';
+    clearChatMessages();
     // If no messages, show empty state
     if (!messages || messages.length === 0) {
       console.log('No messages to render, showing empty state');

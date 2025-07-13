@@ -20,6 +20,13 @@
   --search-results-bg: #f5f8fa;
   --link-color: #1a73e8;
   --text-tertiary: #70757a;
+  
+  /* Flower animation colors - light theme */
+  --flower-petal-color: #b94fc6;
+  --flower-petal-stroke: #7a2e8a;
+  --flower-center-color: #f7b731;
+  --flower-center-stroke: #f39c12;
+  --flower-stem-color: #3a7d3b;
 }
 
 /* Dark theme */
@@ -39,6 +46,13 @@ html[data-theme="dark"] {
   --search-results-bg: #2a2d33;
   --link-color: #8ab4f8;
   --text-tertiary: #9aa0a6;
+  
+  /* Flower animation colors - dark theme */
+  --flower-petal-color: #f7b7e0;
+  --flower-petal-stroke: #fff;
+  --flower-center-color: #ffe066;
+  --flower-center-stroke: #ffd700;
+  --flower-stem-color: #7be495;
 }
 
 /* Base Styles */
@@ -311,6 +325,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   flex: 1;
   overflow: hidden;
   padding: 0 1rem;
+  position: relative;
 }
 
 .tab-container.active {
@@ -861,6 +876,7 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
   box-sizing: border-box;
   margin-top: 0;
   margin-bottom: 43px;
+  position: relative;
 }
 
 /* Hide scrollbar in chat messages area for all browsers */
@@ -1164,3 +1180,54 @@ sup {
 
 /* Hide old tab navigation and history tab */
 .tab-navigation, #history-container, #new-chat-button, #history-tab { display: none !important; }
+
+/* Flower Animation */
+#popup-flower-animation {
+  position: fixed;
+  left: 420px; /* Center of main content area (sidebar 260px + (540px main area / 2)) */
+  top: 320px; /* Center of chat area vertically (header ~40px + (520px chat area / 2)) */
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.10));
+  animation: flowerGrowAndFade 5s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+html[data-theme="dark"] #popup-flower-animation {
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.25));
+}
+
+@keyframes flowerGrowAndFade {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+  }
+  15% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.8;
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #popup-flower-animation {
+    position: fixed !important;
+    left: 420px !important;
+    top: 320px !important;
+    animation: none !important;
+    opacity: 0.3 !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+  }
+}

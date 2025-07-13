@@ -15,6 +15,19 @@ export function setupMessageListeners() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const { type, data } = message;
     
+    // Log the message for debugging
+    console.log('DEBUG Received message:', type);
+    
+    // Check for undefined or invalid message types
+    if (!type) {
+      console.warn('Received message with undefined type:', message, 'from sender:', sender);
+      sendResponse({
+        success: false,
+        error: 'Message type is required'
+      });
+      return true;
+    }
+    
     // Use async handler but make sure we return true to indicate we'll respond asynchronously
     handleMessage(type, data, sender).then(sendResponse).catch(error => {
       console.error('Error handling message:', error);
@@ -86,6 +99,7 @@ async function handleMessage(type, data, sender) {
       return handleClearDebugLogs();
       
     default:
+      console.warn(`Unknown message type: ${type}`, 'Full message:', { type, data }, 'Sender:', sender);
       throw new Error(`Unknown message type: ${type}`);
   }
 }

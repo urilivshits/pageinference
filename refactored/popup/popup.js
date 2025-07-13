@@ -459,8 +459,15 @@ async function initializeComponents() {
  * Main initialization function for the popup
  */
 async function initializePopup() {
+  // Prevent multiple initializations
+  if (popupInitialized) {
+    logger.debug('Popup already initialized, skipping');
+    return;
+  }
+  
   try {
     logger.init('Initializing popup');
+    popupInitialized = true;
 
     // Apply theme from user preferences
     await applyThemeFromPreferences();
@@ -577,8 +584,7 @@ function setupComponentCommunication() {
     const session = event.detail;
     logger.session(`Open session event: ${session?.pageLoadId}`);
     
-    // Switch to chat tab
-    document.getElementById('chat-tab').click();
+    // No need to switch tabs since we removed the old tab system
     
     // Dispatch event for chat component
     window.dispatchEvent(new CustomEvent('show-session', {
@@ -782,9 +788,24 @@ function setupSidebar() {
       if (window.chat && typeof window.chat.handleNewChat === 'function') {
         window.chat.handleNewChat();
       } else {
-        // Fallback: clear chat area directly
+        // Fallback: clear chat area directly while preserving flower
         const chatMessages = document.getElementById('chat-messages');
-        if (chatMessages) chatMessages.innerHTML = '';
+        if (chatMessages) {
+          // Save the flower element if it exists
+          const flowerElement = document.getElementById('popup-flower-animation');
+          let flowerHTML = '';
+          if (flowerElement) {
+            flowerHTML = flowerElement.outerHTML;
+          }
+          
+          // Clear all messages
+          chatMessages.innerHTML = '';
+          
+          // Restore the flower if it existed
+          if (flowerHTML) {
+            chatMessages.insertAdjacentHTML('afterbegin', flowerHTML);
+          }
+        }
         const titleElem = document.getElementById('current-conversation-title');
         if (titleElem) titleElem.textContent = '';
         const tsElem = document.getElementById('current-conversation-timestamp');
@@ -983,6 +1004,47 @@ applyThemeFromPreferences().catch(error => {
   logger.error('Error applying early theme:', error);
 });
 
+/**
+ * Injects a growing/fading SVG flower animation into the popup background.
+ * The animation is theme-aware and disappears after 5 seconds.
+ */
+/**
+ * Restart the flower animation each time the popup opens
+ */
+function restartFlowerAnimation() {
+  console.log('🌸 restartFlowerAnimation called');
+  const flower = document.getElementById('popup-flower-animation');
+  console.log('🌸 flower element found:', flower);
+  if (flower) {
+    console.log('🌸 restarting animation');
+    // Force restart the animation by removing and re-adding the animation
+    flower.style.animation = 'none';
+    flower.offsetHeight; // Trigger reflow
+    flower.style.animation = 'flowerGrowAndFade 5s ease-out forwards';
+    console.log('🌸 animation restarted');
+  } else {
+    console.log('🌸 flower element not found in DOM');
+  }
+}
+
+// Restart flower animation on popup open - delay to ensure all rendering is complete
+console.log('🌸 Setting up flower animation, document.readyState:', document.readyState);
+function setupFlowerAnimation() {
+  console.log('🌸 Setting up flower animation with delay');
+  // Wait for all components to initialize and render
+  setTimeout(() => {
+    restartFlowerAnimation();
+  }, 500); // Delay to ensure all rendering is complete
+}
+
+if (document.readyState === 'loading') {
+  console.log('🌸 Adding DOMContentLoaded listener for flower animation');
+  document.addEventListener('DOMContentLoaded', setupFlowerAnimation);
+} else {
+  console.log('🌸 Document ready, calling setupFlowerAnimation immediately');
+  setupFlowerAnimation();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   logger.init('Popup DOM loaded');
   
@@ -1054,7 +1116,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // Also try to initialize immediately if document is already complete
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
   logger.init('Document already ready, initializing popup immediately');
-  initializePopup();
+  initializePopup().catch(error => {
+    logger.error('Error in immediate popup initialization:', error);
+  });
 }
 
 function renderSessionInChatArea(session) {
@@ -1071,7 +1135,21 @@ function renderSessionInChatArea(session) {
   // Render messages
   const chatMessages = document.getElementById('chat-messages');
   if (chatMessages) {
+    // Save the flower element if it exists
+    const flowerElement = document.getElementById('popup-flower-animation');
+    let flowerHTML = '';
+    if (flowerElement) {
+      flowerHTML = flowerElement.outerHTML;
+    }
+    
+    // Clear all messages
     chatMessages.innerHTML = '';
+    
+    // Restore the flower if it existed
+    if (flowerHTML) {
+      chatMessages.insertAdjacentHTML('afterbegin', flowerHTML);
+    }
+    
     (session.messages || []).forEach(msg => {
       const div = document.createElement('div');
       div.className = 'message ' + (msg.role || 'user');
