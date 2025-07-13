@@ -119,6 +119,13 @@ body {
   margin-right: 16px;
 }
 
+.profile-nickname {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-color);
+  user-select: none;
+}
+
 .header-title {
   font-size: 1.15rem;
   font-weight: 600;
@@ -407,27 +414,31 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   100% { transform: rotate(360deg); }
 }
 
-/* --- Chat Input Container: Double Height & Uniform Children --- */
+/* --- Chat Input Container: Sticky to bottom, fixed height --- */
 .chat-input-container {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 16px 8px; /* doubled vertical padding */
+  padding: 8px; /* Reduced padding to position closer to bottom */
   border-top: 1px solid var(--border-color);
   background: var(--background-color);
-  position: relative;
-  z-index: 10;
-  min-height: 84px; /* doubled from ~42px */
-  height: 84px;
+  position: fixed; /* Fixed to bottom */
+  bottom: 0;
+  left: 260px; /* Account for sidebar width */
+  right: 0;
+  z-index: 100;
+  height: 70px; /* Fixed height, no flexibility */
+  min-height: 70px;
+  max-height: 70px;
   box-sizing: border-box;
 }
 
 .action-buttons,
 .chat-input-main,
 .send-button {
-  height: 84px;
-  min-height: 84px;
-  max-height: 84px;
+  height: 54px; /* Adjusted for new container height */
+  min-height: 54px;
+  max-height: 54px;
   display: flex;
   align-items: center;
 }
@@ -456,11 +467,11 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 
 #message-input {
   flex-grow: 1;
-  min-height: 40px;
-  max-height: 68px;
+  min-height: 36px;
+  max-height: 36px; /* Fixed height to prevent container movement */
   font-size: 1rem;
   padding: 8px 56px 8px 8px; /* right padding for button */
-  line-height: 1.6;
+  line-height: 1.4;
   border: none;
   background-color: transparent;
   color: var(--text-color);
@@ -481,8 +492,8 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 
 .send-button {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
+  bottom: 8px; /* Adjusted for new container height */
+  right: 8px;
   width: 38px;
   height: 38px;
   min-width: 38px;
@@ -820,7 +831,7 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
   top: 0;
   left: 0;
   right: 0;
-  height: 30px;
+  height: 0px;
   background-color: transparent;
   z-index: 1000;
   cursor: pointer;
@@ -857,13 +868,13 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
   margin-bottom: 0.125rem;
   scroll-behavior: smooth;
   flex: 1;
-  height: calc(100% - 85px - 8px);
-  max-height: calc(100% - 85px - 8px);
+  height: calc(100% - 155px - 70px - 8px); /* Adjusted for header height and fixed input container */
+  max-height: calc(100% - 155px - 70px - 8px);
   padding-right: 8px;
-  padding-bottom: 0;
+  padding-bottom: 8px; /* Small padding at bottom for spacing from fixed input */
   box-sizing: border-box;
   margin-top: 0;
-  margin-bottom: 43px;
+  margin-bottom: 0; /* Remove margin since input is fixed */
   position: relative;
 }
 
