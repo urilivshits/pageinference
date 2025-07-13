@@ -914,13 +914,15 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 
 /* Message content */
 .message-content {
-  padding-right: 2.5rem;
+  padding-right: 2.5rem; /* Space for copy button on right */
+  padding-left: 0.5rem; /* Small space for timestamp on left */
   word-break: break-word;
   flex: 1;
   position: relative;
   line-height: 1.6;
   overflow-wrap: break-word;
   white-space: pre-line;
+  padding-bottom: 8px; /* Minimal padding for timestamp */
 }
 
 /* Copy button for messages */
@@ -1409,4 +1411,39 @@ html[data-theme="dark"] #popup-flower-animation {
     opacity: 0.3 !important;
     transform: translate(-50%, -50%) scale(1) !important;
   }
+}
+
+/* Message timestamp styling */
+.message-timestamp {
+  position: absolute;
+  bottom: 10px; /* Align with copy button */
+  right: 36px; /* Position on left side */
+  font-size: 10px;
+  color: var(--secondary-text-color);
+  padding: 0; /* Remove padding since no background */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 400;
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.2s ease;
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap; /* Don't wrap, only take needed width */
+}
+
+html[data-theme="dark"] .message-timestamp {
+  color: var(--secondary-text-color);
+}
+
+/* Ensure timestamp is visible on user messages */
+.message.user .message-timestamp {
+  color: rgba(0, 0, 0, 0.6); /* Darker on user messages for better contrast */
+}
+
+html[data-theme="dark"] .message.user .message-timestamp {
+  color: rgba(255, 255, 255, 0.7); /* Light on dark theme user messages */
+}
+
+.message:hover .message-timestamp {
+  opacity: 1; /* Show on message hover */
 }

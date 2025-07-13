@@ -30,10 +30,14 @@ export function createMessage(role, content, metadata = {}) {
     throw new Error('Message content must be a non-empty string');
   }
   
+  const currentTime = Date.now();
+  
   return {
     role,
     content,
-    timestamp: metadata.timestamp || Date.now(),
+    timestamp: metadata.timestamp || currentTime, // Keep for backward compatibility
+    requestTime: metadata.requestTime || (role === MessageRole.USER ? currentTime : null),
+    responseTime: metadata.responseTime || (role === MessageRole.ASSISTANT ? currentTime : null),
     id: metadata.id || generateMessageId(),
     ...metadata
   };

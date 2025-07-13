@@ -1142,7 +1142,8 @@ function setupMessageListeners() {
           const newUserMessage = {
             role: 'user',
             content: userMessage,
-            timestamp: Date.now()
+            timestamp: Date.now(), // Keep for backward compatibility
+            requestTime: Date.now() // New field for request timestamp
           };
           messages.push(newUserMessage);
 
@@ -1189,7 +1190,8 @@ function setupMessageListeners() {
           const assistantResponse = {
             role: 'assistant',
             content: processedResponse.content,
-            timestamp: Date.now(),
+            timestamp: Date.now(), // Keep for backward compatibility
+            responseTime: Date.now(), // New field for response timestamp
             metadata: processedResponse.metadata || {}
           };
           

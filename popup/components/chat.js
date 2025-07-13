@@ -25,6 +25,22 @@ const md = window.markdownit({
   linkify: true
 });
 
+/**
+ * Format timestamp to a readable string
+ * 
+ * @param {number} timestamp - Unix timestamp in milliseconds
+ * @return {string} Formatted time string
+ */
+function formatTimestamp(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+}
+
 // DOM elements
 let chatContainer;
 let messageInput;
@@ -895,6 +911,28 @@ function appendMessage(message) {
     messageElement.classList.add('error');
   }
   
+  // Add timestamp element
+  const timestampElement = document.createElement('div');
+  timestampElement.classList.add('message-timestamp');
+  
+  // Format and display appropriate timestamp
+  let timestampToShow = null;
+  let timestampLabel = '';
+  
+  if (message.role === 'user' && message.requestTime) {
+    timestampToShow = message.requestTime;
+  } else if (message.role === 'assistant' && message.responseTime) {
+    timestampToShow = message.responseTime;
+  } else if (message.timestamp) {
+    // Fallback to general timestamp
+    timestampToShow = message.timestamp;
+  }
+  
+  if (timestampToShow) {
+    const timeString = formatTimestamp(timestampToShow);
+    timestampElement.textContent = timeString; // Just show the time, no label
+  }
+
   // Add copy button
   const copyButton = document.createElement('button');
   copyButton.classList.add('copy-button');
@@ -958,6 +996,7 @@ function appendMessage(message) {
   });
   
   messageElement.appendChild(contentElement);
+  messageElement.appendChild(timestampElement); // Append timestamp before copy button
   messageElement.appendChild(copyButton);
   chatMessages.appendChild(messageElement);
   
@@ -1854,8 +1893,18 @@ function addMessageToUI(role, content) {
     console.error('Cannot add message to UI: chatMessages element not found');
     return;
   }
-  // Create message object for consistent rendering
-  const message = { role, content, timestamp: Date.now() };
+  
+  const currentTime = Date.now();
+  
+  // Create message object with appropriate timestamps
+  const message = { 
+    role, 
+    content, 
+    timestamp: currentTime, // Keep for backward compatibility
+    requestTime: role === 'user' ? currentTime : null,
+    responseTime: role === 'assistant' ? currentTime : null
+  };
+  
   appendMessage(message);
   // Highlight all code blocks after rendering
   chatMessages.querySelectorAll('pre code').forEach(block => {
