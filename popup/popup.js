@@ -1031,6 +1031,13 @@ async function autoExecuteIfNeeded() {
       return;
     }
     
+    // Check if the chat.js system will handle execution (it has priority)
+    const { execute_last_input } = await chrome.storage.local.get('execute_last_input');
+    if (execute_last_input) {
+      logger.debug('Found execute_last_input - letting chat.js checkForCommandToExecute() handle execution');
+      return;
+    }
+    
     // Get the last user input that was saved
     const { global_last_user_input } = await chrome.storage.local.get('global_last_user_input');
     const userInput = global_last_user_input;
@@ -1040,105 +1047,103 @@ async function autoExecuteIfNeeded() {
       return;
     }
     
+    await chrome.storage.local.remove('global_last_user_input');
+    logger.debug('Cleared global_last_user_input from storage to prevent duplicate execution');
+    
     logger.debug(`Input for auto-execution: "${userInput.substring(0, 30)}${userInput.length > 30 ? '...' : ''}"`);
     
-    // Note: isCtrlPressed is already defined above based on trigger settings
-    // If the Ctrl key is not pressed, auto-execute the command
-    if (shouldAutoExecute) {
-      logger.info('Auto-executing command - Ctrl key not detected');
-      
-      // Set the input in the chat component
-      const messageInput = document.getElementById('message-input');
-      if (messageInput) {
-        messageInput.value = userInput;
-      } else {
-        logger.error('Message input element not found');
+    // Auto-execute the command since shouldAutoExecute is true
+    logger.info('Auto-executing command - Ctrl key not detected');
+    
+    // Set the input in the chat component
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) {
+      messageInput.value = userInput;
+    } else {
+      logger.error('Message input element not found');
+      return;
+    }
+    
+    // More robust approach to execute with a retry mechanism
+    let retryCount = 0;
+    const maxRetries = 5;
+    const retryInterval = 200; // 200ms between retries
+    const maxWaitTime = 3000; // Maximum wait time
+    
+    const startTime = Date.now();
+    
+    const tryExecute = async () => {
+      // Check if we've been trying too long regardless of retry count
+      if (Date.now() - startTime > maxWaitTime) {
+        logger.error(`Timeout reached after ${maxWaitTime}ms waiting for chat initialization`);
         return;
       }
       
-      // More robust approach to execute with a retry mechanism
-      let retryCount = 0;
-      const maxRetries = 5;
-      const retryInterval = 200; // 200ms between retries
-      const maxWaitTime = 3000; // Maximum wait time
+      // Check again if Ctrl key was pressed during our retry attempts
+      if (window.ctrlKeyPressed === true) {
+        logger.ctrl('Ctrl key detected during execution retry, aborting');
+        return;
+      }
       
-      const startTime = Date.now();
+      // Check if chat module is properly initialized
+      if (typeof window.chat === 'undefined' || !window.chat || typeof window.chat.executeCommand !== 'function') {
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          logger.debug(`Chat module not initialized, retrying (${retryCount}/${maxRetries})`);
+          setTimeout(tryExecute, retryInterval);
+        } else {
+          logger.error('Chat module not initialized after maximum retries');
+        }
+        return;
+      }
       
-      const tryExecute = async () => {
-        // Check if we've been trying too long regardless of retry count
-        if (Date.now() - startTime > maxWaitTime) {
-          logger.error(`Timeout reached after ${maxWaitTime}ms waiting for chat initialization`);
-          return;
-        }
-        
-        // Check again if Ctrl key was pressed during our retry attempts
-        if (window.ctrlKeyPressed === true) {
-          logger.ctrl('Ctrl key detected during execution retry, aborting');
-          return;
-        }
-        
-        // Check if chat module is properly initialized
-        if (typeof window.chat === 'undefined' || !window.chat || typeof window.chat.executeCommand !== 'function') {
-          retryCount++;
-          if (retryCount <= maxRetries) {
-            logger.debug(`Chat module not initialized, retrying (${retryCount}/${maxRetries})`);
-            setTimeout(tryExecute, retryInterval);
-          } else {
-            logger.error('Chat module not initialized after maximum retries');
-          }
-          return;
-        }
-        
+      try {
+        // Ensure the content script is properly loaded in the tab
         try {
-          // Ensure the content script is properly loaded in the tab
-          try {
-            // Try a ping to see if the content script is ready
-            const pingResponse = await chrome.tabs.sendMessage(tabId, { action: 'ping' })
-              .catch(error => null);
+          // Try a ping to see if the content script is ready
+          const pingResponse = await chrome.tabs.sendMessage(tabId, { action: 'ping' })
+            .catch(error => null);
               
-            if (!pingResponse || !pingResponse.pong) {
-              logger.debug('Content script needs initialization, requesting injection');
-              // Ask background script to inject the content script if needed
-              await chrome.runtime.sendMessage({ 
-                action: 'injectContentScript', 
-                tabId: tabId 
-              });
-              
-              // Wait a bit for the injection to complete
-              await new Promise(resolve => setTimeout(resolve, 500));
-            } else {
-              logger.debug('Content script already initialized');
-            }
-          } catch (scriptError) {
-            logger.debug('Error checking content script status');
-            // Continue anyway as we'll retry execution
+          if (!pingResponse || !pingResponse.pong) {
+            logger.debug('Content script needs initialization, requesting injection');
+            // Ask background script to inject the content script if needed
+            await chrome.runtime.sendMessage({ 
+              action: 'injectContentScript', 
+              tabId: tabId 
+            });
+            
+            // Wait a bit for the injection to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } else {
+            logger.debug('Content script already initialized');
           }
-          
-          // Check again if Ctrl key was pressed
-          if (window.ctrlKeyPressed === true) {
-            logger.ctrl('Ctrl key detected after content script check, aborting');
-            return;
-          }
-          
-          // Execute the stored command
-          logger.success('Executing command');
-          window.chat.executeCommand();
-        } catch (execError) {
-          logger.error('Error during command execution:', execError);
-          // If execution failed, try one more time after a delay
-          if (retryCount < maxRetries) {
-            retryCount++;
-            logger.debug(`Execution failed, retrying (${retryCount}/${maxRetries})`);
-            setTimeout(tryExecute, retryInterval * 2);
-          }
+        } catch (scriptError) {
+          logger.debug('Error checking content script status');
+          // Continue anyway as we'll retry execution
         }
-      };
-      
-      // Start the execution attempt
-      tryExecute();
-    } else {
-      logger.info(`Skipping auto-execution based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${isCtrlPressed}`);
-    }
+        
+        // Check again if Ctrl key was pressed
+        if (window.ctrlKeyPressed === true) {
+          logger.ctrl('Ctrl key detected after content script check, aborting');
+          return;
+        }
+        
+        // Execute the stored command
+        logger.success('Executing command');
+        window.chat.executeCommand();
+      } catch (execError) {
+        logger.error('Error during command execution:', execError);
+        // If execution failed, try one more time after a delay
+        if (retryCount < maxRetries) {
+          retryCount++;
+          logger.debug(`Execution failed, retrying (${retryCount}/${maxRetries})`);
+          setTimeout(tryExecute, retryInterval * 2);
+        }
+      }
+    };
+    
+    // Start the execution attempt
+    tryExecute();
   } catch (error) {
     logger.error('Error in auto-execution:', error);
   }

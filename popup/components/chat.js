@@ -1178,6 +1178,11 @@ async function checkForCommandToExecute() {
     if (execute_last_input) {
       console.log('Found execute_last_input in storage:', execute_last_input);
       
+      // CRITICAL: Clear it from storage IMMEDIATELY to prevent duplicate executions
+      // This must happen before any execution checks to prevent race conditions
+      await chrome.storage.local.remove('execute_last_input');
+      console.log('Cleared execute_last_input from storage to prevent duplicate execution');
+      
       // Check AGAIN if behavior should allow auto-execution
       const finalIsCtrlPressed = window.ctrlKeyPressed === true;
       let finalShouldExecute = false;
@@ -1198,14 +1203,8 @@ async function checkForCommandToExecute() {
       
       if (!finalShouldExecute) {
         console.log(`COMMAND EXECUTION: Skipping auto-execution during command retrieval based on trigger setting: ${repeatMessageTrigger}, Ctrl pressed: ${finalIsCtrlPressed}`);
-        // Clear it from storage to prevent future executions
-        await chrome.storage.local.remove('execute_last_input');
         return;
       }
-      
-      // Clear it from storage to prevent duplicate executions
-      await chrome.storage.local.remove('execute_last_input');
-      console.log('Cleared execute_last_input from storage');
       
       // Clear any badge indicators
       try {
