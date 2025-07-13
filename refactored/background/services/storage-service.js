@@ -5,7 +5,7 @@
  */
 
 import { STORAGE_KEYS } from '../../shared/constants.js';
-import { validateSettings } from '../../shared/models/settings.js';
+import { validateSettings, DEFAULT_SETTINGS } from '../../shared/models/settings.js';
 
 /**
  * Get a value from storage
@@ -96,15 +96,7 @@ export function setApiKey(apiKey) {
  * @return {Promise<Object>} The user preferences
  */
 export async function getUserPreferences() {
-  const defaultPreferences = {
-    theme: 'system',
-    temperature: 0,
-    pageScraping: true,  // Changed to true
-    webSearch: false,
-    currentSiteFilter: false,  // Changed to false
-    defaultModel: 'gpt-4o-mini',
-    repeatMessageTrigger: 'manual'  // Changed to manual
-  };
+  const defaultPreferences = DEFAULT_SETTINGS;
   
   // Get current preferences from local storage
   const result = await chrome.storage.local.get(STORAGE_KEYS.USER_PREFERENCES);

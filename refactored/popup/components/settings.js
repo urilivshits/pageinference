@@ -5,6 +5,7 @@
  */
 
 import { MESSAGE_TYPES, API_CONSTANTS, UI_CONSTANTS } from "../../shared/constants.js";
+import { DEFAULT_SETTINGS } from "../../shared/models/settings.js";
 
 // DOM elements
 let settingsContainer;
@@ -29,16 +30,8 @@ const STORAGE_KEYS = {
 	API_KEY: "openai_api_key",
 };
 
-// Default settings
-const defaultSettings = {
-	theme: "system",
-	temperature: 0,
-	pageScraping: true, // Changed to true
-	webSearch: false,
-	currentSiteFilter: false, // Changed to false
-	defaultModel: "gpt-4o-mini",
-	repeatMessageTrigger: "manual", // Changed to manual
-};
+// Default settings - use centralized defaults
+const defaultSettings = DEFAULT_SETTINGS;
 
 /**
  * Initialize the settings component

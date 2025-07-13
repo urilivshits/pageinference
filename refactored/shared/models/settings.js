@@ -7,16 +7,17 @@
 import { API_CONSTANTS } from '../constants.js';
 
 /**
- * Default settings values
+ * Default settings values - Single source of truth for all default settings
  */
 export const DEFAULT_SETTINGS = {
   theme: 'system',
-  temperature: 0,
-  pageScraping: true,  // Changed to true
+  temperature: 0.5,
+  pageScraping: true,
   webSearch: false,
-  currentSiteFilter: false,  // Changed to false
-  defaultModel: 'gpt-4o-mini',
-  repeatMessageTrigger: 'manual'  // Changed to manual
+  currentSiteFilter: false,
+  defaultModel: 'gpt-4.1-nano',
+  repeatMessageTrigger: 'disabled',
+  autoExecute: true  // Enable auto-execution by default
 };
 
 /**

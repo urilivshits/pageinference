@@ -24,6 +24,7 @@ import {
 // Import OpenAI service and logger
 import openaiApi from './api/openai.js';
 import logger from '../shared/utils/logger.js';
+import { DEFAULT_SETTINGS } from '../shared/models/settings.js';
 
 // Global variables to store service references
 let messageHandler = null;
@@ -1304,16 +1305,7 @@ function setupExtensionHandlers() {
  */
 async function handleFirstInstall() {
   // Set default preferences
-  await storageService.setValue(STORAGE_KEYS.USER_PREFERENCES, {
-    theme: 'system',
-    temperature: 0,
-    pageScraping: true,
-    webSearch: false,
-    currentSiteFilter: false,  // Changed to false
-    defaultModel: 'gpt-4o-mini',
-    autoExecute: true, // Enable auto-execution by default
-    repeatMessageTrigger: 'manual' // Default to manual behavior
-  });
+  await storageService.setValue(STORAGE_KEYS.USER_PREFERENCES, DEFAULT_SETTINGS);
   
   // Initialize empty chat sessions list
   await storageService.setValue(STORAGE_KEYS.CHAT_SESSIONS, []);

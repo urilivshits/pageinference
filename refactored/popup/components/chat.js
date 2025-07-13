@@ -5,6 +5,7 @@
  */
 
 import { MESSAGE_TYPES } from '../../shared/constants.js';
+import { DEFAULT_SETTINGS } from '../../shared/models/settings.js';
 // Remove the import of marked and use window.markdownit which is loaded via script tag
 // import { marked } from '../../lib/marked.min.js';
 // Remove the import of highlight.min.js and use the global hljs object loaded by script tag
@@ -1500,15 +1501,7 @@ function setupInputAutoResize() {
 export async function getUserPreferences() {
   try {
     const result = await chrome.storage.local.get('userPreferences');
-    const defaultPreferences = {
-      theme: 'system',
-      temperature: 0,
-      pageScraping: true,
-      webSearch: false,
-      currentSiteFilter: false,  // Changed to false
-      defaultModel: 'gpt-4o-mini',
-      repeatMessageTrigger: 'manual'
-    };
+    const defaultPreferences = DEFAULT_SETTINGS;
     
     // If userPreferences doesn't exist, initialize it with defaults
     if (!result.userPreferences) {
