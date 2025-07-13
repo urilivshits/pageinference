@@ -167,8 +167,9 @@ function setupEventListeners() {
 		webSearchToggle.addEventListener('change', () => {
 			const enabled = webSearchToggle.checked;
 			
-			if (enabled && !modelAvailability['gpt-4o-mini']) {
-				alert('Web search is only available with GPT-4o mini model');
+			// Web search is currently disabled in this version
+			if (enabled) {
+				alert('Web search is currently disabled to keep the extension focused on page content analysis');
 				webSearchToggle.checked = false;
 				return;
 			}
@@ -283,7 +284,7 @@ function applySettingsToUI(settings) {
 	}
 
 	// Apply model setting
-	const defaultModel = settings.defaultModel || "gpt-4o-mini";
+	const defaultModel = settings.defaultModel || "gpt-4.1-nano";
 	if (modelSelector) {
 		modelSelector.value = defaultModel;
 	} else {
@@ -463,8 +464,7 @@ async function populateModelSelector() {
 		console.error('Error loading models from constants:', error);
 		// Fallback to default models if import fails
 		const fallbackModels = [
-			{ value: "gpt-4o-mini", label: "GPT-4o mini (Default)" },
-			{ value: "gpt-4.1-nano", label: "GPT-4.1 nano" },
+			{ value: "gpt-4.1-nano", label: "GPT-4.1 nano (Default)" },
 			{ value: "o4-mini-deep-research", label: "o4-mini Deep Research" },
 		];
 		
@@ -571,7 +571,6 @@ async function checkModelAvailability() {
 		console.error("Error checking model availability:", error);
 		// Fallback to default models if import fails
 		modelAvailability = {
-			"gpt-4o-mini": true,
 			"gpt-4.1-nano": true,
 			"o4-mini-deep-research": true,
 		};
@@ -597,8 +596,8 @@ function updateModelSelector() {
 
 	// If current model is not available, switch to default
 	if (modelAvailability[modelSelector.value] === false) {
-		modelSelector.value = "gpt-4o-mini";
-		updateSettings({ defaultModel: "gpt-4o-mini" });
+		modelSelector.value = "gpt-4.1-nano";
+		updateSettings({ defaultModel: "gpt-4.1-nano" });
 	}
 }
 

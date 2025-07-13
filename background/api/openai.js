@@ -15,7 +15,7 @@ import { executeToolCall } from './tool-executor.js';
  * @param {Object} options - Request options
  * @param {string} options.apiKey - OpenAI API key
  * @param {Array} options.messages - Array of message objects
- * @param {string} options.model - Model name (default: gpt-4o-mini)
+ * @param {string} options.model - Model name (default: gpt-4.1-nano)
  * @param {number} options.temperature - Temperature (default: 0)
  * @param {boolean} options.useWebSearch - Whether to enable web search
  * @param {string} options.pageContent - Page content to be combined with user message
