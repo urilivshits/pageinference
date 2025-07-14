@@ -22,11 +22,11 @@
   --text-tertiary: #70757a;
   
   /* Flower animation colors - light theme */
-  --flower-petal-color: #b94fc6;
-  --flower-petal-stroke: #7a2e8a;
-  --flower-center-color: #f7b731;
-  --flower-center-stroke: #f39c12;
-  --flower-stem-color: #3a7d3b;
+  --flower-petal-color: #e879f9;
+  --flower-petal-stroke: #c084fc;
+  --flower-center-color: #fbbf24;
+  --flower-center-stroke: #f59e0b;
+  --flower-stem-color: #22c55e;
 }
 
 /* Dark theme */
@@ -48,11 +48,11 @@ html[data-theme="dark"] {
   --text-tertiary: #9aa0a6;
   
   /* Flower animation colors - dark theme */
-  --flower-petal-color: #f7b7e0;
-  --flower-petal-stroke: #fff;
-  --flower-center-color: #ffe066;
-  --flower-center-stroke: #ffd700;
-  --flower-stem-color: #7be495;
+  --flower-petal-color: #f0abfc;
+  --flower-petal-stroke: #e879f9;
+  --flower-center-color: #fde047;
+  --flower-center-stroke: #facc15;
+  --flower-stem-color: #4ade80;
 }
 
 /* Base Styles */
@@ -1517,39 +1517,47 @@ sup {
 /* Hide old tab navigation and history tab */
 .tab-navigation, #history-container, #new-chat-button, #history-tab { display: none !important; }
 
-/* Flower Animation */
+/* Enhanced Flower Animation */
 #popup-flower-animation {
   position: fixed;
-  left: 420px; /* Center of main content area (sidebar 260px + (540px main area / 2)) */
-  top: 320px; /* Center of chat area vertically (header ~40px + (520px chat area / 2)) */
+  left: 50%; /* Center horizontally */
+  top: 50%; /* Center vertically */
   transform: translate(-50%, -50%);
   z-index: 1000;
   pointer-events: none;
-  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.10));
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.08));
   animation: flowerGrowAndFade 5s ease-out forwards;
   will-change: transform, opacity;
 }
 
 html[data-theme="dark"] #popup-flower-animation {
-  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.25));
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.15));
 }
 
 @keyframes flowerGrowAndFade {
   0% {
-    transform: translate(-50%, -50%) scale(0.3);
+    transform: translate(-50%, -50%) scale(0.2);
     opacity: 0;
   }
-  15% {
+  10% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.3;
+  }
+  20% {
     transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0.8;
+    opacity: 0.5;
   }
   30% {
     transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
+    opacity: 0.6;
   }
-  70% {
+  65% {
     transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
+    opacity: 0.6;
+  }
+  85% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.3;
   }
   100% {
     transform: translate(-50%, -50%) scale(1);
