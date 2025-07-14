@@ -27,6 +27,10 @@ let ctrlKeyPressed = false;
 // Expose ctrlKeyPressed to window so other components can access it
 window.ctrlKeyPressed = false;
 
+// *** CRITICAL FIX: Capture ctrl state immediately on popup open ***
+// This will be used consistently throughout the entire execution chain
+let initialCtrlState = false;
+
 // Function to monitor Ctrl key state changes
 const monitorCtrlKeyState = (newState) => {
   if (newState !== ctrlKeyPressed) {
@@ -34,8 +38,58 @@ const monitorCtrlKeyState = (newState) => {
     ctrlKeyPressed = newState;
     // Update window variable for other components
     window.ctrlKeyPressed = newState;
+    
+    // Capture the initial state on first detection
+    if (newState && !initialCtrlState) {
+      initialCtrlState = true;
+      window.initialCtrlState = true;
+      logger.ctrl('Initial ctrl state captured and frozen for execution');
+    }
   }
 };
+
+// Immediately capture ctrl state on popup open
+(function captureInitialCtrlState() {
+  // Store the initial state globally for consistent use
+  window.initialCtrlState = false;
+  
+  // Check multiple ways to detect ctrl key immediately
+  const checkImmediateCtrlState = () => {
+    let detected = false;
+    
+    // Method 1: Check current event state
+    if (window.event?.ctrlKey || window.event?.metaKey) {
+      detected = true;
+      logger.ctrl('Immediate ctrl detection via window.event');
+    }
+    
+    // Method 2: Check keyboard API if available
+    if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
+      navigator.keyboard.getLayoutMap().then(keyMap => {
+        const hasCtrl = keyMap.has('ControlLeft') || keyMap.has('ControlRight') || 
+                       keyMap.has('MetaLeft') || keyMap.has('MetaRight');
+        if (hasCtrl) {
+          detected = true;
+          logger.ctrl('Immediate ctrl detection via Keyboard API');
+          monitorCtrlKeyState(true);
+        }
+      }).catch(() => {});
+    }
+    
+    if (detected) {
+      initialCtrlState = true;
+      window.initialCtrlState = true;
+      monitorCtrlKeyState(true);
+      logger.ctrl('Initial ctrl state captured immediately');
+    }
+  };
+  
+  // Run immediate check
+  checkImmediateCtrlState();
+  
+  // Also check on next tick
+  setTimeout(checkImmediateCtrlState, 0);
+})();
 
 // Check if Ctrl key is pressed at startup - most reliable way to catch it
 // Different browsers handle key events differently, so we check both ways
@@ -567,8 +621,8 @@ async function initializePopup() {
         }
       };
       
-      // Small delay to ensure everything is ready and give time to detect key state
-      setTimeout(checkCtrlKeyBeforeExecution, 100);
+      // Small delay to ensure everything is ready - using cached ctrl state
+      setTimeout(checkCtrlKeyBeforeExecution, 50);
     }
   } catch (error) {
     logger.error('Error in popup initialization:', error);

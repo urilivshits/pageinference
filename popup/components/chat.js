@@ -147,7 +147,7 @@ export function initializeChatComponent() {
       checkForCommandToExecute().catch(error => {
         console.error('Error checking for command to execute:', error);
       });
-    }, 300); // Short delay to ensure UI is fully loaded
+    }, 100); // Reduced delay since we use cached ctrl state
     
     console.log('Chat component initialization complete');
   } catch (error) {
@@ -1126,40 +1126,19 @@ async function checkForCommandToExecute() {
     const currentUserPrefs = await getUserPreferences();
     const repeatMessageTrigger = currentUserPrefs.repeatMessageTrigger || 'manual';
     
-    // Use the working popup-level ctrl detection instead of broken background script approach
+    // *** CRITICAL FIX: Use initial ctrl state captured at popup open ***
+    // This eliminates the need to hold ctrl through multiple timing delays
     let isCtrlPressed = false;
     let wasCtrlClickPending = false;
     
-    // Use the same comprehensive detection methods as the working popup.js system
-    let ctrlKeyDetected = false;
-    
-    // Method 1: Check the window.ctrlKeyPressed global variable set by popup.js detection
-    if (window.ctrlKeyPressed === true) {
-      ctrlKeyDetected = true;
-      console.log('Ctrl key detected via window.ctrlKeyPressed (working popup detection)');
+    // Use the initial ctrl state captured immediately on popup open
+    if (window.initialCtrlState === true) {
+      isCtrlPressed = true;
+      wasCtrlClickPending = true;
+      console.log('Using initial ctrl state captured at popup open - no need to hold ctrl');
+    } else {
+      console.log('No initial ctrl state detected - popup opened normally');
     }
-    
-    // Method 2: Check if Ctrl key is currently pressed using browser APIs
-    try {
-      if (navigator.userAgent.indexOf('Mac') !== -1) {
-        // Check Command key on Mac
-        if (window.event?.metaKey) {
-          ctrlKeyDetected = true;
-          console.log('Command key detected via window.event.metaKey on Mac');
-        }
-      } else {
-        // Check Ctrl key on other platforms
-        if (window.event?.ctrlKey) {
-          ctrlKeyDetected = true;
-          console.log('Ctrl key detected via window.event.ctrlKey');
-        }
-      }
-    } catch (error) {
-      console.warn('Error checking browser event state:', error);
-    }
-    
-    isCtrlPressed = ctrlKeyDetected;
-    wasCtrlClickPending = ctrlKeyDetected;
     
     console.log('Ctrl key state from popup-level detection:', { 
       ctrlKeyPressed: isCtrlPressed, 
@@ -1216,7 +1195,8 @@ async function checkForCommandToExecute() {
       // This allows retry if execution gets interrupted
       
       // Check if behavior should allow auto-execution
-      const finalIsCtrlPressed = window.ctrlKeyPressed === true;
+      // IMPORTANT: Use cached ctrl state instead of live state to prevent timing issues
+      const finalIsCtrlPressed = isCtrlPressed; // Use cached value, not live window.ctrlKeyPressed
       let finalShouldExecute = false;
       switch (repeatMessageTrigger) {
         case 'auto':
@@ -1417,7 +1397,7 @@ async function checkForCommandToExecute() {
         
         // Mark that this is an auto-execution to handle storage clearing
         handleSendMessage({ isAutoExecution: true });
-      }, 800); // Increased delay for more reliable execution
+      }, 200); // Reduced delay since we use cached ctrl state
       
       return; // Exit early since we're executing the command
     }
@@ -1426,7 +1406,8 @@ async function checkForCommandToExecute() {
     const { commandToExecute } = await chrome.storage.local.get('commandToExecute');
     if (commandToExecute) {
       // Check if behavior should allow auto-execution for legacy command
-      const legacyCtrlPressed = window.ctrlKeyPressed === true;
+      // IMPORTANT: Use cached ctrl state instead of live state to prevent timing issues
+      const legacyCtrlPressed = isCtrlPressed; // Use cached value, not live window.ctrlKeyPressed
       let legacyShouldExecute = false;
       switch (repeatMessageTrigger) {
         case 'auto':
