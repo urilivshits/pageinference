@@ -8,17 +8,10 @@ Iuliia's Lil Helper is a Chrome extension I built for my amazing wife Iuliia, br
 
 ## ✨ Features That Actually Work
 
-### 🧠 AI-Powered Chat
-- **Smart Context Awareness**: The AI always reads the page content automatically – no fiddling with settings required
-- **Multiple AI Models**: Choose from GPT-4.1 nano (default) or GPT-4.1 with web search
-- **Real-Time Web Search**: Get current information when using GPT-4.1 model (disabled on nano for speed)
-- **Temperature Control**: Dial up the creativity or keep it professional
-- **Page-Focused Intelligence**: Designed to understand and work with the content you're actually looking at
-
-### 🤖 AI Model Selection
-Choose the right AI model for your needs:
-- **GPT-4.1 nano** (Default): The newest, fastest, and most cost-effective model - perfect for most daily browsing tasks with automatic page content analysis
-- **GPT-4.1**: The powerhouse reasoning model for complex analysis, detailed research, and when you need the AI to really think deeply about content. **Includes web search capabilities** for real-time information.
+### 🤖 AI Models & Intelligence
+Choose between two powerful AI models, each with automatic page content analysis:
+- **GPT-4.1 nano** (Default): The newest, fastest, and most cost-effective model - perfect for daily browsing tasks
+- **GPT-4.1**: The powerhouse reasoning model with **real-time web search** for complex research and current information
 
 #### Model Specifications
 | Model | Context Window | Cost (Input/Output) | Page Content Scraping | Web Search | Best For | Key Benchmarks |
@@ -37,28 +30,23 @@ The extension remembers your last question and can repeat it automatically on di
   - Ctrl+click on Chrome extension icon: Just opens the extension normally
 - **Disabled Mode**: Always just opens the extension (no automatic question repeating)
 
-**Example use case**: Ask "What are this person's key skills and experience?" on one LinkedIn profile, then Ctrl+click the Chrome extension icon (or normal click in Auto mode) when viewing other LinkedIn profiles to get the same analysis instantly.
+**Example**: Ask "What are this person's key skills?" on one LinkedIn profile, then Ctrl+click the extension icon on other profiles for instant analysis.
 
-### 📱 Interface Niceties
-- **Chat History**: Organized by website domain because we're not animals
-- **Search Your Chats**: Find that one conversation from three weeks ago
+### 📱 Interface & Experience
+- **Chat History**: Organized by website domain with search and filtering because we're not animals
 - **Dark/Light Themes**: Because your retinas matter
 - **Flower Animation**: A delightful SVG flower blooms every time you open the extension (it's the little things)
 - **Message Timestamps**: See exactly when you asked that embarrassing question
 - **Copy Messages**: Share the AI's wisdom with the world
-
-### 🔧 Power User Features
-- **Domain Filtering**: Show only chats from the current website
-- **Auto-Execution**: Smart logic for when to run commands vs. just opening
-- **Session Management**: Multiple chat sessions, because context switching is real
-- **Local Storage**: Your API key never leaves your browser
+- **Temperature Control**: Adjust response creativity (0.0 = robotic, 1.0 = artistic)
+- **Multiple Sessions**: Context switching without losing your conversation threads
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 - A Chrome browser (or Chromium-based browser with extension support)
 - An OpenAI API key ([get one here](https://platform.openai.com/api-keys))
-- The patience to read this README (optional but appreciated)
+- A sense of humor about delightful flower animations
 
 ### Installation
 1. **Load the Extension**: 
@@ -66,7 +54,7 @@ The extension remembers your last question and can repeat it automatically on di
    - Enable "Developer mode" (toggle in top right)
    - Click "Load unpacked" and select the extension folder
    
-2. **Configure Your API Key**:
+2. **Add Your API Key**:
    - Click the extension icon in your toolbar
    - Click on Iuliia's profile icon in the top right
    - Paste your OpenAI API key and hit Save
@@ -80,57 +68,34 @@ The extension remembers your last question and can repeat it automatically on di
 
 ## 🎮 How to Use
 
-### Basic Chat
-1. Click the extension icon to open the popup
-2. Type your question in the chat box
-3. Hit Enter or click the send button
-4. Enjoy intelligent responses with page context
+### Basic Usage
+1. Click the extension icon
+2. Type your question
+3. Hit Enter and enjoy intelligent responses with page context
 
-### Power User Moves
-- **Quick Re-run**: Press `Ctrl+Shift+Y` to instantly re-execute your last query on any page
-- **Ctrl+Click Magic**: Hold Ctrl while clicking the extension icon for different behavior (configurable via the profile icon)
-- **Domain Focus**: Use the sidebar search and domain filter to find relevant conversations
-- **Theme Switching**: Dark mode available via the profile icon settings because your eyes deserve better
-
-### Choosing the Right Model
-Switch between AI models based on what you're trying to accomplish:
-- **Most daily tasks**: Stick with GPT-4.1 nano (the default) - it's the newest, fastest, and most cost-effective model with a massive 1M token context window, perfect for analyzing page content
-- **Research requiring current information**: Switch to GPT-4.1 when you need real-time web search capabilities alongside advanced reasoning for complex problems
-- **Model switching**: Change models anytime via Iuliia's profile icon in the top right
-
-## ⚙️ Settings & Configuration
-
-### Behavior Settings
-- **Repeat Message Trigger**: Configure how the extension responds to clicks
-- **Model Selection**: Choose your preferred AI model
-- **Temperature Control**: Adjust response creativity (0.0 = robotic, 1.0 = artistic)
-
-### Appearance
-- **Theme Selection**: Light, Dark, or System preference
-- **Always Delightful**: The flower animation is non-negotiable (it brings joy)
-
-### Content & Privacy
-- **Page Content Analysis**: Always enabled – the AI automatically reads your current page for better context
-- **Web Search**: Available with GPT-4.1 model for real-time information; disabled on GPT-4.1 nano to keep it fast and focused on page content
-- **Local Storage Only**: Your data stays on your machine
+### Power Moves
+- **Model Switching**: Change between nano/full GPT-4.1 via the profile icon
+- **Repeat Questions**: Use Ctrl+click behavior (configurable in settings)
+- **Domain Focus**: Filter chats to show only current website conversations
+- **Theme Toggle**: Switch between light/dark modes
 
 ## 🛡️ Privacy & Security
 
-- **Local API Key Storage**: Your OpenAI API key is stored in your browser's local storage
-- **No Data Collection**: We don't collect, store, or transmit your conversations - everything stays local except OpenAI API calls
-- **Automatic Page Reading**: The AI reads your current page content to provide better assistance
-- **Open Source**: All code is visible and auditable (because transparency matters)
+- **Local Storage Only**: Your API key and conversations stay in your browser
+- **No Data Collection**: Everything stays local except direct OpenAI API calls
+- **Open Source**: All code is visible and auditable
+- **Page Reading**: AI automatically reads current page content for better assistance
 
 ## 🐛 Known Quirks
 
-- The flower animation is non-negotiable (feature, not bug)
+- The flower animation is non-negotiable (feature, not bug); it brings joy
 - Sometimes the AI gets a little too excited about page content
 - Ctrl+click behavior requires JavaScript to be enabled (shocking, we know)
 - The extension popup has a fixed size because responsive design is for websites
 
 ## 🤝 Contributing
 
-Found a bug? Want to add a feature? Have strong opinions about the flower animation? We're all ears:
+Found a bug? Want to add a feature? Have strong opinions about flowers? I'm all ears:
 
 1. Fork the repository
 2. Create a feature branch
@@ -140,7 +105,7 @@ Found a bug? Want to add a feature? Have strong opinions about the flower animat
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details (or just assume it's the usual "do whatever you want but don't blame us" license).
+This project is licensed under the MIT License - see the LICENSE file for details (or just assume it's the usual "do whatever you want but don't blame me" license).
 
 ## 🙏 Acknowledgments
 
@@ -152,6 +117,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-*Built with ❤️ for the most wonderful woman in the world*
-
-**Note**: This extension requires an active internet connection and a valid OpenAI API key. It also requires you to have a sense of humor about delightful flower animations. 
+*Built with ❤️ for the most wonderful woman in the world* 
