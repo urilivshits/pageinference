@@ -1805,6 +1805,9 @@ function renderChatHistory(messages) {
   }
 }
 
+// Store original send button content
+let originalSendButtonContent = null;
+
 /**
  * Show loading state in the UI
  */
@@ -1816,6 +1819,18 @@ function showLoadingState() {
   if (sendButton) {
     sendButton.disabled = true;
     sendButton.classList.add('loading');
+    
+    // Store original content if not already stored
+    if (!originalSendButtonContent) {
+      originalSendButtonContent = sendButton.innerHTML;
+    }
+    
+    // Replace with spinner
+    sendButton.innerHTML = `
+      <svg class="spinner-icon" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8"></circle>
+      </svg>
+    `;
   }
 }
 
@@ -1830,6 +1845,11 @@ function hideLoadingState() {
   if (sendButton) {
     sendButton.disabled = false;
     sendButton.classList.remove('loading');
+    
+    // Restore original content
+    if (originalSendButtonContent) {
+      sendButton.innerHTML = originalSendButtonContent;
+    }
   }
 }
 

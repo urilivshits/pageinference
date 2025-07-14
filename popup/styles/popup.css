@@ -541,6 +541,44 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   cursor: not-allowed;
 }
 
+/* Send button loading state */
+.send-button.loading {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.send-button.loading .spinner-icon {
+  animation: spin 1s linear infinite;
+}
+
+.send-button .spinner-icon {
+  width: 20px;
+  height: 20px;
+  stroke: #fff;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.send-button .spinner-icon circle {
+  stroke-dasharray: 50.27;
+  stroke-dashoffset: 50.27;
+  animation: spinner-dash 1.5s ease-in-out infinite;
+}
+
+@keyframes spinner-dash {
+  0% {
+    stroke-dashoffset: 50.27;
+  }
+  50% {
+    stroke-dashoffset: 12.57;
+  }
+  100% {
+    stroke-dashoffset: 50.27;
+  }
+}
+
 /* Error message */
 #error-message {
   background-color: var(--system-message-bg, #fee2e2);
