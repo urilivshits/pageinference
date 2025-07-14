@@ -1092,10 +1092,10 @@ chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-  const profileBtn = document.getElementById('profile-settings-button');
+  const settingsBtn = document.getElementById('settings-gear-button');
   const settingsPanel = document.getElementById('settings-panel');
-  if (profileBtn && settingsPanel) {
-    profileBtn.addEventListener('click', (event) => {
+  if (settingsBtn && settingsPanel) {
+    settingsBtn.addEventListener('click', (event) => {
       event.stopPropagation(); // Prevent event from bubbling to document
       const wasHidden = settingsPanel.classList.contains('hidden');
       settingsPanel.classList.toggle('hidden');

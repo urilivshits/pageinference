@@ -109,21 +109,21 @@ body {
   border-bottom: 1px solid var(--border-color);
 }
 
-/* Header profile (avatar + nickname) in top right */
-.header-profile {
+/* Header left side (avatar + title) */
+.header-left {
   display: flex;
-  flex-direction: row;
   align-items: center;
   gap: 12px;
-  margin-left: auto;
-  margin-right: 16px;
 }
 
-.profile-nickname {
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--text-color);
-  user-select: none;
+.profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: block;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .header-title {
@@ -134,34 +134,59 @@ body {
   display: flex;
   align-items: center;
   letter-spacing: 0.01em;
-  margin-right: 8px;
 }
 
-.profile-settings-button {
-  background: none;
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
+/* Header right side (settings gear) */
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.settings-gear-button {
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s;
-  box-shadow: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   padding: 0;
+  color: var(--accent-color);
 }
-.profile-settings-button img {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: block;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+
+.settings-gear-button:hover {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.25);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
-.profile-settings-button:hover {
-  background: var(--hover-color);
+
+.settings-gear-button svg {
+  opacity: 0.85;
+  transition: all 0.2s ease;
+  transform: rotate(0deg);
+}
+
+.settings-gear-button:hover svg {
+  opacity: 1;
+  transform: rotate(15deg);
+}
+
+/* Dark mode adjustments for gear button */
+html[data-theme="dark"] .settings-gear-button {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+html[data-theme="dark"] .settings-gear-button:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* Settings panel full width */
