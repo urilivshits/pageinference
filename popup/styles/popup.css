@@ -445,7 +445,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   padding-bottom: 85px; /* Space for fixed input container (70px + 15px spacing) */
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px; /* Reduced from 16px */
 }
 
 .message {
@@ -462,7 +462,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   color: var(--text-color);
   border-radius: 12px 12px 4px 12px;
   margin-left: 2rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0; /* Reduced from 0.5rem */
   box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0,0,0,0.05));
 }
 
@@ -472,24 +472,21 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   color: var(--text-color);
   border-radius: 12px 12px 12px 4px;
   margin-right: 2rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0; /* Reduced from 0.5rem */
   box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0,0,0,0.05));
 }
 
 .message.system {
   background-color: var(--system-message-bg, #fee2e2);
+  color: var(--text-color);
+  border-radius: 8px;
   border: 1px solid var(--error-color, #dc2626);
-  color: var(--error-color, #dc2626);
-  border-radius: 12px;
   margin: 0.75rem 0;
-  font-size: 0.875rem;
-  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0,0,0,0.05));
-  max-height: none;
-  overflow-y: auto;
+  max-width: 100%;
+  overflow-y: none;
+  max-height: none; /* Changed from 200px */
   padding: 0.75rem 1rem;
-  /* Hide scrollbar for all browsers */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  overflow-wrap: break-word;
 }
 
 .message.system::-webkit-scrollbar {
@@ -1077,7 +1074,17 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
   line-height: 1.6;
   overflow-wrap: break-word;
   white-space: pre-line;
-  padding-bottom: 8px; /* Minimal padding for timestamp */
+  padding-bottom: 4px; /* Reduced from 8px */
+}
+
+/* Remove default paragraph margins within messages */
+.message-content p {
+  margin: 0;
+  margin-bottom: 0.5em;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
 }
 
 /* Copy button for messages */
