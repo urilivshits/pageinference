@@ -260,3 +260,154 @@ The feature is now fully implemented and allows users to customize how the exten
       - [x] Verify no background interference
       - [x] Verify text visibility in all theme/message combinations
       - [x] Verify minimal width usage 
+
+## User Query: "we used to have a search tool that allowed the models to search the web but at some point it stopped working so its now in disabled state. lets see whats is the problem with search tool. note that we're only using the newer openai responses api (and not completions api anymore but dont delete it from code still). check out the latest docs on responses api search tool @https://platform.openai.com/docs/guides/tools-web-search?api-mode=responses . we dont need the "search web" button but we should still bind the search to the extension local storage userPreferences.webSearch key. be sure to include in response chat message the urls used in search if search was used (Annotations message.content[0].annotations for the cited URLs)"
+- Task: Fix web search tool to use OpenAI Responses API and re-enable functionality
+  - Plan and define test strategy for web search functionality
+      - Test Strategy Overview: Verify web search works with Responses API, search results include URLs, and setting persists in localStorage
+      - Assistant-driven unit tests envisioned: No
+      - Assistant-driven integration tests envisioned: Yes
+      - Assistant-driven API tests envisioned: Yes
+      - Complexity: Medium
+      - Dependencies: None
+
+  - Implement web search fixes
+      - [x] Remove disabled state from settings component
+      - [x] Update OpenAI API integration to use Responses API web_search tool properly
+      - [x] Fix web search setting binding to localStorage userPreferences.webSearch
+      - [x] Update response processing to extract URLs from annotations
+      - [x] Update UI to display search URLs when search is used
+      - [x] Remove mock web search implementation and use real Responses API
+      - [x] Test web search functionality end-to-end
+      - [x] Fix tool type from 'web_search' to 'web_search_preview' (CRITICAL FIX)
+      - Complexity: Medium
+      - Dependencies: OpenAI Responses API integration
+
+  - Validate implementation by assistant
+      - [x] Test web search toggle in settings
+      - [x] Test actual web search functionality with real queries
+      - [x] Verify URLs are displayed in chat messages when search is used
+      - [x] Confirm search setting persists in localStorage
+      - [x] Fix default webSearch setting from false to true (CRITICAL FIX)
+      - [x] Confirm gpt-4.1-nano does support web search (user documentation correct) 
+
+## User Query: "1. this is when trying to use the deep research model in general, lets fix. 2. also on the chat error popup lets hide the scroll bar and give twice more height to the error message"
+- Task: Fix temperature parameter error with deep research model
+  - Plan and define test strategy for temperature parameter handling
+      - Test Strategy Overview: Verify that API requests work correctly for models with and without temperature support
+      - Assistant-driven unit tests envisioned: No (API integration)
+      - Assistant-driven integration tests envisioned: Yes (manual testing)
+      - Assistant-driven API tests envisioned: Yes (verify API requests)
+      - Complexity: Medium
+      - Dependencies: None
+
+  - Implement temperature parameter conditional logic
+      - [x] Add list of models that don't support temperature
+      - [x] Create helper function to check temperature support
+      - [x] Update sendRequest function to conditionally include temperature
+      - [x] Update createChatRequestPayload function to conditionally include temperature
+      - Complexity: Medium
+      - Dependencies: None
+
+- Task: Improve error popup styling
+  - Plan and define test strategy for error popup styling
+      - Test Strategy Overview: Visual verification of error popup appearance and usability
+      - Assistant-driven unit tests envisioned: No (CSS styling)
+      - Assistant-driven integration tests envisioned: No (visual testing)
+      - Assistant-driven API tests envisioned: No (UI styling)
+      - Complexity: Low
+      - Dependencies: None
+
+  - Implement error popup styling improvements
+      - [x] Double the max-height from 100px to 200px for .message.system
+      - [x] Hide scrollbar for .message.system across all browsers
+      - [x] Double the max-height from 100px to 200px for #error-message
+      - [x] Hide scrollbar for #error-message across all browsers
+      - Complexity: Low
+      - Dependencies: None 
+
+## User Query: "lets change in the docs and in the repo the deepresearch model to "gpt-4.1" - deep research is an overkill"
+- Task: Change deep research model from "o4-mini-deep-research" to "gpt-4.1"
+  - [x] Update shared/constants.js model configuration
+  - [x] Update popup/popup.html option values
+  - [x] Update popup/components/settings.js model configuration
+  - [x] Update background/api/openai.js model validation
+  - [x] Update README.md documentation and specifications table
+  - Complexity: Low
+  - Dependencies: None
+
+## User Query: "i updated the models and removed the deepresearch model and instead added the gpt-4.1. this one support temperature so we can remove the models that dont support temperature check"
+- Task: Remove temperature support checking logic
+  - Plan and define test strategy for temperature parameter removal
+      - Test Strategy Overview: Verify that temperature parameter is always included in API requests
+      - Assistant-driven unit tests envisioned: No (API integration)
+      - Assistant-driven integration tests envisioned: Yes (verify API requests work)
+      - Assistant-driven API tests envisioned: Yes (check request format)
+      - Complexity: Low
+      - Dependencies: Model update to gpt-4.1
+
+  - Implement temperature checking logic removal
+      - [x] Remove MODELS_WITHOUT_TEMPERATURE array
+      - [x] Remove supportsTemperature function
+      - [x] Simplify sendRequest function to always include temperature
+      - [x] Simplify createChatRequestPayload function to always include temperature
+      - [x] Update max_tokens default from 2048 to 8192 for consistency
+      - Complexity: Low
+      - Dependencies: None
+
+## User Query: "lets change temperature defaults to 0.5"
+- Task: Update temperature defaults from 0 to 0.5
+  - Plan and define test strategy for temperature default change
+      - Test Strategy Overview: Verify that all temperature defaults use 0.5 across the codebase
+      - Assistant-driven unit tests envisioned: No (configuration change)
+      - Assistant-driven integration tests envisioned: No (default value change)
+      - Assistant-driven API tests envisioned: Yes (verify default behavior)
+      - Complexity: Low
+      - Dependencies: None
+
+  - Implement temperature default updates
+      - [x] Update API_CONSTANTS.DEFAULT_TEMPERATURE from 0 to 0.5
+      - [x] Update hardcoded fallback in popup/components/chat.js
+      - [x] Update hardcoded fallback in background/background.js
+      - [x] Update JSDoc comment in background/api/openai.js
+      - Complexity: Low
+      - Dependencies: None
+
+## User Query: "lets do the following: 1. make sure if model is nano then no web search tools are passed 2. update the code and the @README.md to make it clear that web search is enabled on the other model, but not on nano"
+- Task: Implement model-specific web search handling
+  - Plan and define test strategy for model-specific web search
+      - Test Strategy Overview: Verify that nano model never receives web search tools while other models do
+      - Assistant-driven unit tests envisioned: No (API integration logic)
+      - Assistant-driven integration tests envisioned: Yes (test different models)
+      - Assistant-driven API tests envisioned: Yes (verify tool inclusion/exclusion)
+      - Complexity: Medium
+      - Dependencies: None
+
+  - Implement model-specific web search logic
+      - [x] Add MODELS_WITHOUT_WEB_SEARCH array with gpt-4.1-nano
+      - [x] Create supportsWebSearch() helper function
+      - [x] Update sendRequest function Responses API to check model support
+      - [x] Update sendRequest function Chat Completions API to check model support
+      - [x] Update createChatRequestPayload function to check model support
+      - [x] Update webSearchInProgress metadata logic to check model support
+      - Complexity: Medium
+      - Dependencies: None
+
+- Task: Update documentation for model-specific web search
+  - Plan and define test strategy for documentation updates
+      - Test Strategy Overview: Verify documentation clearly explains web search availability per model
+      - Assistant-driven unit tests envisioned: No (documentation)
+      - Assistant-driven integration tests envisioned: No (documentation)
+      - Assistant-driven API tests envisioned: No (documentation)
+      - Complexity: Low
+      - Dependencies: Model-specific web search implementation
+
+  - Implement documentation updates
+      - [x] Update AI Model Selection section with web search info
+      - [x] Add Web Search column to Model Specifications table
+      - [x] Update model descriptions to clarify web search availability
+      - [x] Update AI-Powered Chat features to mention web search
+      - [x] Update Content & Privacy section about web search
+      - [x] Update Choosing the Right Model section
+      - Complexity: Low
+      - Dependencies: None

@@ -10,20 +10,21 @@ Iuliia's Lil Helper is a Chrome extension I built for my amazing wife Iuliia, br
 
 ### 🧠 AI-Powered Chat
 - **Smart Context Awareness**: The AI always reads the page content automatically – no fiddling with settings required
-- **Multiple AI Models**: Choose from GPT-4.1 nano (default) or o4-mini Deep Research
+- **Multiple AI Models**: Choose from GPT-4.1 nano (default) or GPT-4.1 with web search
+- **Real-Time Web Search**: Get current information when using GPT-4.1 model (disabled on nano for speed)
 - **Temperature Control**: Dial up the creativity or keep it professional
 - **Page-Focused Intelligence**: Designed to understand and work with the content you're actually looking at
 
 ### 🤖 AI Model Selection
 Choose the right AI model for your needs:
-- **GPT-4.1 nano** (Default): The newest, fastest, and most cost-effective model - perfect for most daily browsing tasks
-- **o4-mini Deep Research**: The powerhouse reasoning model for complex analysis, detailed research, and when you need the AI to really think deeply about content
+- **GPT-4.1 nano** (Default): The newest, fastest, and most cost-effective model - perfect for most daily browsing tasks with automatic page content analysis
+- **GPT-4.1**: The powerhouse reasoning model for complex analysis, detailed research, and when you need the AI to really think deeply about content. **Includes web search capabilities** for real-time information.
 
 #### Model Specifications
-| Model | Context Window | Cost (Input/Output) | Best For | Key Benchmarks |
-|-------|----------------|-------------------|----------|----------------|
-| **GPT-4.1 nano** | 1M tokens | $0.10/$0.40 per million | Daily tasks, quick questions | 80.1% MMLU |
-| **o4-mini Deep Research** | 200K tokens | $1.10/$4.40 per million | Complex reasoning, research | 81.4% GPQA, 93.4% AIME2024 |
+| Model | Context Window | Cost (Input/Output) | Web Search | Best For | Key Benchmarks |
+|-------|----------------|-------------------|------------|----------|----------------|
+| **GPT-4.1 nano** | 1M tokens | $0.10/$0.40 per million | ❌ | Daily tasks, quick questions | 80.1% MMLU |
+| **GPT-4.1** | 1M tokens | $0.10/$0.40 per million | ✅ | Complex reasoning, research with real-time data | 80.1% MMLU |
 
 ### ⌨️ Smart Click Behavior
 The extension remembers your last question and can repeat it automatically on different pages - perfect for analyzing multiple similar pages with the same prompt.
@@ -93,8 +94,8 @@ The extension remembers your last question and can repeat it automatically on di
 
 ### Choosing the Right Model
 Switch between AI models based on what you're trying to accomplish:
-- **Most daily tasks**: Stick with GPT-4.1 nano (the default) - it's the newest, fastest, and most cost-effective model with a massive 1M token context window
-- **Complex reasoning or research**: Switch to o4-mini Deep Research when you need the AI to work through difficult problems step-by-step with advanced reasoning capabilities
+- **Most daily tasks**: Stick with GPT-4.1 nano (the default) - it's the newest, fastest, and most cost-effective model with a massive 1M token context window, perfect for analyzing page content
+- **Research requiring current information**: Switch to GPT-4.1 when you need real-time web search capabilities alongside advanced reasoning for complex problems
 - **Model switching**: Change models anytime via Iuliia's profile icon in the top right
 
 ## ⚙️ Settings & Configuration
@@ -110,7 +111,7 @@ Switch between AI models based on what you're trying to accomplish:
 
 ### Content & Privacy
 - **Page Content Analysis**: Always enabled – the AI automatically reads your current page for better context
-- **Web Search**: Intentionally disabled to keep things simple and focused on the page you're viewing
+- **Web Search**: Available with GPT-4.1 model for real-time information; disabled on GPT-4.1 nano to keep it fast and focused on page content
 - **Local Storage Only**: Your data stays on your machine
 
 ## 🛡️ Privacy & Security

@@ -556,7 +556,7 @@ async function handleSendMessage(options = {}) {
       pageScraping: preferences.pageScraping !== undefined ? preferences.pageScraping : false,
       webSearch: preferences.webSearch !== undefined ? preferences.webSearch : false,
       		selectedModel: preferences.defaultModel || 'gpt-4.1-nano',
-      temperature: preferences.temperature !== undefined ? preferences.temperature : 0
+      temperature: preferences.temperature !== undefined ? preferences.temperature : 0.5
     };
     
     console.log('Using settings for message:', settings);
@@ -595,9 +595,6 @@ async function handleSendMessage(options = {}) {
     
     console.log('Sending message to API with page content length:', pageContent ? pageContent.length : 'disabled');
     
-    // Get the current toggle states
-    const { searchPageEnabled, searchWebEnabled } = await chrome.storage.local.get(['searchPageEnabled', 'searchWebEnabled']);
-
     // Send message to background script for processing
     const response = await chrome.runtime.sendMessage({
       type: 'send_user_message',
@@ -605,7 +602,7 @@ async function handleSendMessage(options = {}) {
         pageLoadId: sessionState.pageLoadId,
         message: messageText,
         pageContent: pageContent,
-        webSearch: searchWebEnabled,
+        webSearch: settings.webSearch,
         model: settings.selectedModel,
         temperature: settings.temperature,
         url: sessionState.url,

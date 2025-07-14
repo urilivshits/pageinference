@@ -24,12 +24,18 @@ export async function executeToolCall(toolCall) {
     // The Responses API's web_search is now handled directly by the API
     // This executor should only be called for legacy Chat Completions API tools
     
-    // For the Chat Completions API format
+    // For the Chat Completions API format (legacy support only)
     if (toolCall.function && toolCall.function.name) {
+      console.log('Executing legacy Chat Completions API tool call');
       return await executeChatCompletionsToolCall(toolCall);
     }
     
-    throw new Error(`Unsupported tool call format: ${JSON.stringify(toolCall)}`);
+    // For Responses API, tools are handled natively by OpenAI
+    console.log('Responses API tool calls are handled natively by OpenAI');
+    return {
+      success: true,
+      message: 'Tool handled by Responses API'
+    };
   } catch (error) {
     console.error('Error executing tool call:', error);
     return {

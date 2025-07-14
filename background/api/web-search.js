@@ -12,9 +12,13 @@
  * @return {Promise<string>} The search results as formatted text
  */
 export async function performWebSearch(query) {
-  console.log('Performing web search for query:', query);
+  console.log('Web search is now handled directly by the OpenAI Responses API');
   
-  // For demonstration purposes, use mock results
+  // The Responses API handles web search natively, so this function is only used
+  // for legacy Chat Completions API calls. For new implementations, web search
+  // should be handled by the Responses API's built-in web_search tool.
+  
+  // For legacy support, use mock results
   const mockSearchResults = getMockSearchResults(query);
   
   const timestamp = new Date().toISOString();

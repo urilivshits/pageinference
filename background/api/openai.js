@@ -9,6 +9,20 @@ import { API_CONSTANTS } from '../../shared/constants.js';
 import { formatMessagesForApi } from '../../shared/models/chat-message.js';
 import { executeToolCall } from './tool-executor.js';
 
+// Models that don't support web search
+const MODELS_WITHOUT_WEB_SEARCH = [
+  'gpt-4.1-nano'
+];
+
+/**
+ * Check if a model supports web search
+ * @param {string} model - The model name
+ * @returns {boolean} - Whether the model supports web search
+ */
+function supportsWebSearch(model) {
+  return !MODELS_WITHOUT_WEB_SEARCH.includes(model);
+}
+
 /**
  * Send a request to the OpenAI API
  * 
@@ -16,7 +30,7 @@ import { executeToolCall } from './tool-executor.js';
  * @param {string} options.apiKey - OpenAI API key
  * @param {Array} options.messages - Array of message objects
  * @param {string} options.model - Model name (default: gpt-4.1-nano)
- * @param {number} options.temperature - Temperature (default: 0)
+ * @param {number} options.temperature - Temperature (default: 0.5)
  * @param {boolean} options.useWebSearch - Whether to enable web search
  * @param {string} options.pageContent - Page content to be combined with user message
  * @param {Object} options.extraParams - Additional parameters to pass to the API
@@ -84,7 +98,7 @@ export async function sendRequest(options) {
       model,
       input: responsesInput,
       temperature,
-      max_output_tokens: extraParams.max_tokens || 2048,
+      max_output_tokens: extraParams.max_tokens || 8192,
       text: {
         format: {
           type: 'text'
@@ -93,11 +107,11 @@ export async function sendRequest(options) {
       reasoning: {}
     };
     
-    // Add tools configuration for web search if enabled
-    if (useWebSearch) {
+    // Add tools configuration for web search if enabled and model supports it
+    if (useWebSearch && supportsWebSearch(model)) {
       payload.tools = [
         {
-          type: 'web_search'
+          type: 'web_search_preview'
         }
       ];
     }
@@ -121,11 +135,11 @@ export async function sendRequest(options) {
       model,
       messages: formattedMessages,
       temperature,
-      max_tokens: extraParams.max_tokens || 2048
+      max_tokens: extraParams.max_tokens || 8192
     };
     
-    // Add tools configuration for web search
-    if (useWebSearch) {
+    // Add tools configuration for web search if model supports it
+    if (useWebSearch && supportsWebSearch(model)) {
       payload.tools = [
         {
           type: 'function',
@@ -467,18 +481,19 @@ function processApiResponse(apiResponse) {
 function createChatRequestPayload(messages, userPreferences) {
   const isWebSearchEnabled = userPreferences.webSearch || false;
   const isResponsesApi = true; // Always use the Responses API
+  const currentModel = userPreferences.defaultModel || API_CONSTANTS.DEFAULT_MODEL;
   
   let tools = [];
   
-  if (isWebSearchEnabled) {
+  if (isWebSearchEnabled && supportsWebSearch(currentModel)) {
     // Add web search tool for the Responses API
     tools = [{
-      type: "web_search"
+      type: "web_search_preview"
     }];
   }
   
   // Add metadata to the first assistant message to indicate web search is in progress
-  if (isWebSearchEnabled) {
+  if (isWebSearchEnabled && supportsWebSearch(currentModel)) {
     // Find the first assistant message (if any) or create metadata for a new one
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === 'assistant') {
@@ -495,7 +510,7 @@ function createChatRequestPayload(messages, userPreferences) {
   if (isResponsesApi) {
     return {
       messages,
-      model: getCurrentModel(userPreferences),
+      model: currentModel,
       temperature: userPreferences.temperature !== undefined ? parseFloat(userPreferences.temperature) : API_CONSTANTS.DEFAULT_TEMPERATURE,
       tools: tools.length > 0 ? tools : undefined,
       response_format: { type: "text" }
@@ -505,7 +520,7 @@ function createChatRequestPayload(messages, userPreferences) {
   // Fallback to Chat Completions API (legacy)
   return {
     messages,
-    model: getCurrentModel(userPreferences),
+    model: currentModel,
     temperature: userPreferences.temperature !== undefined ? parseFloat(userPreferences.temperature) : API_CONSTANTS.DEFAULT_TEMPERATURE,
     tools: tools.length > 0 ? tools : undefined
   };

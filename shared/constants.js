@@ -57,7 +57,7 @@ export const API_CONSTANTS = {
   // Models
   AVAILABLE_MODELS: [
     { value: 'gpt-4.1-nano', label: 'GPT-4.1 nano (Default)' },
-    { value: 'o4-mini-deep-research', label: 'o4-mini Deep Research' }
+    { value: 'gpt-4.1', label: 'GPT-4.1 Deep Research' }
   ],
   DEFAULT_MODEL: 'gpt-4.1-nano',
   
@@ -66,7 +66,7 @@ export const API_CONSTANTS = {
   CHAT_COMPLETIONS_ENDPOINT: '/chat/completions',
   
   // Request constants
-  DEFAULT_TEMPERATURE: 0,
+  DEFAULT_TEMPERATURE: 0.5,
   MAX_TOKENS: 4096
 };
 

@@ -13,7 +13,7 @@ export const DEFAULT_SETTINGS = {
   theme: 'system',
   temperature: 0.5,
   pageScraping: true,
-  webSearch: false,
+  webSearch: true,  // ✅ Enable web search by default
   currentSiteFilter: false,
   defaultModel: 'gpt-4.1-nano',
   repeatMessageTrigger: 'manual',

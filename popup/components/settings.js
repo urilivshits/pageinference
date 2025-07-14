@@ -167,13 +167,6 @@ function setupEventListeners() {
 		webSearchToggle.addEventListener('change', () => {
 			const enabled = webSearchToggle.checked;
 			
-			// Web search is currently disabled in this version
-			if (enabled) {
-				alert('Web search is currently disabled to keep the extension focused on page content analysis');
-				webSearchToggle.checked = false;
-				return;
-			}
-			
 			console.log('Web search toggled:', enabled);
 			
 			// Also update the button state in the chat component if it exists
@@ -465,7 +458,7 @@ async function populateModelSelector() {
 		// Fallback to default models if import fails
 		const fallbackModels = [
 			{ value: "gpt-4.1-nano", label: "GPT-4.1 nano (Default)" },
-			{ value: "o4-mini-deep-research", label: "o4-mini Deep Research" },
+			            { value: "gpt-4.1", label: "GPT-4.1 Deep Research" },
 		];
 		
 		fallbackModels.forEach((model) => {
@@ -572,7 +565,7 @@ async function checkModelAvailability() {
 		// Fallback to default models if import fails
 		modelAvailability = {
 			"gpt-4.1-nano": true,
-			"o4-mini-deep-research": true,
+			            "gpt-4.1": true,
 		};
 		updateModelSelector();
 	}
