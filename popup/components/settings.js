@@ -80,6 +80,8 @@ export async function initializeSettingsComponent() {
 	// Listen for settings panel being opened to reload API key
 	window.addEventListener('settings-panel-opened', () => {
 		loadApiKey();
+		// Also reload settings to ensure theme selection is properly set
+		loadSettings();
 	});
 
 	console.log("Settings component initialized");
@@ -122,12 +124,22 @@ function setupEventListeners() {
 	// Theme options - only add listeners if elements exist
 	if (themeOptions && themeOptions.length > 0) {
 		themeOptions.forEach((option) => {
-			option.addEventListener("change", () => {
+			option.addEventListener("change", async () => {
 				if (option.checked) {
 					const theme = option.value;
 					console.log("Theme changed:", theme);
-					updateSettings({ theme });
-					applyTheme(theme);
+					
+					try {
+						// First update the settings (async)
+						await updateSettings({ theme });
+						
+						// Then apply the theme immediately
+						applyTheme(theme);
+					} catch (error) {
+						console.error('Error updating theme:', error);
+						// Revert the selection if the update failed
+						await loadSettings();
+					}
 				}
 			});
 		});
@@ -255,9 +267,7 @@ function applySettingsToUI(settings) {
 	const themeValue = settings.theme || "system";
 	if (themeOptions && themeOptions.length) {
 		for (let option of themeOptions) {
-			if (option.value === themeValue) {
-				option.checked = true;
-			}
+			option.checked = (option.value === themeValue);
 		}
 	} else {
 		console.warn('[Settings] themeOptions not found, skipping theme set');
@@ -420,19 +430,24 @@ function applyTheme(theme) {
 		console.log('THEME DEBUG: In settings.js, "system" theme resolved to:', effectiveTheme);
 	}
 	
-	// Check if theme is already correctly set
-	const currentTheme = document.body.getAttribute("data-theme");
+	// Check if theme is already correctly set - use documentElement to match popup.js
+	const currentTheme = document.documentElement.getAttribute("data-theme");
 	console.log('THEME DEBUG: In settings.js, current theme:', currentTheme, 'effectiveTheme:', effectiveTheme);
 	
 	if (currentTheme !== effectiveTheme) {
 		console.log('THEME DEBUG: In settings.js, updating theme from', currentTheme, 'to', effectiveTheme);
-		document.body.setAttribute("data-theme", effectiveTheme);
+		document.documentElement.setAttribute("data-theme", effectiveTheme);
 	} else {
 		console.log('THEME DEBUG: In settings.js, theme already correct, not changing');
 	}
 	
-	// Store the effective theme in localStorage for immediate access on next popup
-	localStorage.setItem('temp_theme_preference', effectiveTheme);
+	// Store the user preference (not the resolved theme) in localStorage for immediate access on next popup
+	try {
+		localStorage.setItem('temp_theme_preference', theme); // Store the preference, not the resolved theme
+		console.log('THEME DEBUG: Stored user preference in localStorage:', theme);
+	} catch (e) {
+		console.warn('Could not update cached theme in localStorage:', e);
+	}
 }
 
 /**

@@ -1075,22 +1075,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initializePopup();
   setupSidebar(); // Initialize sidebar after popup is fully loaded
   
+  // Listen for settings updates to apply theme changes immediately
+  window.addEventListener('settings-updated', async (event) => {
+    logger.theme('Settings updated, applying theme from preferences');
+    await applyThemeFromPreferences();
+  });
+  
   // Debug: log all storage keys/values
   chrome.storage.local.get(null, (all) => {
     console.log('[DEBUG] chrome.storage.local contents:', all);
   });
 });
 
-// Ensure theme is always system default
-chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
-  if (!userPreferences || userPreferences.theme !== 'system') {
-    chrome.storage.local.set({ userPreferences: { ...userPreferences, theme: 'system' } });
-  }
-});
-
-// API key show/hide toggle logic
-
-
+// Settings panel functionality
 document.addEventListener('DOMContentLoaded', () => {
   const settingsBtn = document.getElementById('settings-gear-button');
   const settingsPanel = document.getElementById('settings-panel');
@@ -1128,60 +1125,6 @@ document.addEventListener('DOMContentLoaded', () => {
       closeSettingsPanel();
     });
   }
-  
-  // Remove click-outside-to-close functionality since we now have a dedicated close button
-  // and the panel is full-screen
 });
 
-// Also try to initialize immediately if document is already complete
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  logger.init('Document already ready, initializing popup immediately');
-  initializePopup().catch(error => {
-    logger.error('Error in immediate popup initialization:', error);
-  });
-}
-
-function renderSessionInChatArea(session) {
-  // Render messages
-  const chatMessages = document.getElementById('chat-messages');
-  if (chatMessages) {
-    // Save the flower element if it exists
-    const flowerElement = document.getElementById('popup-flower-animation');
-    let flowerHTML = '';
-    if (flowerElement) {
-      flowerHTML = flowerElement.outerHTML;
-    }
-    
-    // Clear all messages
-    chatMessages.innerHTML = '';
-    
-    // Restore the flower if it existed
-    if (flowerHTML) {
-      chatMessages.insertAdjacentHTML('afterbegin', flowerHTML);
-    }
-    
-    (session.messages || []).forEach(msg => {
-      const div = document.createElement('div');
-      div.className = 'message ' + (msg.role || 'user');
-      div.innerHTML = `<div class="message-content">${msg.content || ''}</div>`;
-      chatMessages.appendChild(div);
-    });
-  }
-}
-
-window.addEventListener('open-session', (event) => {
-  console.log('[Sidebar] open-session event fired:', event.detail);
-  
-  // Track the clicked session as active immediately
-  if (event.detail?.pageLoadId) {
-    currentActivePageLoadId = event.detail.pageLoadId;
-    highlightActiveSidebarSession(event.detail.pageLoadId);
-  }
-  
-  if (window.chat && typeof window.chat.handleShowSession === 'function') {
-    window.chat.handleShowSession({ detail: event.detail });
-  } else {
-    console.warn('[Sidebar] window.chat.handleShowSession not found. Rendering directly.');
-    renderSessionInChatArea(event.detail);
-  }
-});
+// Restart the flower animation each time the popup opens
