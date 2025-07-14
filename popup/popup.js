@@ -21,97 +21,109 @@ if (window.popupJsInitialized) {
 const popupInstanceId = Date.now() + '-' + Math.random().toString(36).substring(2, 15);
 logger.debug(`Popup instance ID: ${popupInstanceId}`);
 
-// Track if Ctrl key is pressed
-let ctrlKeyPressed = false;
+// Track if modifier key is pressed (Ctrl on PC, Command on Mac)
+let modifierKeyPressed = false;
 
-// Expose ctrlKeyPressed to window so other components can access it
-window.ctrlKeyPressed = false;
+// Detect if we're on Mac
+const isMac = navigator.userAgent.indexOf('Mac') !== -1;
 
-// *** CRITICAL FIX: Capture ctrl state immediately on popup open ***
+// Expose modifier key state to window so other components can access it
+window.ctrlKeyPressed = false; // Keep this name for backward compatibility
+window.isMac = isMac;
+
+// *** CRITICAL FIX: Capture modifier state immediately on popup open ***
 // This will be used consistently throughout the entire execution chain
-let initialCtrlState = false;
+let initialModifierState = false;
 
-// Function to monitor Ctrl key state changes
-const monitorCtrlKeyState = (newState) => {
-  if (newState !== ctrlKeyPressed) {
-    logger.ctrl(`Ctrl key state changed: ${newState ? 'pressed' : 'released'}`);
-    ctrlKeyPressed = newState;
-    // Update window variable for other components
+// Function to monitor modifier key state changes
+const monitorModifierKeyState = (newState) => {
+  if (newState !== modifierKeyPressed) {
+    logger.ctrl(`${isMac ? 'Command' : 'Ctrl'} key state changed: ${newState ? 'pressed' : 'released'}`);
+    modifierKeyPressed = newState;
+    // Update window variable for other components (keep old name for compatibility)
     window.ctrlKeyPressed = newState;
     
     // Capture the initial state on first detection
-    if (newState && !initialCtrlState) {
-      initialCtrlState = true;
+    if (newState && !initialModifierState) {
+      initialModifierState = true;
       window.initialCtrlState = true;
-      logger.ctrl('Initial ctrl state captured and frozen for execution');
+      logger.ctrl(`Initial ${isMac ? 'Command' : 'Ctrl'} state captured and frozen for execution`);
     }
   }
 };
 
-// Immediately capture ctrl state on popup open
-(function captureInitialCtrlState() {
+// Immediately capture modifier state on popup open
+(function captureInitialModifierState() {
   // Store the initial state globally for consistent use
   window.initialCtrlState = false;
   
-  // Check multiple ways to detect ctrl key immediately
-  const checkImmediateCtrlState = () => {
+  // Check multiple ways to detect modifier key immediately
+  const checkImmediateModifierState = () => {
     let detected = false;
     
     // Method 1: Check current event state
-    if (window.event?.ctrlKey || window.event?.metaKey) {
+    const hasModifier = isMac ? window.event?.metaKey : window.event?.ctrlKey;
+    if (hasModifier) {
       detected = true;
-      logger.ctrl('Immediate ctrl detection via window.event');
+      logger.ctrl(`Immediate ${isMac ? 'Command' : 'Ctrl'} detection via window.event`);
     }
     
     // Method 2: Check keyboard API if available
     if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
       navigator.keyboard.getLayoutMap().then(keyMap => {
-        const hasCtrl = keyMap.has('ControlLeft') || keyMap.has('ControlRight') || 
-                       keyMap.has('MetaLeft') || keyMap.has('MetaRight');
-        if (hasCtrl) {
+        const hasModifierKey = isMac ? 
+          (keyMap.has('MetaLeft') || keyMap.has('MetaRight')) :
+          (keyMap.has('ControlLeft') || keyMap.has('ControlRight'));
+        
+        if (hasModifierKey) {
           detected = true;
-          logger.ctrl('Immediate ctrl detection via Keyboard API');
-          monitorCtrlKeyState(true);
+          logger.ctrl(`Immediate ${isMac ? 'Command' : 'Ctrl'} detection via Keyboard API`);
+          monitorModifierKeyState(true);
         }
       }).catch(() => {});
     }
     
     if (detected) {
-      initialCtrlState = true;
+      initialModifierState = true;
       window.initialCtrlState = true;
-      monitorCtrlKeyState(true);
-      logger.ctrl('Initial ctrl state captured immediately');
+      monitorModifierKeyState(true);
+      logger.ctrl(`Initial ${isMac ? 'Command' : 'Ctrl'} state captured immediately`);
     }
   };
   
   // Run immediate check
-  checkImmediateCtrlState();
+  checkImmediateModifierState();
   
   // Also check on next tick
-  setTimeout(checkImmediateCtrlState, 0);
+  setTimeout(checkImmediateModifierState, 0);
 })();
 
-// Check if Ctrl key is pressed at startup - most reliable way to catch it
+// Check if modifier key is pressed at startup - most reliable way to catch it
 // Different browsers handle key events differently, so we check both ways
 if (typeof window !== 'undefined') {
-  // Method 1: Check for Ctrl key using keyboard event
-  const checkForCtrl = (e) => {
-    if (e.key === 'Control' || e.ctrlKey) {
-      logger.ctrl('Ctrl key detected on popup open');
-      monitorCtrlKeyState(true);
-      // Remove this listener once we've detected Ctrl
-      document.removeEventListener('keydown', checkForCtrl, true);
+  // Method 1: Check for modifier key using keyboard event
+  const checkForModifier = (e) => {
+    const hasModifier = isMac ? 
+      (e.key === 'Meta' || e.metaKey) : 
+      (e.key === 'Control' || e.ctrlKey);
+    
+    if (hasModifier) {
+      logger.ctrl(`${isMac ? 'Command' : 'Ctrl'} key detected on popup open`);
+      monitorModifierKeyState(true);
+      // Remove this listener once we've detected modifier
+      document.removeEventListener('keydown', checkForModifier, true);
     }
   };
   
   // Add capture phase listener to catch it as early as possible
-  document.addEventListener('keydown', checkForCtrl, true);
+  document.addEventListener('keydown', checkForModifier, true);
   
-  // Method 2: Check via mouseup event which might have Ctrl key info
+  // Method 2: Check via mouseup event which might have modifier key info
   document.addEventListener('mouseup', (e) => {
-    if (e.ctrlKey) {
-      logger.ctrl('Ctrl key detected via mouseup event');
-      monitorCtrlKeyState(true);
+    const hasModifier = isMac ? e.metaKey : e.ctrlKey;
+    if (hasModifier) {
+      logger.ctrl(`${isMac ? 'Command' : 'Ctrl'} key detected via mouseup event`);
+      monitorModifierKeyState(true);
     }
   }, {once: true, capture: true});
   
@@ -120,9 +132,13 @@ if (typeof window !== 'undefined') {
     // Some browsers support this API
     if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
       navigator.keyboard.getLayoutMap().then(keyboardLayoutMap => {
-        if (keyboardLayoutMap.has('ControlLeft') || keyboardLayoutMap.has('ControlRight')) {
-          logger.ctrl('Ctrl key detected via Keyboard API');
-          monitorCtrlKeyState(true);
+        const hasModifierKey = isMac ? 
+          (keyboardLayoutMap.has('MetaLeft') || keyboardLayoutMap.has('MetaRight')) :
+          (keyboardLayoutMap.has('ControlLeft') || keyboardLayoutMap.has('ControlRight'));
+        
+        if (hasModifierKey) {
+          logger.ctrl(`${isMac ? 'Command' : 'Ctrl'} key detected via Keyboard API`);
+          monitorModifierKeyState(true);
         }
       });
     }
@@ -131,18 +147,26 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// Add event listeners for Ctrl key as early as possible
+// Add event listeners for modifier key as early as possible
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Control') {
-    monitorCtrlKeyState(true);
-    logger.ctrl('Ctrl key down detected');
+  const isModifierKey = isMac ? 
+    (event.key === 'Meta' || event.metaKey) : 
+    (event.key === 'Control' || event.ctrlKey);
+  
+  if (isModifierKey) {
+    monitorModifierKeyState(true);
+    logger.ctrl(`${isMac ? 'Command' : 'Ctrl'} key down detected`);
   }
 });
 
 document.addEventListener('keyup', (event) => {
-  if (event.key === 'Control') {
-    monitorCtrlKeyState(false);
-    logger.ctrl('Ctrl key up detected');
+  const isModifierKey = isMac ? 
+    (event.key === 'Meta' || event.metaKey) : 
+    (event.key === 'Control' || event.ctrlKey);
+  
+  if (isModifierKey) {
+    monitorModifierKeyState(false);
+    logger.ctrl(`${isMac ? 'Command' : 'Ctrl'} key up detected`);
   }
 });
 
@@ -565,51 +589,38 @@ async function initializePopup() {
         }
         
         // Method 2: Check our local ctrlKeyPressed variable
-        if (ctrlKeyPressed === true) {
+        if (modifierKeyPressed === true) { // Changed from ctrlKeyPressed to modifierKeyPressed
           ctrlKeyDetected = true;
-          logger.ctrl('Ctrl key detected via local ctrlKeyPressed');
+          logger.ctrl('Ctrl key detected via local modifierKeyPressed');
         }
         
-        // Method 3: Check if Ctrl key is currently pressed using browser APIs
-        if (navigator.userAgent.indexOf('Mac') !== -1) {
-          // Use Command key on Mac
-          if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
-            navigator.keyboard.getLayoutMap().then(keyMap => {
-              if (keyMap.has('MetaLeft') || keyMap.has('MetaRight')) {
-                ctrlKeyDetected = true;
-                logger.ctrl('Command key detected via Keyboard API on Mac');
-                monitorCtrlKeyState(true);
-              }
-            }).catch(err => logger.debug('Keyboard API error:', err));
-          }
-        } else {
-          // Use Ctrl key on other platforms
-          if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
-            navigator.keyboard.getLayoutMap().then(keyMap => {
-              if (keyMap.has('ControlLeft') || keyMap.has('ControlRight')) {
-                ctrlKeyDetected = true;
-                logger.ctrl('Ctrl key detected via Keyboard API');
-                monitorCtrlKeyState(true);
-              }
-            }).catch(err => logger.debug('Keyboard API error:', err));
-          }
+        // Method 3: Check if modifier key is currently pressed using browser APIs
+        if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
+          navigator.keyboard.getLayoutMap().then(keyMap => {
+            const hasModifierKey = isMac ? 
+              (keyMap.has('MetaLeft') || keyMap.has('MetaRight')) :
+              (keyMap.has('ControlLeft') || keyMap.has('ControlRight'));
+              
+            if (hasModifierKey) {
+              ctrlKeyDetected = true;
+              logger.ctrl(`${isMac ? 'Command' : 'Ctrl'} key detected via Keyboard API`);
+              monitorModifierKeyState(true);
+            }
+          }).catch(err => logger.debug('Keyboard API error:', err));
         }
         
-        // Method 4: Use event.ctrlKey if available (unlikely, but worth checking)
-        if (window.event?.ctrlKey) {
+        // Method 4: Use event modifier key if available (unlikely, but worth checking)
+        const hasModifierInEvent = isMac ? window.event?.metaKey : window.event?.ctrlKey;
+        if (hasModifierInEvent) {
           ctrlKeyDetected = true;
-          logger.ctrl('Ctrl key detected via window.event.ctrlKey');
-          monitorCtrlKeyState(true);
-        } else if (window.event?.metaKey && navigator.userAgent.indexOf('Mac') !== -1) {
-          ctrlKeyDetected = true;
-          logger.ctrl('Command key detected via window.event.metaKey on Mac');
-          monitorCtrlKeyState(true);
+          logger.ctrl(`${isMac ? 'Command' : 'Ctrl'} key detected via window.event`);
+          monitorModifierKeyState(true);
         }
         
         // Final check: If any method detected Ctrl key, update all variables
         if (ctrlKeyDetected) {
           logger.ctrl('Ctrl key detected in final check before auto-execution');
-          monitorCtrlKeyState(true);
+          monitorModifierKeyState(true);
         }
         
         // Only attempt auto-execution if Ctrl key is not pressed

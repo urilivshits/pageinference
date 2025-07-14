@@ -24,13 +24,13 @@ The extension remembers your last question and can repeat it automatically on di
 
 - **Manual Mode** (recommended): 
   - Normal click on Chrome extension icon: Just opens the extension normally
-  - Ctrl+click on Chrome extension icon: Opens the extension AND automatically repeats your last question on the current page
+  - Ctrl+click (⌘+click on Mac): Opens the extension AND automatically repeats your last question on the current page
 - **Auto Mode**: 
   - Normal click on Chrome extension icon: Opens the extension AND automatically repeats your last question on the current page
-  - Ctrl+click on Chrome extension icon: Just opens the extension normally
+  - Ctrl+click (⌘+click on Mac): Just opens the extension normally
 - **Disabled Mode**: Always just opens the extension (no automatic question repeating)
 
-**Example**: Ask "What are this person's key skills?" on one LinkedIn profile, then Ctrl+click the extension icon on other profiles for instant analysis.
+**Example**: Ask "What are this person's key skills?" on one LinkedIn profile, then Ctrl+click (⌘+click on Mac) the extension icon on other profiles for instant analysis.
 
 ### 📱 Interface & Experience
 - **Chat History**: Organized by website domain with search and filtering because we're not animals
@@ -75,9 +75,10 @@ The extension remembers your last question and can repeat it automatically on di
 
 ### Power Moves
 - **Model Switching**: Change between nano/full GPT-4.1 via the profile icon
-- **Repeat Questions**: Use Ctrl+click behavior (configurable in settings)
+- **Repeat Questions**: Use Ctrl+click (⌘+click on Mac) behavior (configurable in settings)
 - **Domain Focus**: Filter chats to show only current website conversations
 - **Theme Toggle**: Switch between light/dark modes
+- **Keyboard Shortcuts**: Ctrl+1-3 (⌘+1-3 on Mac) to switch between tabs
 
 ## 🛡️ Privacy & Security
 

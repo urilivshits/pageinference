@@ -71,8 +71,9 @@ function setupEventListeners() {
       window.close();
     }
     
-    // Ctrl+1-3 for tabs
-    if (event.ctrlKey && event.key >= '1' && event.key <= '3') {
+    // Modifier+1-3 for tabs (Command on Mac, Ctrl on other platforms)
+    const hasModifier = window.isMac ? event.metaKey : event.ctrlKey;
+    if (hasModifier && event.key >= '1' && event.key <= '3') {
       const tabIndex = parseInt(event.key) - 1;
       if (tabButtons[tabIndex]) {
         tabButtons[tabIndex].click();
