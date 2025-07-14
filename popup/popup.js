@@ -185,12 +185,8 @@ document.addEventListener('keyup', (event) => {
     document.documentElement.classList.add('theme-transition-disabled');
     document.documentElement.classList.add('theme-loading');
     
-    // 1. First check localStorage for immediate theme application
-    const cachedTheme = localStorage.getItem('temp_theme_preference');
-    logger.theme(`Cached theme from localStorage: ${cachedTheme || 'none'}`);
-    
-    // Initial theme application based on localStorage or system preference
-    let initialTheme = cachedTheme;
+    // 1. Determine initial theme based on system preference (no caching needed)
+    let initialTheme = null;
     
     // Ensure we only apply 'light' or 'dark', not 'system' or other values
     if (!initialTheme || initialTheme === 'system' || (initialTheme !== 'light' && initialTheme !== 'dark')) {
@@ -233,13 +229,8 @@ document.addEventListener('keyup', (event) => {
         document.documentElement.setAttribute('data-theme', effectiveTheme);
       }
       
-      // 3. Always update localStorage with the latest preference
-      try {
-        localStorage.setItem('temp_theme_preference', themePreference); // Store the preference, not the resolved theme
-        logger.theme(`Updated localStorage theme preference: ${themePreference}`);
-      } catch (e) {
-        logger.warn('Could not update cached theme in localStorage:', e);
-      }
+      // Theme preference is already stored in userPreferences, no need for additional caching
+      logger.theme(`Applied theme preference: ${themePreference}`);
       
       // Add the ready class to signal theme is fully processed and re-enable transitions
       document.documentElement.classList.add('theme-ready');
@@ -468,12 +459,7 @@ async function applyThemeFromPreferences() {
       document.documentElement.setAttribute('data-theme', effectiveTheme);
     }
     
-    // Cache the theme preference in localStorage for immediate access next time
-    try {
-      localStorage.setItem('temp_theme_preference', themePreference); // Store the preference, not the resolved theme
-    } catch (e) {
-      logger.warn('Could not cache theme in localStorage:', e);
-    }
+    // Theme preference is already stored in userPreferences, no need for additional caching
     
     // Add a CSS class to indicate theme is loaded
     document.documentElement.classList.add('theme-ready');
@@ -697,12 +683,7 @@ function setupComponentCommunication() {
       // Apply the theme to the HTML element
       document.documentElement.setAttribute('data-theme', effectiveTheme);
       
-      // Cache the theme preference in localStorage
-      try {
-        localStorage.setItem('temp_theme_preference', settings.theme);
-      } catch (e) {
-        logger.warn('Could not cache theme in localStorage:', e);
-      }
+      // Theme preference is already stored in userPreferences, no need for additional caching
     }
     
     // Notify chat component of relevant changes
@@ -812,8 +793,9 @@ function setupSidebar() {
   let domainFilterEnabled = false;
 
   // Load persisted toggle state
-  chrome.storage.local.get('sidebarDomainFilterEnabled', (result) => {
-    domainFilterEnabled = !!result.sidebarDomainFilterEnabled;
+  chrome.storage.local.get('userPreferences', (result) => {
+    const userPreferences = result.userPreferences || {};
+    domainFilterEnabled = !!userPreferences.currentSiteFilter;
     if (domainFilterToggle) domainFilterToggle.checked = domainFilterEnabled;
   });
 
@@ -910,9 +892,14 @@ function setupSidebar() {
   }
   // Domain filter toggle
   if (domainFilterToggle) {
-    domainFilterToggle.addEventListener('change', () => {
+    domainFilterToggle.addEventListener('change', async () => {
       domainFilterEnabled = domainFilterToggle.checked;
-      chrome.storage.local.set({ sidebarDomainFilterEnabled: domainFilterEnabled });
+      
+      // Update userPreferences properly
+      const { userPreferences } = await chrome.storage.local.get('userPreferences');
+      const updatedPreferences = { ...userPreferences, currentSiteFilter: domainFilterEnabled };
+      await chrome.storage.local.set({ userPreferences: updatedPreferences });
+      
       renderSidebarSessions(applySidebarFilters(allSessions), currentActivePageLoadId);
     });
   }
@@ -1022,6 +1009,19 @@ async function autoExecuteIfNeeded() {
 applyThemeFromPreferences().catch(error => {
   logger.error('Error applying early theme:', error);
 });
+
+// Clean up deprecated localStorage entries
+(function cleanupDeprecatedLocalStorage() {
+  try {
+    // Remove temp_theme_preference as theme is now managed through userPreferences
+    if (localStorage.getItem('temp_theme_preference')) {
+      localStorage.removeItem('temp_theme_preference');
+      logger.info('Cleaned up deprecated temp_theme_preference from localStorage');
+    }
+  } catch (error) {
+    logger.warn('Error cleaning up localStorage:', error);
+  }
+})();
 
 /**
  * Injects a growing/fading SVG flower animation into the popup background.

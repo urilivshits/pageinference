@@ -441,13 +441,8 @@ function applyTheme(theme) {
 		console.log('THEME DEBUG: In settings.js, theme already correct, not changing');
 	}
 	
-	// Store the user preference (not the resolved theme) in localStorage for immediate access on next popup
-	try {
-		localStorage.setItem('temp_theme_preference', theme); // Store the preference, not the resolved theme
-		console.log('THEME DEBUG: Stored user preference in localStorage:', theme);
-	} catch (e) {
-		console.warn('Could not update cached theme in localStorage:', e);
-	}
+	// Theme preference is already stored in userPreferences via updateSettings, no need for additional caching
+	console.log('THEME DEBUG: Applied theme preference:', theme);
 }
 
 /**

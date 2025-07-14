@@ -75,6 +75,124 @@ const STORAGE_KEYS_CONSTANTS = {
 };
 
 /**
+ * Clean up orphaned per-tab localStorage entries
+ */
+async function cleanupOrphanedTabEntries() {
+  try {
+    // Get all storage items
+    const allItems = await chrome.storage.local.get(null);
+    
+    // Get all currently open tabs
+    const allTabs = await chrome.tabs.query({});
+    const activeTabIds = new Set(allTabs.map(tab => tab.id.toString()));
+    
+    // Find orphaned tab entries
+    const keysToRemove = [];
+    const tabEntryPatterns = [
+      /^ctrlKeyPressed_tab_(\d+)$/,
+      /^ctrlClickPending_tab_(\d+)$/,
+      /^ctrlKeyPressTimestamp_tab_(\d+)$/,
+      /^pageLoadId_(\d+)$/
+    ];
+    
+    // Check each storage key
+    for (const key in allItems) {
+      for (const pattern of tabEntryPatterns) {
+        const match = key.match(pattern);
+        if (match && match[1] && !activeTabIds.has(match[1])) {
+          keysToRemove.push(key);
+          break; // Found a match, no need to check other patterns
+        }
+      }
+    }
+    
+    // Also clean up old temp theme entries and other redundant entries
+    const tempEntriesToRemove = [];
+    for (const key in allItems) {
+      // Remove null/false/empty values that accumulate over time
+      if (allItems[key] === null || allItems[key] === false || allItems[key] === '') {
+        tempEntriesToRemove.push(key);
+      }
+      // Remove old input text entries (older than 24 hours)
+      if (key.startsWith('input_text_') && typeof allItems[key] === 'object' && allItems[key]?.timestamp) {
+        const age = Date.now() - allItems[key].timestamp;
+        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+        if (age > maxAge) {
+          tempEntriesToRemove.push(key);
+        }
+      }
+      // Remove deprecated temp_theme_preference entries (theme is now in userPreferences)
+      if (key === 'temp_theme_preference') {
+        tempEntriesToRemove.push(key);
+      }
+      // Remove deprecated sidebarDomainFilterEnabled (now in userPreferences.currentSiteFilter)
+      if (key === 'sidebarDomainFilterEnabled') {
+        tempEntriesToRemove.push(key);
+      }
+      // Remove deprecated session storage keys (now using 'chatSessions' only)
+      if (key === 'chat_sessions' || key === 'sessions') {
+        tempEntriesToRemove.push(key);
+      }
+      // Remove deprecated command execution keys (now using 'execute_last_input' only)  
+      if (key === 'commandToExecute' || key === 'global_last_user_input') {
+        tempEntriesToRemove.push(key);
+      }
+      // Clean up duplicate or old ctrl state entries (keep only the tab-specific ones)
+      if (key === 'ctrlKeyPressed' || key === 'ctrlClickPending' || key === 'ctrlKeyPressTimestamp') {
+        // Only remove if we have tab-specific entries, indicating migration to new system
+        const hasTabSpecificEntries = Object.keys(allItems).some(k => 
+          k.startsWith('ctrlKeyPressed_tab_') || 
+          k.startsWith('ctrlClickPending_tab_') || 
+          k.startsWith('ctrlKeyPressTimestamp_tab_')
+        );
+        if (hasTabSpecificEntries) {
+          tempEntriesToRemove.push(key);
+        }
+      }
+      // Clean up old historyState entries that may have accumulated
+      if (key === 'historyState' && allItems[key] && typeof allItems[key] === 'object') {
+        const historyState = allItems[key];
+        // Remove if it's older than 30 days
+        if (historyState.lastUpdated && (Date.now() - historyState.lastUpdated) > (30 * 24 * 60 * 60 * 1000)) {
+          tempEntriesToRemove.push(key);
+        }
+      }
+    }
+    
+    // Remove orphaned entries
+    if (keysToRemove.length > 0 || tempEntriesToRemove.length > 0) {
+      const allKeysToRemove = [...keysToRemove, ...tempEntriesToRemove];
+      await chrome.storage.local.remove(allKeysToRemove);
+      logger.info(`Cleaned up ${allKeysToRemove.length} orphaned storage entries:`, allKeysToRemove);
+    }
+    
+    return { cleaned: keysToRemove.length + tempEntriesToRemove.length };
+  } catch (error) {
+    logger.error('Error cleaning up orphaned tab entries:', error);
+    return { cleaned: 0 };
+  }
+}
+
+/**
+ * Clean up storage entries for a specific tab
+ */
+async function cleanupTabEntries(tabId) {
+  try {
+    const keysToRemove = [
+      `ctrlKeyPressed_tab_${tabId}`,
+      `ctrlClickPending_tab_${tabId}`,
+      `ctrlKeyPressTimestamp_tab_${tabId}`,
+      `pageLoadId_${tabId}`
+    ];
+    
+    await chrome.storage.local.remove(keysToRemove);
+    logger.info(`Cleaned up tab entries for tab ${tabId}:`, keysToRemove);
+  } catch (error) {
+    logger.error(`Error cleaning up tab entries for tab ${tabId}:`, error);
+  }
+}
+
+/**
  * Initialize the background script
  */
 async function initialize() {
@@ -314,6 +432,67 @@ async function cleanupLegacyStorage() {
     }
   } catch (error) {
     logger.error('Error cleaning up storage:', error);
+  }
+}
+
+/**
+ * Migrate legacy storage entries to current system
+ */
+async function migrateLegacyStorage() {
+  try {
+    const allItems = await chrome.storage.local.get(null);
+    const migrations = [];
+    
+    // Migrate sidebarDomainFilterEnabled to userPreferences.currentSiteFilter
+    if (allItems.sidebarDomainFilterEnabled !== undefined) {
+      const userPreferences = allItems.userPreferences || {};
+      if (userPreferences.currentSiteFilter === undefined) {
+        userPreferences.currentSiteFilter = !!allItems.sidebarDomainFilterEnabled;
+        migrations.push('sidebarDomainFilterEnabled → userPreferences.currentSiteFilter');
+        await chrome.storage.local.set({ userPreferences });
+      }
+    }
+    
+    // Migrate legacy session storage keys to chatSessions
+    if (allItems.chat_sessions && !allItems.chatSessions) {
+      await chrome.storage.local.set({ chatSessions: allItems.chat_sessions });
+      migrations.push('chat_sessions → chatSessions');
+    } else if (allItems.sessions && !allItems.chatSessions && !allItems.chat_sessions) {
+      await chrome.storage.local.set({ chatSessions: allItems.sessions });
+      migrations.push('sessions → chatSessions');
+    }
+    
+    // Migrate legacy command execution keys to execute_last_input
+    if (allItems.commandToExecute && !allItems.execute_last_input) {
+      await chrome.storage.local.set({ 
+        execute_last_input: {
+          value: allItems.commandToExecute,
+          timestamp: Date.now(),
+          tabId: null,
+          url: ''
+        }
+      });
+      migrations.push('commandToExecute → execute_last_input');
+    } else if (allItems.global_last_user_input && !allItems.execute_last_input) {
+      await chrome.storage.local.set({ 
+        execute_last_input: {
+          value: allItems.global_last_user_input,
+          timestamp: Date.now(),
+          tabId: null,
+          url: ''
+        }
+      });
+      migrations.push('global_last_user_input → execute_last_input');
+    }
+    
+    if (migrations.length > 0) {
+      logger.info(`Migrated ${migrations.length} legacy storage entries:`, migrations);
+    }
+    
+    return { migrated: migrations.length };
+  } catch (error) {
+    logger.error('Error migrating legacy storage:', error);
+    return { migrated: 0 };
   }
 }
 
@@ -1326,9 +1505,31 @@ function setupExtensionHandlers() {
   });
   
   // Handle extension startup
-  chrome.runtime.onStartup.addListener(() => {
+  chrome.runtime.onStartup.addListener(async () => {
     logger.log('Extension started');
+    // Migrate legacy storage entries first
+    await migrateLegacyStorage();
+    // Then clean up orphaned entries
+    await cleanupOrphanedTabEntries();
   });
+
+  // Handle tab removal to clean up per-tab storage entries
+  chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+    logger.log(`Tab ${tabId} removed, cleaning up storage entries`);
+    cleanupTabEntries(tabId);
+  });
+
+  // Periodic cleanup every 30 minutes
+  setInterval(() => {
+    logger.log('Running periodic storage cleanup');
+    cleanupOrphanedTabEntries();
+  }, 30 * 60 * 1000); // 30 minutes
+
+  // Also run cleanup on first load
+  (async () => {
+    await migrateLegacyStorage();
+    await cleanupOrphanedTabEntries();
+  })();
 }
 
 /**
