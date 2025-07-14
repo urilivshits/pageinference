@@ -485,16 +485,6 @@ async function handleSendMessage(options = {}) {
       return;
     }
     
-    // If this is an auto-execution, clear execute_last_input from storage to prevent retry
-    if (isAutoExecution) {
-      try {
-        await chrome.storage.local.remove('execute_last_input');
-        console.log('Cleared execute_last_input from storage (auto-execution successful)');
-      } catch (error) {
-        console.error('Error clearing execute_last_input:', error);
-      }
-    }
-    
     // Prevent duplicate submissions
     if (preventDuplicateSubmission()) {
       console.log('Preventing duplicate submission');
