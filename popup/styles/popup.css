@@ -442,7 +442,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  padding-bottom: 85px; /* Space for fixed input container (70px + 15px spacing) */
+  padding-bottom: 100px; /* Fixed space for input container */
   display: flex;
   flex-direction: column;
   gap: 8px; /* Reduced from 16px */
@@ -517,45 +517,37 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   100% { transform: rotate(360deg); }
 }
 
-/* --- Chat Input Container: Fixed to bottom with proper height --- */
+/* --- Chat Input Container: Fixed to bottom with flexible height --- */
 .chat-input-container {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-end; /* Align items to bottom */
   gap: 8px;
   padding: 12px;
-  border-top: 1px solid var(--border-color);
+  /* Removed border-top for cleaner look */
   background: var(--background-color);
   position: fixed;
   bottom: 0;
   left: 260px; /* Account for sidebar width */
   right: 0;
   z-index: 100;
-  height: 70px; /* Fixed height for consistency */
-  min-height: 70px;
-  max-height: 70px;
   box-sizing: border-box;
-}
-
-.action-buttons,
-.chat-input-main,
-.send-button {
-  height: 54px; /* Adjusted for new container height */
-  min-height: 54px;
-  max-height: 54px;
-  display: flex;
-  align-items: center;
+  min-height: 70px; /* Minimum height for stability */
 }
 
 .action-buttons {
+  display: flex;
   flex-direction: column;
   gap: 12px;
-  justify-content: center;
+  justify-content: flex-end; /* Align to bottom like other container items */
+  align-items: center;
+  min-height: 54px; /* Minimum height for stability */
 }
 
 /* --- Chat Input Main: relative for absolute button positioning --- */
 .chat-input-main {
   position: relative;
   flex: 1;
+  display: flex;
   flex-direction: column;
   min-width: 0;
   border: 1.5px solid var(--border-color);
@@ -565,13 +557,13 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   transition: border-color 0.2s, box-shadow 0.2s;
   justify-content: center;
   box-sizing: border-box;
-  height: 100%;
+  min-height: 54px; /* Minimum height for consistency */
 }
 
 #message-input {
   flex-grow: 1;
   min-height: 36px;
-  max-height: 36px; /* Fixed height to prevent container movement */
+  max-height: 150px; /* Allow growth with scrolling for very long text */
   font-size: 1rem;
   padding: 8px 56px 8px 8px; /* right padding for button */
   line-height: 1.4;
@@ -583,6 +575,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
   width: 100%;
   resize: none;
   border-radius: 18px;
+  overflow-y: auto; /* Enable scrolling for very long text */
 }
 
 #message-input::-webkit-scrollbar {
@@ -595,7 +588,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 
 .send-button {
   position: absolute;
-  bottom: 8px; /* Adjusted for new container height */
+  bottom: 8px; /* Position at bottom right corner */
   right: 8px;
   width: 38px;
   height: 38px;

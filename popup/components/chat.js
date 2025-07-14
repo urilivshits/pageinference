@@ -68,6 +68,24 @@ let lastSubmittedQuestion = '';
 let lastError = null;
 let errorTimeout = null;
 
+/**
+ * Update the chat input container height to match the textarea height
+ * @param {number} textareaHeight - The height of the textarea
+ */
+function updateChatInputContainerHeight(textareaHeight) {
+  const chatInputContainer = document.querySelector('.chat-input-container');
+  
+  if (chatInputContainer) {
+    // Calculate the total container height needed
+    const containerPadding = 24; // 12px top + 12px bottom
+    const inputMainPadding = 16; // 8px top + 8px bottom
+    const minContainerHeight = 70;
+    const calculatedHeight = textareaHeight + containerPadding + inputMainPadding;
+    const finalHeight = Math.max(calculatedHeight, minContainerHeight);
+    chatInputContainer.style.height = `${finalHeight}px`;
+  }
+}
+
 // Helper function to clear chat messages while preserving the flower animation
 function clearChatMessages() {
   if (!chatMessages) return;
@@ -136,6 +154,9 @@ export function initializeChatComponent() {
     // Set up auto-resize for input
     setupInputAutoResize();
     
+    // Initialize the chat input container height and messages padding
+    updateChatInputContainerHeight(36); // Set initial height with minimum textarea height
+    
     // Make sure settings are in sync with UI state
     checkToggleState().catch(error => {
       console.error('Error checking toggle state:', error);
@@ -188,10 +209,13 @@ function setupEventListeners() {
   });
   
   if (messageInput) messageInput.addEventListener('input', () => {
-    const maxHeight = window.innerHeight * 0.3;
+    const maxHeight = 150; // Match CSS max-height
     messageInput.style.height = 'auto';
     const newHeight = Math.min(messageInput.scrollHeight, maxHeight);
     messageInput.style.height = `${newHeight}px`;
+    
+    // Update the container height to match the input growth
+    updateChatInputContainerHeight(newHeight);
   });
   
   // Action button handlers
@@ -262,6 +286,7 @@ async function handleNewChat() {
     updateConversationInfo();
     messageInput.value = '';
     messageInput.style.height = 'auto';
+    updateChatInputContainerHeight(36); // Reset to minimum height
     messageInput.focus();
     // Optionally, you can also clear the saved input text
     await clearSavedInputText();
@@ -432,6 +457,7 @@ async function handleShowSession(event) {
     setInputEnabled(true);
     messageInput.value = '';
     messageInput.style.height = 'auto';
+    updateChatInputContainerHeight(36); // Reset to minimum height
     messageInput.focus();
     // Optionally, clear saved input text
     await clearSavedInputText();
@@ -532,6 +558,8 @@ async function handleSendMessage(options = {}) {
     
     // Clear input field
     messageInput.value = '';
+    messageInput.style.height = 'auto';
+    updateChatInputContainerHeight(36); // Reset to minimum height
     clearSavedInputText();
     
     // Ensure settings are up-to-date
@@ -1329,7 +1357,12 @@ async function checkForCommandToExecute() {
       
       // Resize textarea to fit content
       messageInput.style.height = 'auto';
-      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+      const newHeight = Math.min(messageInput.scrollHeight, 150); // Match CSS max-height
+      messageInput.style.height = `${newHeight}px`;
+      
+      // Update the container height to match the input growth
+      updateChatInputContainerHeight(newHeight);
+      
       messageInput.focus();
       
       // Show visual indicator that we're auto-executing
@@ -1533,7 +1566,11 @@ function setupInputAutoResize() {
   messageInput.addEventListener('input', () => {
     // Reset height to calculate actual content height
     messageInput.style.height = 'auto';
-    messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+    const newHeight = Math.min(messageInput.scrollHeight, 150); // Match CSS max-height
+    messageInput.style.height = `${newHeight}px`;
+    
+    // Update the container height to match the input growth
+    updateChatInputContainerHeight(newHeight);
   });
 }
 
