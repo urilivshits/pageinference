@@ -11,7 +11,6 @@ import { DEFAULT_SETTINGS } from "../../shared/models/settings.js";
 let settingsContainer;
 let apiKeyInput;
 let toggleApiKeyButton;
-let saveApiKeyButton;
 let temperatureSlider;
 let temperatureValue;
 let themeOptions;
@@ -23,6 +22,10 @@ let repeatMessageTrigger;
 // Settings state
 let currentSettings = null;
 let modelAvailability = {};
+
+// Auto-save state
+let apiKeySaveTimeout = null;
+let lastApiKeyValue = '';
 
 // Storage keys (copied from old app to maintain compatibility)
 const STORAGE_KEYS = {
@@ -43,13 +46,11 @@ export async function initializeSettingsComponent() {
 	settingsContainer = document.getElementById("settings-container");
 	apiKeyInput = document.getElementById("api-key-input");
 	toggleApiKeyButton = document.getElementById("toggle-api-key-button");
-	saveApiKeyButton = document.getElementById("save-api-key-button");
 	
 	console.log("Settings DOM elements found:", {
 		settingsContainer: !!settingsContainer,
 		apiKeyInput: !!apiKeyInput,
-		toggleApiKeyButton: !!toggleApiKeyButton,
-		saveApiKeyButton: !!saveApiKeyButton
+		toggleApiKeyButton: !!toggleApiKeyButton
 	});
 	temperatureSlider = document.getElementById("temperature-slider");
 	temperatureValue = document.getElementById("temperature-value");
@@ -89,8 +90,8 @@ export async function initializeSettingsComponent() {
  */
 function setupEventListeners() {
 	// API key management - only add listeners if elements exist
-	if (saveApiKeyButton) {
-		saveApiKeyButton.addEventListener("click", handleSaveApiKey);
+	if (apiKeyInput) {
+		setupApiKeyAutoSave();
 	}
 	if (toggleApiKeyButton) {
 		toggleApiKeyButton.addEventListener("click", toggleApiKeyVisibility);
@@ -497,6 +498,9 @@ async function loadApiKey() {
 			apiKeyInput.value = maskedKey;
 			apiKeyInput.type = "password";
 			apiKeyInput.title = "API key is hidden";
+			
+			// Update last saved value for auto-save comparison
+			lastApiKeyValue = fullKey;
 			return;
 		}
 		} catch (error) {
@@ -520,11 +524,17 @@ async function loadApiKey() {
 			apiKeyInput.value = maskedKey;
 			apiKeyInput.type = "password";
 			apiKeyInput.title = "API key is hidden";
+			
+			// Update last saved value for auto-save comparison
+			lastApiKeyValue = fullKey;
 		} else {
 			apiKeyInput.value = "";
 			apiKeyInput.setAttribute("data-has-key", "false");
 			apiKeyInput.setAttribute("data-full-key", "");
 			apiKeyInput.setAttribute("data-masked-key", "");
+			
+			// Update last saved value for auto-save comparison
+			lastApiKeyValue = "";
 		}
 	} catch (error) {
 		console.error("Error loading API key:", error);
@@ -532,6 +542,9 @@ async function loadApiKey() {
 		apiKeyInput.setAttribute("data-has-key", "false");
 		apiKeyInput.setAttribute("data-full-key", "");
 		apiKeyInput.setAttribute("data-masked-key", "");
+		
+		// Update last saved value for auto-save comparison
+		lastApiKeyValue = "";
 	}
 }
 
@@ -618,22 +631,97 @@ function validateApiKey(apiKey) {
 }
 
 /**
- * Handle saving the API key
+ * Setup auto-save functionality for API key
  */
-async function handleSaveApiKey() {
-	const apiKey = apiKeyInput.value.trim();
+function setupApiKeyAutoSave() {
+	// Store initial value
+	lastApiKeyValue = apiKeyInput.value;
+	
+	// Auto-save on blur (unfocus)
+	apiKeyInput.addEventListener('blur', () => {
+		if (apiKeyInput.value.trim() !== lastApiKeyValue) {
+			saveApiKeyAutomatic();
+		}
+	});
+	
+	// Auto-save on paste
+	apiKeyInput.addEventListener('paste', () => {
+		// Small delay to let paste complete
+		setTimeout(() => {
+			if (apiKeyInput.value.trim() !== lastApiKeyValue) {
+				saveApiKeyAutomatic();
+			}
+		}, 100);
+	});
+	
+	// Auto-save on input with debouncing (for typing)
+	apiKeyInput.addEventListener('input', () => {
+		// Clear existing timeout
+		if (apiKeySaveTimeout) {
+			clearTimeout(apiKeySaveTimeout);
+		}
+		
+		// Set new timeout for debounced save
+		apiKeySaveTimeout = setTimeout(() => {
+			if (apiKeyInput.value.trim() !== lastApiKeyValue) {
+				saveApiKeyAutomatic();
+			}
+		}, 2000); // 2 second delay after user stops typing
+	});
+	
+	// Auto-save on Enter key
+	apiKeyInput.addEventListener('keydown', (event) => {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			if (apiKeyInput.value.trim() !== lastApiKeyValue) {
+				saveApiKeyAutomatic();
+			}
+		}
+	});
+	
+	// Auto-save before page unloads
+	window.addEventListener('beforeunload', () => {
+		if (apiKeyInput.value.trim() !== lastApiKeyValue) {
+			saveApiKeyAutomatic();
+		}
+	});
+}
 
-	if (!apiKey) {
-		alert("Please enter an API key");
+/**
+ * Handle saving the API key automatically (without user prompts)
+ */
+async function saveApiKeyAutomatic() {
+	const inputValue = apiKeyInput.value.trim();
+	
+	// Get the current full key from data attribute if input is masked
+	const isPasswordType = apiKeyInput.type === "password";
+	const fullApiKey = apiKeyInput.getAttribute('data-full-key') || '';
+	const maskedApiKey = apiKeyInput.getAttribute('data-masked-key') || '';
+	
+	// Determine the actual API key value
+	let apiKey;
+	if (isPasswordType && inputValue === maskedApiKey && fullApiKey) {
+		// Input is showing masked version, but we have the full key
+		apiKey = fullApiKey;
+	} else if (!isPasswordType && inputValue && inputValue !== maskedApiKey) {
+		// Input is showing full version and has been edited
+		apiKey = inputValue;
+	} else if (inputValue && inputValue !== maskedApiKey && inputValue !== fullApiKey) {
+		// Input has been edited to a new value
+		apiKey = inputValue;
+	} else {
+		// No changes or just toggling visibility
 		return;
 	}
 
-	// Validate key format
-	if (!validateApiKey(apiKey)) {
-		const confirm = window.confirm(
-			'This doesn\'t look like a valid OpenAI API key. It should start with "sk-" and be about 51 characters long. Are you sure you want to save it?'
-		);
-		if (!confirm) return;
+	// Don't save empty keys
+	if (!apiKey) {
+		return;
+	}
+	
+	// Don't save if value hasn't changed
+	if (apiKey === lastApiKeyValue) {
+		return;
 	}
 
 	try {
@@ -654,14 +742,21 @@ async function handleSaveApiKey() {
 			console.warn("Background save failed, but direct storage succeeded:", msgError);
 		}
 
-		// Show success message
-		alert("API key saved successfully");
-
-		// Reload the key display
-		loadApiKey();
+		// Update last saved value
+		lastApiKeyValue = apiKey;
+		
+		// Update the data attributes with the new key
+		const newMaskedKey = apiKey.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, "$1***$3");
+		apiKeyInput.setAttribute("data-full-key", apiKey);
+		apiKeyInput.setAttribute("data-masked-key", newMaskedKey);
+		apiKeyInput.setAttribute("data-has-key", "true");
+		
+		// Show subtle feedback (optional - could add a small indicator)
+		console.log("API key saved automatically");
 		
 		// Reset toggle state to hidden after save
 		apiKeyInput.type = "password";
+		apiKeyInput.value = newMaskedKey;
 		const eyeIcon = toggleApiKeyButton.querySelector('.icon-eye');
 		const eyeOffIcon = toggleApiKeyButton.querySelector('.icon-eye-off');
 		if (eyeIcon && eyeOffIcon) {
@@ -673,7 +768,7 @@ async function handleSaveApiKey() {
 		checkModelAvailability();
 	} catch (error) {
 		console.error("Error saving API key:", error);
-		alert(`Error saving API key: ${error.message}`);
+		// Could show a subtle error indicator here instead of alert
 	}
 }
 
