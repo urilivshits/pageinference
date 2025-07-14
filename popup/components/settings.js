@@ -458,7 +458,7 @@ async function populateModelSelector() {
 		// Fallback to default models if import fails
 		const fallbackModels = [
 			{ value: "gpt-4.1-nano", label: "GPT-4.1 nano (Default)" },
-			            { value: "gpt-4.1", label: "GPT-4.1 Deep Research" },
+			            { value: "gpt-4.1", label: "GPT-4.1" },
 		];
 		
 		fallbackModels.forEach((model) => {

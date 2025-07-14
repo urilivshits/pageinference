@@ -21,10 +21,10 @@ Choose the right AI model for your needs:
 - **GPT-4.1**: The powerhouse reasoning model for complex analysis, detailed research, and when you need the AI to really think deeply about content. **Includes web search capabilities** for real-time information.
 
 #### Model Specifications
-| Model | Context Window | Cost (Input/Output) | Web Search | Best For | Key Benchmarks |
-|-------|----------------|-------------------|------------|----------|----------------|
-| **GPT-4.1 nano** | 1M tokens | $0.10/$0.40 per million | ❌ | Daily tasks, quick questions | 80.1% MMLU |
-| **GPT-4.1** | 1M tokens | $0.10/$0.40 per million | ✅ | Complex reasoning, research with real-time data | 80.1% MMLU |
+| Model | Context Window | Cost (Input/Output) | Page Content Scraping | Web Search | Best For | Key Benchmarks |
+|-------|----------------|-------------------|---------------------|------------|----------|----------------|
+| **GPT-4.1 nano** | 1M tokens | $0.10/$0.40 per million | ✅ Always enabled | ❌ Disabled for speed | Daily tasks, quick questions | 80.1% MMLU, 50.3% GPQA, 74.5% IFEval |
+| **GPT-4.1** | 1M tokens | $2.00/$8.00 per million | ✅ Always enabled | ✅ Real-time information | Complex reasoning, research | 90.2% MMLU, 66.3% GPQA, 87.4% IFEval, 54.6% SWE-Bench |
 
 ### ⌨️ Smart Click Behavior
 The extension remembers your last question and can repeat it automatically on different pages - perfect for analyzing multiple similar pages with the same prompt.
