@@ -1094,35 +1094,43 @@ chrome.storage.local.get('userPreferences', ({ userPreferences }) => {
 document.addEventListener('DOMContentLoaded', () => {
   const settingsBtn = document.getElementById('settings-gear-button');
   const settingsPanel = document.getElementById('settings-panel');
+  const settingsCloseBtn = document.getElementById('settings-close-button');
+  
+  // Function to open settings panel
+  function openSettingsPanel() {
+    settingsPanel.classList.remove('hidden');
+    // Dispatch an event to notify the settings component that the panel is now visible
+    window.dispatchEvent(new CustomEvent('settings-panel-opened'));
+  }
+  
+  // Function to close settings panel
+  function closeSettingsPanel() {
+    settingsPanel.classList.add('hidden');
+  }
+  
   if (settingsBtn && settingsPanel) {
     settingsBtn.addEventListener('click', (event) => {
       event.stopPropagation(); // Prevent event from bubbling to document
       const wasHidden = settingsPanel.classList.contains('hidden');
-      settingsPanel.classList.toggle('hidden');
       
-      // If the panel was just opened, trigger API key loading
-      if (wasHidden && !settingsPanel.classList.contains('hidden')) {
-        // Dispatch an event to notify the settings component that the panel is now visible
-        window.dispatchEvent(new CustomEvent('settings-panel-opened'));
+      if (wasHidden) {
+        openSettingsPanel();
+      } else {
+        closeSettingsPanel();
       }
-    });
-    
-    // Add click-outside-to-close functionality
-    document.addEventListener('click', (event) => {
-      // Check if the settings panel is visible
-      if (!settingsPanel.classList.contains('hidden')) {
-        // Check if the click was outside the settings panel
-        if (!settingsPanel.contains(event.target)) {
-          settingsPanel.classList.add('hidden');
-        }
-      }
-    });
-    
-    // Prevent clicks inside the settings panel from closing it
-    settingsPanel.addEventListener('click', (event) => {
-      event.stopPropagation();
     });
   }
+  
+  // Close button functionality
+  if (settingsCloseBtn && settingsPanel) {
+    settingsCloseBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      closeSettingsPanel();
+    });
+  }
+  
+  // Remove click-outside-to-close functionality since we now have a dedicated close button
+  // and the panel is full-screen
 });
 
 // Also try to initialize immediately if document is already complete

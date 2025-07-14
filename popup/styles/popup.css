@@ -162,7 +162,7 @@ body {
   background: rgba(79, 70, 229, 0.12);
   border-color: rgba(79, 70, 229, 0.25);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
+  transform: scale(1.05);
 }
 
 .settings-gear-button svg {
@@ -189,48 +189,120 @@ html[data-theme="dark"] .settings-gear-button:hover {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Settings panel full width */
+/* Settings panel full screen */
 .settings-panel {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90%;
-  max-width: 800px;
-  min-width: 340px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: var(--background-color);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.18);
-  border: 1.5px solid var(--border-color);
   z-index: 1000;
-  padding: 28px 32px 24px 32px;
   transition: opacity 0.2s, transform 0.2s;
   opacity: 1;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
-  gap: 18px;
+  justify-content: flex-start;
+  transform: translateX(0);
 }
 .settings-panel.hidden {
   display: none;
   opacity: 0;
   pointer-events: none;
+  transform: translateX(100%);
+}
+
+/* Settings header */
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--background-color);
+  min-height: 52px;
+}
+
+.settings-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+}
+
+.settings-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.settings-close-button {
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 0;
+  color: var(--accent-color);
+}
+
+.settings-close-button:hover {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.25);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+}
+
+.settings-close-button svg {
+  opacity: 0.85;
+  transition: all 0.2s ease;
+}
+
+.settings-close-button:hover svg {
+  opacity: 1;
+}
+
+/* Dark mode adjustments for close button */
+html[data-theme="dark"] .settings-close-button {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+html[data-theme="dark"] .settings-close-button:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .settings-container {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px; /* Reduced gap for compactness */
-  padding: 12px 16px; /* Added padding here */
+  gap: 6px;
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .settings-section {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px; /* Reduced gap for compactness */
+  gap: 2px;
+  margin-bottom: 8px;
 }
 
 .api-key-input-container {
@@ -244,16 +316,16 @@ html[data-theme="dark"] .settings-gear-button:hover {
   flex: 1;
   min-width: 0;
   width: 100%;
-  height: 42px;
-  font-size: 12px;
-  padding: 8px 12px;
-  border-radius: 6px;
+  height: 36px;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 4px;
 }
 .icon-button.small {
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  min-height: 38px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -262,11 +334,11 @@ html[data-theme="dark"] .settings-gear-button:hover {
   padding: 0;
 }
 .primary-button {
-  width: 80px;
-  min-width: 80px;
-  height: 38px;
-  font-size: 1rem;
-  border-radius: 6px;
+  width: 70px;
+  min-width: 70px;
+  height: 32px;
+  font-size: 0.9rem;
+  border-radius: 4px;
 }
 
 .icon-eye, .icon-eye-off {
@@ -734,32 +806,37 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 }
 
 .settings-section h2 {
-  font-size: 14px;
-  padding-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding-bottom: 2px;
+  margin-bottom: 4px;
   border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
 }
 
 .setting-item {
-  margin-bottom: 4px; /* Reduced margin */
+  margin-bottom: 4px;
 }
 
 .setting-item label {
   display: block;
-  margin-bottom: 4px; /* Reduced margin */
+  margin-bottom: 2px;
   font-weight: 500;
+  font-size: 12px;
+  color: var(--text-color);
 }
 
 .setting-description {
-  font-size: 11px; /* Slightly smaller */
+  font-size: 10px;
   color: var(--secondary-text-color);
-  margin-top: 2px; /* Reduced margin */
-  line-height: 1.3; /* Tighter line height */
+  margin-top: 1px;
+  line-height: 1.2;
 }
 
 .settings-container .setting-item {
   display: grid;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .settings-container .setting-item label {
@@ -776,9 +853,9 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 }
 
 #api-key-input {
-  height: 42px;
+  height: 36px;
   flex: 1;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   background-color: var(--input-background);
@@ -800,13 +877,14 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 }
 
 select, input[type="text"], input[type="password"] {
-  padding: 0.35rem 0.5rem;
+  padding: 0.25rem 0.4rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   background-color: var(--input-background);
   color: var(--text-color);
   width: 100%;
-  height: 28px;
+  height: 24px;
+  font-size: 11px;
 }
 
 select:focus, input[type="text"]:focus, input[type="password"]:focus {
@@ -921,8 +999,8 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 /* Theme options styling */
 .theme-options {
   display: flex;
-  gap: 16px;
-  margin-top: 4px;
+  gap: 12px;
+  margin-top: 2px;
 }
 
 .theme-options label {
@@ -936,7 +1014,7 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 /* Temperature slider styling */
 #temperature-slider {
   width: 100%;
-  margin: 8px 0;
+  margin: 4px 0;
   background: linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) 0%, var(--border-color) 0%, var(--border-color) 100%);
   height: 6px;
   border-radius: 3px;
