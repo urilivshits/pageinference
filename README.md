@@ -10,7 +10,7 @@ Iuliia's Lil Helper is a Chrome extension I built for my amazing wife Iuliia, br
 
 ### 🧠 AI-Powered Chat
 - **Smart Context Awareness**: The AI always reads the page content automatically – no fiddling with settings required
-- **Multiple AI Models**: Choose from GPT-4o mini, GPT-4.1 nano, or o4-mini Deep Research
+- **Multiple AI Models**: Choose from GPT-4.1 nano (default) or o4-mini Deep Research
 - **Temperature Control**: Dial up the creativity or keep it professional
 - **Page-Focused Intelligence**: Designed to understand and work with the content you're actually looking at
 
@@ -25,13 +25,18 @@ Choose the right AI model for your needs:
 | **GPT-4.1 nano** | 1M tokens | $0.10/$0.40 per million | Daily tasks, quick questions | 80.1% MMLU |
 | **o4-mini Deep Research** | 200K tokens | $1.10/$4.40 per million | Complex reasoning, research | 81.4% GPQA, 93.4% AIME2024 |
 
-### ⌨️ Keyboard Wizardry & Smart Shortcuts
-- **Ctrl+Shift+Y**: The magic shortcut! Instantly re-runs your last question on whatever page you're currently viewing
-- **Smart Click Behavior**: The extension remembers your last question and can repeat it automatically
-  - *Manual Mode* (recommended): Normal click just opens the extension, Ctrl+click repeats your last question
-  - *Auto Mode*: Normal click repeats your last question, Ctrl+click just opens normally  
-  - *Disabled Mode*: Always just opens the extension (no automatic question repeating)
-- **How it works**: Ask a question on any page, then later use Ctrl+Shift+Y or your configured click method to ask the same question on a different page
+### ⌨️ Smart Click Behavior
+The extension remembers your last question and can repeat it automatically on different pages - perfect for analyzing multiple similar pages with the same prompt.
+
+- **Manual Mode** (recommended): 
+  - Normal click on Chrome extension icon: Just opens the extension normally
+  - Ctrl+click on Chrome extension icon: Opens the extension AND automatically repeats your last question on the current page
+- **Auto Mode**: 
+  - Normal click on Chrome extension icon: Opens the extension AND automatically repeats your last question on the current page
+  - Ctrl+click on Chrome extension icon: Just opens the extension normally
+- **Disabled Mode**: Always just opens the extension (no automatic question repeating)
+
+**Example use case**: Ask "What are this person's key skills and experience?" on one LinkedIn profile, then Ctrl+click the Chrome extension icon (or normal click in Auto mode) when viewing other LinkedIn profiles to get the same analysis instantly.
 
 ### 📱 Interface Niceties
 - **Chat History**: Organized by website domain because we're not animals
@@ -64,7 +69,7 @@ Choose the right AI model for your needs:
    - Click the extension icon in your toolbar
    - Click on Iuliia's profile icon in the top right
    - Paste your OpenAI API key and hit Save
-   - Your key is stored locally and never sent to our servers (because we're not that kind of extension)
+   - Your key is stored locally and only used for OpenAI API calls (no other servers involved)
 
 3. **Start Chatting**:
    - Navigate to any website
@@ -111,7 +116,7 @@ Switch between AI models based on what you're trying to accomplish:
 ## 🛡️ Privacy & Security
 
 - **Local API Key Storage**: Your OpenAI API key is stored in your browser's local storage
-- **No Data Collection**: We don't collect, store, or transmit your conversations
+- **No Data Collection**: We don't collect, store, or transmit your conversations - everything stays local except OpenAI API calls
 - **Automatic Page Reading**: The AI reads your current page content to provide better assistance
 - **Open Source**: All code is visible and auditable (because transparency matters)
 
