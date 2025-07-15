@@ -20,7 +20,7 @@
 1. **Main Chat Interface** (1280x800px)
    - Show the extension popup open
    - Display a conversation about a webpage
-   - Include the flower animation if possible
+   - Include the falling stars animation if possible
    - Highlight the clean, modern UI
 
 2. **Smart Click Behavior Demo** (1280x800px)
@@ -83,7 +83,7 @@ AI assistant that reads web pages and chats with you about them. Built with love
 - **Colors**: Match the extension's theme (light/dark modes)
 - **Typography**: Clean, readable fonts
 - **Layout**: Professional, uncluttered design
-- **Branding**: Include the flower motif subtly
+- **Branding**: Include the stars motif subtly
 
 ### Technical Requirements
 - **Format**: PNG preferred for screenshots (better quality)

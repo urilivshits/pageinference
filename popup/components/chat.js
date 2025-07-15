@@ -86,32 +86,37 @@ function updateChatInputContainerHeight(textareaHeight) {
   }
 }
 
-// Helper function to clear chat messages while preserving the flower animation
+// Helper function to clear chat messages while preserving the stars animation
 function clearChatMessages() {
   if (!chatMessages) return;
   
-  // Save the flower element if it exists
-  const flowerElement = document.getElementById('popup-flower-animation');
-  let flowerHTML = '';
-  if (flowerElement) {
-    flowerHTML = flowerElement.outerHTML;
+  // Save the stars element if it exists
+  const starsElement = document.getElementById('popup-stars-animation');
+  let starsHTML = '';
+  if (starsElement) {
+    starsHTML = starsElement.outerHTML;
   }
   
   // Clear all messages
   chatMessages.innerHTML = '';
   
-  // Restore the flower if it existed
-  if (flowerHTML) {
-    chatMessages.insertAdjacentHTML('afterbegin', flowerHTML);
+  // Restore the stars if it existed
+  if (starsHTML) {
+    chatMessages.insertAdjacentHTML('afterbegin', starsHTML);
     
-    // Restart the animation on the restored flower
+    // Restart the animation on the restored stars
     setTimeout(() => {
-      const restoredFlower = document.getElementById('popup-flower-animation');
-      if (restoredFlower) {
-        console.log('🌸 Restarting animation on restored flower');
-        restoredFlower.style.animation = 'none';
-        restoredFlower.offsetHeight; // Trigger reflow
-        restoredFlower.style.animation = 'flowerGrowAndFade 5s ease-out forwards';
+      const restoredStars = document.getElementById('popup-stars-animation');
+      if (restoredStars) {
+        console.log('⭐ Restarting animation on restored stars');
+        if (typeof window.restartStarsAnimation === 'function') {
+          window.restartStarsAnimation();
+        } else {
+          // Fallback restart logic
+          restoredStars.style.animation = 'none';
+          restoredStars.offsetHeight; // Trigger reflow
+          restoredStars.style.animation = 'starsContainerFade 6s ease-out forwards';
+        }
       }
     }, 50); // Small delay to ensure DOM is updated
   }

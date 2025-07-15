@@ -35,7 +35,7 @@ The extension remembers your last question and can repeat it automatically on di
 ### 📱 Interface & Experience
 - **Chat History**: Organized by website domain with search and filtering because we're not animals
 - **Dark/Light Themes**: Because your retinas matter
-- **Flower Animation**: A delightful SVG flower blooms every time you open the extension (it's the little things)
+- **Stars Animation**: Magical falling stars cascade from top-right to bottom-left every time you open the extension (it's the little things)
 - **Message Timestamps**: See exactly when you asked that embarrassing question
 - **Copy Messages**: Share the AI's wisdom with the world
 - **Temperature Control**: Adjust response creativity (0.0 = robotic, 1.0 = artistic)
@@ -46,7 +46,7 @@ The extension remembers your last question and can repeat it automatically on di
 ### Prerequisites
 - A Chrome browser (or Chromium-based browser with extension support)
 - An OpenAI API key ([get one here](https://platform.openai.com/api-keys))
-- A sense of humor about delightful flower animations
+- A sense of humor about delightful stars animations
 
 ### Installation
 1. **Load the Extension**: 
@@ -89,19 +89,19 @@ The extension remembers your last question and can repeat it automatically on di
 
 ## 🐛 Known Quirks
 
-- The flower animation is non-negotiable (feature, not bug); it brings joy
+- The falling stars animation is non-negotiable (feature, not bug); it brings cosmic joy
 - Sometimes the AI gets a little too excited about page content
 - Ctrl+click behavior requires JavaScript to be enabled (shocking, we know)
 - The extension popup has a fixed size because responsive design is for websites
 
 ## 🤝 Contributing
 
-Found a bug? Want to add a feature? Have strong opinions about flowers? I'm all ears:
+Found a bug? Want to add a feature? Have strong opinions about falling stars? I'm all ears:
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly (the flower must continue to bloom)
+4. Test thoroughly (the stars must continue to fall gracefully)
 5. Submit a pull request with a detailed description
 
 ## 📄 License

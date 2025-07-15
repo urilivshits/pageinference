@@ -21,12 +21,12 @@
   --link-color: #1a73e8;
   --text-tertiary: #70757a;
   
-  /* Flower animation colors - light theme */
-  --flower-petal-color: #e879f9;
-  --flower-petal-stroke: #c084fc;
-  --flower-center-color: #fbbf24;
-  --flower-center-stroke: #f59e0b;
-  --flower-stem-color: #22c55e;
+  /* Stars animation colors - light theme */
+  --star-color-1: #fbbf24;
+  --star-color-2: #f59e0b;
+  --star-color-3: #e879f9;
+  --star-color-4: #c084fc;
+  --star-color-5: #60a5fa;
 }
 
 /* Dark theme */
@@ -47,12 +47,12 @@ html[data-theme="dark"] {
   --link-color: #8ab4f8;
   --text-tertiary: #9aa0a6;
   
-  /* Flower animation colors - dark theme */
-  --flower-petal-color: #f0abfc;
-  --flower-petal-stroke: #e879f9;
-  --flower-center-color: #fde047;
-  --flower-center-stroke: #facc15;
-  --flower-stem-color: #4ade80;
+  /* Stars animation colors - dark theme */
+  --star-color-1: #fde047;
+  --star-color-2: #facc15;
+  --star-color-3: #f0abfc;
+  --star-color-4: #e879f9;
+  --star-color-5: #7dd3fc;
 }
 
 /* Base Styles */
@@ -1517,63 +1517,187 @@ sup {
 /* Hide old tab navigation and history tab */
 .tab-navigation, #history-container, #new-chat-button, #history-tab { display: none !important; }
 
-/* Enhanced Flower Animation */
-#popup-flower-animation {
+/* Enhanced Falling Stars Animation */
+#popup-stars-animation {
   position: fixed;
-  left: 50%; /* Center horizontally */
-  top: 50%; /* Center vertically */
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1000;
   pointer-events: none;
-  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.08));
-  animation: flowerGrowAndFade 5s ease-out forwards;
+  overflow: hidden;
+  opacity: 0;
+  /* animation: starsContainerFade 6s ease-out forwards; - Removed auto-start, JS will control */
+}
+
+.stars-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.star {
+  position: absolute;
+  font-size: 16px;
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 0 6px currentColor;
   will-change: transform, opacity;
 }
 
-html[data-theme="dark"] #popup-flower-animation {
-  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.15));
+/* Individual star animations - falling from top-right to bottom-left */
+.star-1 {
+  top: -20px;
+  right: 10%;
+  color: var(--star-color-1);
+  font-size: 20px;
+  /* animation: starFall1 5s ease-in forwards; - JS controlled */
 }
 
-@keyframes flowerGrowAndFade {
-  0% {
-    transform: translate(-50%, -50%) scale(0.2);
-    opacity: 0;
-  }
-  10% {
-    transform: translate(-50%, -50%) scale(0.5);
-    opacity: 0.3;
-  }
-  20% {
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0.5;
-  }
-  30% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.6;
-  }
-  65% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.6;
-  }
-  85% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.3;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0;
-  }
+.star-2 {
+  top: -20px;
+  right: 20%;
+  color: var(--star-color-2);
+  font-size: 14px;
+  /* animation: starFall2 5.5s ease-in forwards 0.3s; - JS controlled */
 }
 
-@media (prefers-reduced-motion: reduce) {
-  #popup-flower-animation {
-    position: fixed !important;
-    left: 420px !important;
-    top: 320px !important;
-    animation: none !important;
-    opacity: 0.3 !important;
-    transform: translate(-50%, -50%) scale(1) !important;
-  }
+.star-3 {
+  top: -20px;
+  right: 5%;
+  color: var(--star-color-3);
+  font-size: 18px;
+  /* animation: starFall3 4.8s ease-in forwards 0.6s; - JS controlled */
+}
+
+.star-4 {
+  top: -20px;
+  right: 15%;
+  color: var(--star-color-4);
+  font-size: 16px;
+  /* animation: starFall4 5.2s ease-in forwards 0.9s; - JS controlled */
+}
+
+.star-5 {
+  top: -20px;
+  right: 25%;
+  color: var(--star-color-5);
+  font-size: 22px;
+  /* animation: starFall5 5.8s ease-in forwards 1.2s; - JS controlled */
+}
+
+.star-6 {
+  top: -20px;
+  right: 8%;
+  color: var(--star-color-3);
+  font-size: 15px;
+  /* animation: starFall6 4.5s ease-in forwards 1.5s; - JS controlled */
+}
+
+.star-7 {
+  top: -20px;
+  right: 18%;
+  color: var(--star-color-1);
+  font-size: 17px;
+  /* animation: starFall7 5.1s ease-in forwards 1.8s; - JS controlled */
+}
+
+.star-8 {
+  top: -20px;
+  right: 12%;
+  color: var(--star-color-2);
+  font-size: 19px;
+  /* animation: starFall8 4.9s ease-in forwards 2.1s; - JS controlled */
+}
+
+.star-9 {
+  top: -20px;
+  right: 22%;
+  color: var(--star-color-4);
+  font-size: 13px;
+  /* animation: starFall9 5.3s ease-in forwards 2.4s; - JS controlled */
+}
+
+.star-10 {
+  top: -20px;
+  right: 6%;
+  color: var(--star-color-5);
+  font-size: 21px;
+  /* animation: starFall10 5.7s ease-in forwards 2.7s; - JS controlled */
+}
+
+/* Keyframe animations for each star - diagonal falling pattern */
+@keyframes starFall1 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-300px, 400px) rotate(180deg); }
+}
+
+@keyframes starFall2 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-280px, 380px) rotate(160deg); }
+}
+
+@keyframes starFall3 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-320px, 420px) rotate(200deg); }
+}
+
+@keyframes starFall4 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  14% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-290px, 390px) rotate(170deg); }
+}
+
+@keyframes starFall5 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  11% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-310px, 410px) rotate(190deg); }
+}
+
+@keyframes starFall6 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  16% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-270px, 370px) rotate(150deg); }
+}
+
+@keyframes starFall7 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  13% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-295px, 395px) rotate(175deg); }
+}
+
+@keyframes starFall8 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-305px, 405px) rotate(185deg); }
+}
+
+@keyframes starFall9 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-285px, 385px) rotate(165deg); }
+}
+
+@keyframes starFall10 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-315px, 415px) rotate(195deg); }
+}
+
+/* Container fade animation */
+@keyframes starsContainerFade {
+  0% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Dark theme specific adjustments */
+html[data-theme="dark"] .star {
+  text-shadow: 0 0 8px currentColor;
 }
 
 /* Message timestamp styling */

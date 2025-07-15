@@ -27,7 +27,7 @@ Meet Browse Buddy: Iuliia's Lil Helper – the Chrome extension that brings AI c
 
 🎨 **Delightful Experience**
 • Beautiful dark/light themes
-• Charming flower animation on startup (non-negotiable feature!)
+• Magical falling stars animation on startup (non-negotiable feature!)
 • Chat history organized by website domain
 • Message timestamps and easy copying
 
@@ -69,7 +69,7 @@ Built with genuine care for users who deserve technology that just works. No com
 **Requirements:**
 • Chrome browser (or Chromium-based)
 • OpenAI API key (get yours at platform.openai.com)
-• A sense of humor about delightful flower animations
+• A sense of humor about delightful stars animations
 
 ---
 

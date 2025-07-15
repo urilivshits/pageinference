@@ -916,22 +916,22 @@ function setupSidebar() {
       if (window.chat && typeof window.chat.handleNewChat === 'function') {
         window.chat.handleNewChat();
       } else {
-        // Fallback: clear chat area directly while preserving flower
+        // Fallback: clear chat area directly while preserving stars
         const chatMessages = document.getElementById('chat-messages');
         if (chatMessages) {
-          // Save the flower element if it exists
-          const flowerElement = document.getElementById('popup-flower-animation');
-          let flowerHTML = '';
-          if (flowerElement) {
-            flowerHTML = flowerElement.outerHTML;
+          // Save the stars element if it exists
+          const starsElement = document.getElementById('popup-stars-animation');
+          let starsHTML = '';
+          if (starsElement) {
+            starsHTML = starsElement.outerHTML;
           }
           
           // Clear all messages
           chatMessages.innerHTML = '';
           
-          // Restore the flower if it existed
-          if (flowerHTML) {
-            chatMessages.insertAdjacentHTML('afterbegin', flowerHTML);
+          // Restore the stars if it existed
+          if (starsHTML) {
+            chatMessages.insertAdjacentHTML('afterbegin', starsHTML);
           }
         }
         const titleElem = document.getElementById('current-conversation-title');
@@ -1024,44 +1024,67 @@ applyThemeFromPreferences().catch(error => {
 })();
 
 /**
- * Injects a growing/fading SVG flower animation into the popup background.
- * The animation is theme-aware and disappears after 5 seconds.
+ * Injects a falling stars animation into the popup background.
+ * The animation is theme-aware and disappears after 6 seconds.
  */
 /**
- * Restart the flower animation each time the popup opens
+ * Restart the stars animation each time the popup opens
  */
-function restartFlowerAnimation() {
-  console.log('🌸 restartFlowerAnimation called');
-  const flower = document.getElementById('popup-flower-animation');
-  console.log('🌸 flower element found:', flower);
-  if (flower) {
-    console.log('🌸 restarting animation');
-    // Force restart the animation by removing and re-adding the animation
-    flower.style.animation = 'none';
-    flower.offsetHeight; // Trigger reflow
-    flower.style.animation = 'flowerGrowAndFade 5s ease-out forwards';
-    console.log('🌸 animation restarted');
+window.restartStarsAnimation = function restartStarsAnimation() {
+  console.log('⭐ restartStarsAnimation called');
+  const starsContainer = document.getElementById('popup-stars-animation');
+  console.log('⭐ stars container found:', starsContainer);
+  if (starsContainer) {
+    console.log('⭐ restarting animation');
+    // Force restart the container animation - make it visible and start fade
+    starsContainer.style.animation = 'none';
+    starsContainer.style.opacity = '1'; // Make container visible immediately
+    starsContainer.offsetHeight; // Trigger reflow
+    starsContainer.style.animation = 'starsContainerFade 6s ease-out forwards';
+    
+    // Restart individual star animations with proper staggered delays
+    const stars = starsContainer.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+      star.style.animation = 'none';
+      star.offsetHeight; // Trigger reflow
+      // Re-apply the original animation based on the star's class
+      const starClass = star.className.match(/star-(\d+)/)?.[1];
+      if (starClass) {
+        const animationName = `starFall${starClass}`;
+        const durations = ['5s', '5.5s', '4.8s', '5.2s', '5.8s', '4.5s', '5.1s', '4.9s', '5.3s', '5.7s'];
+        const delays = ['0s', '0.3s', '0.6s', '0.9s', '1.2s', '1.5s', '1.8s', '2.1s', '2.4s', '2.7s'];
+        const duration = durations[parseInt(starClass) - 1] || '5s';
+        const delay = delays[parseInt(starClass) - 1] || '0s';
+        
+        // Apply animation with delay using setTimeout for better control
+        const delayMs = parseFloat(delay) * 1000;
+        setTimeout(() => {
+          star.style.animation = `${animationName} ${duration} ease-in forwards`;
+        }, delayMs);
+      }
+    });
+    console.log('⭐ animation restarted');
   } else {
-    console.log('🌸 flower element not found in DOM');
+    console.log('⭐ stars container not found in DOM');
   }
 }
 
-// Restart flower animation on popup open - delay to ensure all rendering is complete
-console.log('🌸 Setting up flower animation, document.readyState:', document.readyState);
-function setupFlowerAnimation() {
-  console.log('🌸 Setting up flower animation with delay');
-  // Wait for all components to initialize and render
+// Restart stars animation on popup open - delay to ensure all rendering is complete
+console.log('⭐ Setting up stars animation, document.readyState:', document.readyState);
+function setupStarsAnimation() {
+  console.log('⭐ Setting up stars animation with minimal delay');
+  // Small delay to ensure DOM is ready, but much faster for smooth startup
   setTimeout(() => {
-    restartFlowerAnimation();
-  }, 500); // Delay to ensure all rendering is complete
+    window.restartStarsAnimation();
+  }, 100); // Reduced delay for smoother experience
 }
 
 if (document.readyState === 'loading') {
-  console.log('🌸 Adding DOMContentLoaded listener for flower animation');
-  document.addEventListener('DOMContentLoaded', setupFlowerAnimation);
+  console.log('⭐ Adding DOMContentLoaded listener for stars animation');
+  document.addEventListener('DOMContentLoaded', setupStarsAnimation);
 } else {
-  console.log('🌸 Document ready, calling setupFlowerAnimation immediately');
-  setupFlowerAnimation();
+  console.log('⭐ Document ready, calling setupStarsAnimation immediately');
+  setupStarsAnimation();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1127,4 +1150,4 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Restart the flower animation each time the popup opens
+// Restart the stars animation each time the popup opens
