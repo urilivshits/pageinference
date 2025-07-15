@@ -536,6 +536,12 @@ async function initializePopup() {
     // Apply theme from user preferences
     await applyThemeFromPreferences();
 
+    // Start stars animation after settings are loaded
+    console.log('⭐ Starting stars animation from popup initialization');
+    setTimeout(async () => {
+      await window.restartStarsAnimation();
+    }, 100); // Small delay to ensure DOM rendering is complete
+
     // Initialize the components
     await initializeComponents();
 
@@ -932,6 +938,12 @@ function setupSidebar() {
           // Restore the stars if it existed
           if (starsHTML) {
             chatMessages.insertAdjacentHTML('afterbegin', starsHTML);
+            // Restart animation if restored
+            setTimeout(async () => {
+              if (typeof window.restartStarsAnimation === 'function') {
+                await window.restartStarsAnimation();
+              }
+            }, 50);
           }
         }
         const titleElem = document.getElementById('current-conversation-title');
@@ -1030,8 +1042,38 @@ applyThemeFromPreferences().catch(error => {
 /**
  * Restart the stars animation each time the popup opens
  */
-window.restartStarsAnimation = function restartStarsAnimation() {
+window.restartStarsAnimation = async function restartStarsAnimation() {
   console.log('⭐ restartStarsAnimation called');
+  
+  // Check if stars animation is enabled in settings
+  let starsEnabled = true; // Default to enabled
+  try {
+    const settings = await chrome.runtime.sendMessage({
+      type: 'get_user_preferences'
+    });
+    
+    console.log('⭐ starsAnimation value:', settings?.data?.starsAnimation, 'type:', typeof settings?.data?.starsAnimation);
+    
+    if (settings?.success && settings?.data) {
+      const starsValue = settings.data.starsAnimation;
+      if (starsValue === false || starsValue === 'false') {
+        starsEnabled = false;
+        console.log('⭐ Stars animation explicitly disabled in settings');
+      } else {
+        console.log('⭐ Stars animation enabled (default or explicit), value was:', starsValue);
+      }
+    } else {
+      console.log('⭐ No valid settings found, using default (enabled)');
+    }
+  } catch (error) {
+    console.log('⭐ Could not check settings, using default (enabled):', error);
+  }
+  
+  if (!starsEnabled) {
+    console.log('⭐ Stars animation disabled, skipping');
+    return;
+  }
+  
   const starsContainer = document.getElementById('popup-stars-animation');
   console.log('⭐ stars container found:', starsContainer);
   if (starsContainer) {
@@ -1040,10 +1082,11 @@ window.restartStarsAnimation = function restartStarsAnimation() {
     starsContainer.style.animation = 'none';
     starsContainer.style.opacity = '1'; // Make container visible immediately
     starsContainer.offsetHeight; // Trigger reflow
-    starsContainer.style.animation = 'starsContainerFade 6s ease-out forwards';
+    starsContainer.style.animation = 'starsContainerFade 4s ease-out forwards';
     
     // Restart individual star animations with proper staggered delays
     const stars = starsContainer.querySelectorAll('.star');
+    console.log('⭐ Found', stars.length, 'stars to animate');
     stars.forEach((star, index) => {
       star.style.animation = 'none';
       star.offsetHeight; // Trigger reflow
@@ -1051,9 +1094,9 @@ window.restartStarsAnimation = function restartStarsAnimation() {
       const starClass = star.className.match(/star-(\d+)/)?.[1];
       if (starClass) {
         const animationName = `starFall${starClass}`;
-        const durations = ['5s', '5.5s', '4.8s', '5.2s', '5.8s', '4.5s', '5.1s', '4.9s', '5.3s', '5.7s'];
+        const durations = ['2.8s', '3.0s', '2.6s', '2.9s', '3.2s', '2.4s', '2.8s', '2.7s', '3.0s', '3.1s'];
         const delays = ['0s', '0.3s', '0.6s', '0.9s', '1.2s', '1.5s', '1.8s', '2.1s', '2.4s', '2.7s'];
-        const duration = durations[parseInt(starClass) - 1] || '5s';
+        const duration = durations[parseInt(starClass) - 1] || '2.8s';
         const delay = delays[parseInt(starClass) - 1] || '0s';
         
         // Apply animation with delay using setTimeout for better control
@@ -1069,23 +1112,8 @@ window.restartStarsAnimation = function restartStarsAnimation() {
   }
 }
 
-// Restart stars animation on popup open - delay to ensure all rendering is complete
-console.log('⭐ Setting up stars animation, document.readyState:', document.readyState);
-function setupStarsAnimation() {
-  console.log('⭐ Setting up stars animation with minimal delay');
-  // Small delay to ensure DOM is ready, but much faster for smooth startup
-  setTimeout(() => {
-    window.restartStarsAnimation();
-  }, 100); // Reduced delay for smoother experience
-}
-
-if (document.readyState === 'loading') {
-  console.log('⭐ Adding DOMContentLoaded listener for stars animation');
-  document.addEventListener('DOMContentLoaded', setupStarsAnimation);
-} else {
-  console.log('⭐ Document ready, calling setupStarsAnimation immediately');
-  setupStarsAnimation();
-}
+// Stars animation will be initiated from main popup initialization to ensure proper timing
+// with settings loading - no separate setup needed here
 
 document.addEventListener('DOMContentLoaded', async () => {
   logger.init('Popup DOM loaded');
@@ -1098,10 +1126,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initializePopup();
   setupSidebar(); // Initialize sidebar after popup is fully loaded
   
-  // Listen for settings updates to apply theme changes immediately
+  // Listen for settings updates to apply theme changes and stars animation immediately
   window.addEventListener('settings-updated', async (event) => {
     logger.theme('Settings updated, applying theme from preferences');
     await applyThemeFromPreferences();
+    
+    // Also check if stars animation setting changed
+    console.log('⭐ Settings updated, checking stars animation preference');
+    const settings = await chrome.runtime.sendMessage({
+      type: 'get_user_preferences'
+    });
+    
+    if (settings?.success && settings?.data) {
+      const starsValue = settings.data.starsAnimation;
+      if (starsValue === false || starsValue === 'false') {
+        // Hide stars animation immediately
+        const starsContainer = document.getElementById('popup-stars-animation');
+        if (starsContainer) {
+          console.log('⭐ Hiding stars animation due to settings change');
+          starsContainer.style.opacity = '0';
+          starsContainer.style.animation = 'none';
+          const stars = starsContainer.querySelectorAll('.star');
+          stars.forEach(star => star.style.animation = 'none');
+        }
+      } else {
+        // Restart stars animation
+        console.log('⭐ Restarting stars animation due to settings change');
+        await window.restartStarsAnimation();
+      }
+    }
   });
   
   // Debug: log all storage keys/values

@@ -17,7 +17,8 @@ export const DEFAULT_SETTINGS = {
   currentSiteFilter: false,
   defaultModel: 'gpt-4.1-nano',
   repeatMessageTrigger: 'manual',
-  autoExecute: true  // Enable auto-execution by default
+  autoExecute: true,  // Enable auto-execution by default
+  starsAnimation: true  // ✨ Enable cosmic greeting by default
 };
 
 /**
@@ -99,6 +100,10 @@ export function validateSettings(rawSettings = {}) {
   const currentSiteFilter = typeof settings.currentSiteFilter === 'boolean'
     ? settings.currentSiteFilter
     : Boolean(settings.currentSiteFilter === 'true' || settings.currentSiteFilter === true);
+    
+  const starsAnimation = typeof settings.starsAnimation === 'boolean'
+    ? settings.starsAnimation
+    : settings.starsAnimation === 'false' ? false : Boolean(settings.starsAnimation === 'true' || settings.starsAnimation === true);
   
   return {
     ...settings,
@@ -107,7 +112,8 @@ export function validateSettings(rawSettings = {}) {
     defaultModel: validateModel(settings.defaultModel),
     webSearch,
     pageScraping,
-    currentSiteFilter
+    currentSiteFilter,
+    starsAnimation
   };
 }
 

@@ -1524,7 +1524,7 @@ sup {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1000;
+  z-index: 9999;  /* Higher than settings panel (1000) to ensure visibility */
   pointer-events: none;
   overflow: hidden;
   opacity: 0;

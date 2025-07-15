@@ -105,12 +105,12 @@ function clearChatMessages() {
     chatMessages.insertAdjacentHTML('afterbegin', starsHTML);
     
     // Restart the animation on the restored stars
-    setTimeout(() => {
+    setTimeout(async () => {
       const restoredStars = document.getElementById('popup-stars-animation');
       if (restoredStars) {
         console.log('⭐ Restarting animation on restored stars');
         if (typeof window.restartStarsAnimation === 'function') {
-          window.restartStarsAnimation();
+          await window.restartStarsAnimation();
         } else {
           // Fallback restart logic
           restoredStars.style.animation = 'none';

@@ -18,6 +18,7 @@ let modelSelector;
 let webSearchToggle;
 let pageScrapingToggle;
 let repeatMessageTrigger;
+let starsAnimationToggle;
 
 // Settings state
 let currentSettings = null;
@@ -59,6 +60,7 @@ export async function initializeSettingsComponent() {
 	webSearchToggle = document.getElementById("web-search-toggle");
 	pageScrapingToggle = document.getElementById("page-scraping-toggle");
 	repeatMessageTrigger = document.getElementById("repeat-message-trigger");
+	starsAnimationToggle = document.getElementById("stars-animation-toggle");
 
 	// Populate model selector
 	await populateModelSelector();
@@ -200,6 +202,15 @@ function setupEventListeners() {
 			updateSettings({ repeatMessageTrigger: triggerMode });
 		});
 	}
+
+	// Stars animation toggle - only add listener if element exists
+	if (starsAnimationToggle) {
+		starsAnimationToggle.addEventListener('change', () => {
+			const enabled = starsAnimationToggle.checked;
+			console.log('⭐ Stars animation toggled:', enabled);
+			updateSettings({ starsAnimation: enabled });
+		});
+	}
 }
 
 /**
@@ -314,6 +325,13 @@ function applySettingsToUI(settings) {
 		repeatMessageTrigger.value = repeatTrigger;
 	} else {
 		console.warn('[Settings] repeatMessageTrigger not found, skipping repeatMessageTrigger set');
+	}
+
+	// Apply stars animation setting
+	if (starsAnimationToggle) {
+		starsAnimationToggle.checked = settings.starsAnimation === true;
+	} else {
+		console.warn('[Settings] starsAnimationToggle not found, skipping starsAnimation set');
 	}
 
 	console.log("Settings applied to UI - Theme:", themeValue, "Temperature:", temperature, "Repeat Trigger:", repeatTrigger);
