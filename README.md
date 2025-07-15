@@ -1,10 +1,10 @@
-# 🌸 Iuliia's Lil Helper
+# 🤖 Browse Buddy: Iuliia's Lil Helper
 
 *Made with love for my brilliant wife, who deserves all the help browsers can give.*
 
 ## What is this delightful thing?
 
-Iuliia's Lil Helper is a Chrome extension I built for my amazing wife Iuliia, bringing AI assistance directly to her browsing experience. Think of it as her personal AI assistant that actually knows what web page she's on – because she deserves technology that just works.
+Browse Buddy: Iuliia's Lil Helper is a Chrome extension I built for my amazing wife Iuliia, bringing AI assistance directly to her browsing experience. Think of it as her personal AI assistant that actually knows what web page she's on – because she deserves technology that just works.
 
 ## ✨ Features That Actually Work
 

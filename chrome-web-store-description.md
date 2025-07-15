@@ -7,7 +7,7 @@ AI assistant that reads web pages and chats with you about them. Built with love
 
 🌸 **Your Personal AI Assistant That Actually Knows What You're Reading**
 
-Meet Iuliia's Lil Helper – the Chrome extension that brings AI conversation directly to your browsing experience. No more copying and pasting content or explaining context. This delightful assistant automatically reads whatever page you're on and provides intelligent, contextual responses.
+Meet Browse Buddy: Iuliia's Lil Helper – the Chrome extension that brings AI conversation directly to your browsing experience. No more copying and pasting content or explaining context. This delightful assistant automatically reads whatever page you're on and provides intelligent, contextual responses.
 
 **✨ What Makes This Special:**
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Iuliia's Lil Helper",
+  "name": "Browse Buddy: Iuliia's Lil Helper",
   "version": "1.0.0",
-  "description": "AI assistant that reads web pages and chats with you about them. Built with love for brilliant minds who deserve better browsing.",
+  "description": "Your AI browse buddy that automatically reads web pages and chats with you about them. Originally built with love for Iuliia, now helping everyone browse smarter.",
   "author": "Built with ❤️ for brilliant minds everywhere",
   "homepage_url": "https://github.com/urilivshits/pageinference",
   "icons": {

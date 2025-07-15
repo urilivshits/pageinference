@@ -40,7 +40,7 @@
 ### 3. Store Listing Configuration
 
 #### Basic Information
-- [ ] **Extension Name**: "Iuliia's Lil Helper"
+- [ ] **Extension Name**: "Browse Buddy: Iuliia's Lil Helper"
 - [ ] **Summary**: Use provided short description (132 chars)
 - [ ] **Detailed Description**: Use provided comprehensive description
 - [ ] **Category**: Primary: Productivity, Secondary: Developer Tools
