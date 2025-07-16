@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Your AI browse buddy that automatically reads web pages and chats with you about them. Originally built with love for Iuliia, now helping everyone browse smarter.",
   "author": "Built with ❤️ for brilliant minds everywhere",
-  "homepage_url": "https://github.com/urilivshits/pageinference",
+  "homepage_url": "https://github.com/urilivshits/pageinference/tree/chrome_store",
   "icons": {
     "16": "icons/default_icon16.png",
     "48": "icons/default_icon48.png",
