@@ -12,9 +12,22 @@
  */
 export function getExtensionUrl(path) {
   try {
-    return chrome.runtime.getURL(path);
+    if (chrome.runtime && chrome.runtime.getURL) {
+      return chrome.runtime.getURL(path);
+    }
+    return path;
   } catch (error) {
-    console.error(`Error getting extension URL for ${path}:`, error);
+    // Silently handle errors to prevent Chrome Store issues - only log in dev mode
+    try {
+      const isDevMode = chrome.runtime && 
+                       chrome.runtime.getManifest && 
+                       !chrome.runtime.getManifest()?.update_url;
+      if (isDevMode) {
+        console.error(`Error getting extension URL for ${path}:`, error);
+      }
+    } catch (manifestError) {
+      // Ignore manifest access errors - context might be invalidated
+    }
     return path;
   }
 }
@@ -82,6 +95,8 @@ export function loadScript(src) {
     document.head.appendChild(script);
   });
 }
+
+
 
 export default {
   getExtensionUrl,

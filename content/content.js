@@ -17,6 +17,100 @@ import logger from '../shared/utils/logger.js';
 // Track initialization status
 window.__pageInferenceInitialized = false;
 
+// Safe messaging functions for content script compatibility
+function isExtensionContextValid() {
+  try {
+    return !!(chrome.runtime && chrome.runtime.id);
+  } catch (error) {
+    return false;
+  }
+}
+
+// Safe wrapper for chrome.runtime.getManifest() calls
+function safeGetManifest() {
+  try {
+    return chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Safe wrapper for sendResponse calls
+function safeSendResponse(sendResponse, data) {
+  try {
+    if (isExtensionContextValid()) {
+      sendResponse(data);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    // Silently handle sendResponse errors to prevent Chrome Store issues
+    const manifest = safeGetManifest();
+    const isDevMode = manifest && !manifest.update_url;
+    if (isDevMode) {
+      console.warn('[Extension] sendResponse error (dev mode):', error);
+    }
+    return false;
+  }
+}
+
+function safeSendMessage(message, callback = null, options = {}) {
+  if (!isExtensionContextValid()) {
+    if (options.logInDev !== false) {
+      const manifest = safeGetManifest();
+      const isDevMode = manifest && !manifest.update_url;
+      if (isDevMode) {
+        console.warn('[Extension] Context invalidated, message not sent:', message);
+      }
+    }
+    return false;
+  }
+
+  try {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        const error = chrome.runtime.lastError.message;
+        const silentErrors = [
+          'Extension context invalidated',
+          'Could not establish connection',
+          'Receiving end does not exist',
+          'The message port closed before a response was received'
+        ];
+        
+        const isSilentError = silentErrors.some(silentError => 
+          error.includes(silentError)
+        );
+        
+        if (isSilentError) {
+          const manifest = safeGetManifest();
+          const isDevMode = manifest && !manifest.update_url;
+          if (isDevMode && options.logInDev !== false) {
+            console.warn('[Extension] Communication error (dev mode):', error);
+          }
+        } else {
+          console.error('[Extension] Unexpected runtime error:', error);
+        }
+        
+        if (callback) {
+          callback({ error: error, success: false });
+        }
+      } else {
+        if (callback) {
+          callback(response || { success: true });
+        }
+      }
+    });
+    return true;
+  } catch (error) {
+    const manifest = safeGetManifest();
+    const isDevMode = manifest && !manifest.update_url;
+    if (isDevMode && options.logInDev !== false) {
+      console.error('[Extension] Error sending message:', error);
+    }
+    return false;
+  }
+}
+
 // Initialize the content script
 function initialize() {
   // Only initialize once
@@ -57,41 +151,50 @@ function setupContentScript() {
   console.log('[Page Inference] SETUP: Starting content script functionality setup');
   
   // Listen for messages from the popup or background script
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('[Page Inference] CONTENT: Received message:', request);
-    logger.debug(`Received message: ${request.action}`);
-    
-    // Handle content scraping request
-    if (request.action === 'scrapeContent') {
-      console.log('[Page Inference] CONTENT: Processing scrapeContent request');
-      logger.debug('Scraping page content');
-      try {
-        const pageContent = scrapeCurrentPage();
-        console.log(`[Page Inference] CONTENT: Scraped ${pageContent.length} characters`);
-        logger.debug(`Scraped content length: ${pageContent.length} characters`);
-        sendResponse({ content: pageContent });
-        console.log('[Page Inference] CONTENT: Sent response with content');
-      } catch (error) {
-        console.error('[Page Inference] CONTENT: Error during scraping:', error);
-        logger.error('Error during content scraping:', error);
-        sendResponse({ 
-          error: 'Error scraping content: ' + error.message,
-          content: `Error extracting content from ${window.location.href}. ${error.message}`
-        });
+  try {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      console.log('[Page Inference] CONTENT: Received message:', request);
+      logger.debug(`Received message: ${request.action}`);
+      
+      // Handle content scraping request
+      if (request.action === 'scrapeContent') {
+        console.log('[Page Inference] CONTENT: Processing scrapeContent request');
+        logger.debug('Scraping page content');
+        try {
+          const pageContent = scrapeCurrentPage();
+          console.log(`[Page Inference] CONTENT: Scraped ${pageContent.length} characters`);
+          logger.debug(`Scraped content length: ${pageContent.length} characters`);
+          safeSendResponse(sendResponse, { content: pageContent });
+          console.log('[Page Inference] CONTENT: Sent response with content');
+        } catch (error) {
+          console.error('[Page Inference] CONTENT: Error during scraping:', error);
+          logger.error('Error during content scraping:', error);
+          safeSendResponse(sendResponse, { 
+            error: 'Error scraping content: ' + error.message,
+            content: `Error extracting content from ${window.location.href}. ${error.message}`
+          });
+        }
+        return true; // Keep the message channel open for async responses
       }
+      
+      // Handle ping to check if content script is initialized
+      if (request.action === 'ping') {
+        safeSendResponse(sendResponse, { pong: true, initialized: true });
+        return true;
+      }
+      
+      // Fallback for unhandled messages
+      safeSendResponse(sendResponse, { success: true, message: 'Message received by content script' });
       return true; // Keep the message channel open for async responses
+    });
+  } catch (error) {
+    // Silently handle chrome.runtime.onMessage.addListener errors to prevent Chrome Store issues
+    const manifest = safeGetManifest();
+    const isDevMode = manifest && !manifest.update_url;
+    if (isDevMode) {
+      console.warn('[Extension] Failed to add message listener (dev mode):', error);
     }
-    
-    // Handle ping to check if content script is initialized
-    if (request.action === 'ping') {
-      sendResponse({ pong: true, initialized: true });
-      return true;
-    }
-    
-    // Fallback for unhandled messages
-    sendResponse({ success: true, message: 'Message received by content script' });
-    return true; // Keep the message channel open for async responses
-  });
+  }
 
   window.__pageInferenceInitialized = true;
   logger.success('Content script initialized successfully');
@@ -103,7 +206,7 @@ function setupContentScript() {
   // Broadcast initialization status to ensure background script knows we're ready
   console.log('[Page Inference] SETUP: Sending initialization confirmation to background');
   try {
-      chrome.runtime.sendMessage({ 
+      safeSendMessage({ 
     type: 'contentScriptInitialized',
     action: 'contentScriptInitialized',
     url: window.location.href,
@@ -112,7 +215,8 @@ function setupContentScript() {
     // Silent handling of chrome.runtime.lastError to prevent extension errors page spam
     if (chrome.runtime.lastError) {
       // Only log in development mode (when extension is unpacked)
-      const isDevMode = !chrome.runtime.getManifest()?.update_url;
+      const manifest = safeGetManifest();
+      const isDevMode = manifest && !manifest.update_url;
       if (isDevMode) {
         console.error('[Page Inference] Error sending initialization confirmation:', chrome.runtime.lastError.message);
       }
@@ -140,9 +244,9 @@ function setupKeyListeners() {
 
   // Get current tab ID first
   console.log('[Page Inference] SETUP: Requesting tab ID from background');
-  chrome.runtime.sendMessage({ action: 'getTabId' }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.error('[Page Inference] Error getting tab ID:', chrome.runtime.lastError.message);
+  safeSendMessage({ action: 'getTabId' }, (response) => {
+    if (response && response.error) {
+      console.error('[Page Inference] Error getting tab ID:', response.error);
       // Try to continue without tab ID
       currentTabId = null;
     } else if (response && response.tabId) {
@@ -171,13 +275,13 @@ function setupKeyListeners() {
         tabId: currentTabId // Include tab ID for better tracking
       };
       
-      chrome.runtime.sendMessage(message, (response) => {
-        if (chrome.runtime.lastError) {
-          // Silent handling of chrome.runtime.lastError to prevent extension errors page spam
-          // This commonly occurs when extension context is invalidated (e.g., extension reloaded)
-          const isDevMode = !chrome.runtime.getManifest()?.update_url;
+      safeSendMessage(message, (response) => {
+        if (response && response.error) {
+          // Error handled by safeSendMessage utility
+          const manifest = safeGetManifest();
+          const isDevMode = manifest && !manifest.update_url;
           if (isDevMode) {
-            console.error('[Page Inference] Error sending ctrl key state:', chrome.runtime.lastError.message);
+            console.error('[Page Inference] Error sending ctrl key state:', response.error);
           }
         } else {
           logger.ctrl(`Sent Ctrl key state: ${isPressed ? 'pressed' : 'released'} for tab ${currentTabId}`);
@@ -214,7 +318,7 @@ function setupKeyListeners() {
       // Wait longer before resetting on blur to ensure click completes
       setTimeout(() => {
         ctrlKeyPressed = false;
-        chrome.runtime.sendMessage({ 
+        safeSendMessage({ 
           action: 'ctrlKeyState', 
           isPressed: false 
         }, (response) => {
@@ -226,7 +330,7 @@ function setupKeyListeners() {
 
   // Send initial state
   console.log('[Page Inference] SETUP: Sending initial ctrl state (false) to background');
-  chrome.runtime.sendMessage({ 
+  safeSendMessage({ 
     action: 'ctrlKeyState', 
     isPressed: false 
   });

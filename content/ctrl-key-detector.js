@@ -16,8 +16,83 @@ let keyUpTimeoutId = null; // Add timeout ID for delayed key-up processing
 let heartbeatCount = 0; // Add counter to further reduce heartbeat frequency
 let currentTabId = null; // Store the current tab ID
 
+// Safe messaging functions for content script compatibility
+function isExtensionContextValid() {
+  try {
+    return !!(chrome.runtime && chrome.runtime.id);
+  } catch (error) {
+    return false;
+  }
+}
+
+// Safe wrapper for chrome.runtime.getManifest() calls
+function safeGetManifest() {
+  try {
+    return chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function safeSendMessage(message, callback = null, options = {}) {
+  if (!isExtensionContextValid()) {
+    if (options.logInDev !== false) {
+      const manifest = safeGetManifest();
+      const isDevMode = manifest && !manifest.update_url;
+      if (isDevMode) {
+        console.warn('[Extension] Context invalidated, message not sent:', message);
+      }
+    }
+    return false;
+  }
+
+  try {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        const error = chrome.runtime.lastError.message;
+        const silentErrors = [
+          'Extension context invalidated',
+          'Could not establish connection',
+          'Receiving end does not exist',
+          'The message port closed before a response was received'
+        ];
+        
+        const isSilentError = silentErrors.some(silentError => 
+          error.includes(silentError)
+        );
+        
+        if (isSilentError) {
+          const manifest = safeGetManifest();
+          const isDevMode = manifest && !manifest.update_url;
+          if (isDevMode && options.logInDev !== false) {
+            console.warn('[Extension] Communication error (dev mode):', error);
+          }
+        } else {
+          console.error('[Extension] Unexpected runtime error:', error);
+        }
+        
+        if (callback) {
+          callback({ error: error, success: false });
+        }
+      } else {
+        if (callback) {
+          callback(response || { success: true });
+        }
+      }
+    });
+    return true;
+  } catch (error) {
+    const manifest = safeGetManifest();
+    const isDevMode = manifest && !manifest.update_url;
+    if (isDevMode && options.logInDev !== false) {
+      console.error('[Extension] Error sending message:', error);
+    }
+    return false;
+  }
+}
+
 // Get the current tab ID from the background script
-chrome.runtime.sendMessage({ action: 'getTabId' }, (response) => {
+safeSendMessage({ action: 'getTabId' }, (response) => {
   if (response && response.tabId) {
     currentTabId = response.tabId;
     console.log('Ctrl key detector initialized for tab', currentTabId);
@@ -37,7 +112,7 @@ function sendCtrlKeyMessage(isPressed, isHeartbeat = false) {
     const tabId = currentTabId;
     
     // Send message to background script with current tab ID
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       action: 'ctrlKeyPressed',
       pressed: isPressed,
       timestamp: now,
@@ -46,7 +121,7 @@ function sendCtrlKeyMessage(isPressed, isHeartbeat = false) {
     });
     
     // Also use older format for backward compatibility
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       action: 'ctrlKeyState',
       isPressed: isPressed,
       timestamp: now,
