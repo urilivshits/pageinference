@@ -7,6 +7,7 @@
 import { MESSAGE_TYPES } from '../../shared/constants.js';
 import * as chatService from './chat-service.js';
 import * as storageService from './storage-service.js';
+import { ErrorHandler } from '../../shared/utils/error-handler.js';
 
 /**
  * Set up message listeners for handling messages from content scripts and popup
@@ -29,8 +30,18 @@ export function setupMessageListeners() {
     }
     
     // Use async handler but make sure we return true to indicate we'll respond asynchronously
-    handleMessage(type, data, sender).then(sendResponse).catch(error => {
-      console.error('Error handling message:', error);
+    handleMessage(type, data, sender).then(sendResponse).catch(async (error) => {
+      // Use statically imported error handler for Chrome Store compliant error handling
+      try {
+        ErrorHandler.handle('message_handler', error, { messageType: type });
+      } catch (importError) {
+        // Fallback if error handler import fails - only log in dev mode
+        const isDevMode = !chrome.runtime.getManifest()?.update_url;
+        if (isDevMode) {
+          console.error('Error handling message:', error);
+        }
+      }
+      
       sendResponse({
         success: false,
         error: error.message || 'Unknown error'

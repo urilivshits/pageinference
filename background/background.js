@@ -5,6 +5,9 @@
  * Sets up listeners and manages the extension's lifecycle.
  */
 
+// Initialize Chrome Store compliant console override FIRST
+import '../shared/utils/console-override.js';
+
 // Import prompts directly
 import { 
   GENERIC_SYSTEM_PROMPT,
@@ -25,6 +28,10 @@ import {
 import openaiApi from './api/openai.js';
 import logger from '../shared/utils/logger.js';
 import { DEFAULT_SETTINGS } from '../shared/models/settings.js';
+
+// Import API constants and error handler for service worker compatibility
+import { API_CONSTANTS } from '../shared/constants.js';
+import { ErrorHandler } from '../shared/utils/error-handler.js';
 
 // Global variables to store service references
 let messageHandler = null;
@@ -836,8 +843,7 @@ function setupMessageListeners() {
       // Model availability
       'check_model_availability': async () => {
         try {
-          // Import constants to use centralized model list
-          const { API_CONSTANTS } = await import('../shared/constants.js');
+          // Use statically imported constants for centralized model list
           
           // Create availability object from centralized model list
           const modelAvailability = {};
@@ -1685,57 +1691,52 @@ async function processScrapeTabRequest(tab) {
       }
     };
   } catch (error) {
-    logger.error('Error communicating with content script:', error);
+    // Use statically imported error handler for Chrome Store compliant error handling
     
-    // Since content script communication failed, try injecting the content script
-    logger.log('Attempting to inject content script and retry...');
-    try {
-      await injectContentScriptIfNeeded(tab.id);
-      
-      // Wait longer for the script to fully initialize and set up message listeners
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // First test if content script is responding with a ping
-      logger.log('Testing content script connectivity with ping');
-      try {
-        await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
-        logger.log('Content script ping successful');
-      } catch (pingError) {
-        logger.warn('Content script still not responding after injection, trying longer wait');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-      
-      // Try again after injection
-      logger.log('Retrying scrapeContent after script injection');
-      const retryResponse = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
-      
-      if (!retryResponse || !retryResponse.content) {
-        throw new Error('Content script returned empty response after injection');
-      }
-      
-      logger.log(`Successfully scraped ${retryResponse.content.length} characters after script injection`);
-      return { 
-        success: true, 
-        data: {
-          content: retryResponse.content,
-          title: tab.title || '',
-          url: tab.url || ''
+    // Handle initial content script communication failure gracefully
+    ErrorHandler.handle('content_script_communication', error);
+    
+    // Attempt graceful degradation with single retry
+    return await ErrorHandler.gracefulDegrade(
+      async () => {
+        logger.log('Attempting to inject content script and retry...');
+        await injectContentScriptIfNeeded(tab.id);
+        
+        // Single reasonable wait period
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Single retry attempt
+        const retryResponse = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
+        
+        if (!retryResponse || !retryResponse.content) {
+          throw new Error('Content script injection failed');
         }
-      };
-    } catch (retryError) {
-      logger.error('Failed to scrape content after script injection:', retryError);
-      // Return success with empty content to allow the request to proceed without page content
-      // This prevents the "Failed to extract page content" error from stopping the entire request
-      return { 
-        success: true, 
-        data: {
-          content: '', // Empty content, will trigger "without page content" flow
-          title: tab.title || '',
-          url: tab.url || '',
-          note: 'Page content extraction failed, proceeding without page context'
-        }
-      };
-    }
+        
+        logger.log(`Successfully scraped ${retryResponse.content.length} characters after script injection`);
+        return { 
+          success: true, 
+          data: {
+            content: retryResponse.content,
+            title: tab.title || '',
+            url: tab.url || ''
+          }
+        };
+      },
+      // Fallback: Continue without page content
+      () => {
+        logger.log('Proceeding without page content due to scraping failure');
+        return { 
+          success: true, 
+          data: {
+            content: '', // Empty content, will trigger "without page content" flow
+            title: tab.title || '',
+            url: tab.url || '',
+            note: 'Page content extraction failed, proceeding without page context'
+          }
+        };
+      },
+      'content_script_retry'
+    );
   }
 }
 

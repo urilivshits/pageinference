@@ -203,7 +203,11 @@ export async function sendRequest(options) {
     return data;
     
   } catch (error) {
-    console.error('OpenAI API request failed:', error);
+    // Silent error handling for Chrome Store compliance
+    const isDevMode = !chrome.runtime.getManifest()?.update_url;
+    if (isDevMode) {
+      console.error('OpenAI API request failed:', error);
+    }
     throw new Error(`OpenAI API request failed: ${error.message}`);
   }
 }

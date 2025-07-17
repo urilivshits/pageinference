@@ -5,6 +5,10 @@
  * It imports and initializes components from the component directory.
  */
 
+// Initialize Chrome Store compliant console override FIRST
+import '../shared/utils/console-override.js';
+import '../shared/utils/dev-tools.js';
+
 // Import our new logger
 import logger from '../shared/utils/logger.js';
 import { getDomain } from '../shared/utils/url-utils.js';
@@ -335,7 +339,11 @@ try {
     backgroundConnection = null;
   });
 } catch (error) {
-  logger.error('Failed to connect to background script:', error);
+  // Only log connection errors in development mode to prevent console spam
+  const isDevMode = !chrome.runtime.getManifest()?.update_url;
+  if (isDevMode) {
+    logger.error('Failed to connect to background script:', error);
+  }
 }
 
 // Also periodically check if we're still the active popup (in case storage-based approach fails)

@@ -660,7 +660,11 @@ async function handleSendMessage(options = {}) {
       if (responseData.response && responseData.response.content) {
         addMessageToUI('assistant', responseData.response.content);
       } else {
-        console.error('Invalid response format:', responseData);
+        // Silent error handling for Chrome Store compliance
+        const isDevMode = !chrome.runtime.getManifest()?.update_url;
+        if (isDevMode) {
+          console.error('Invalid response format:', responseData);
+        }
         showErrorMessage('Invalid response from server');
       }
       
@@ -683,14 +687,25 @@ async function handleSendMessage(options = {}) {
     } else {
       // Show error message
       const errorMessage = response && response.error ? response.error : 'Failed to process message';
-      console.error('Error response:', errorMessage);
+      
+      // Silent error handling for Chrome Store compliance
+      const isDevMode = !chrome.runtime.getManifest()?.update_url;
+      if (isDevMode) {
+        console.error('Error response:', errorMessage);
+      }
+      
       showErrorMessage(errorMessage);
       
       // Add error message to chat
       addMessageToUI('system', `Error: ${errorMessage}`);
     }
   } catch (error) {
-    console.error('Error sending message:', error);
+    // Silent error handling for Chrome Store compliance
+    const isDevMode = !chrome.runtime.getManifest()?.update_url;
+    if (isDevMode) {
+      console.error('Error sending message:', error);
+    }
+    
     hideLoadingState();
     sessionState.isSubmitting = false;
     showErrorMessage(error.message || 'Failed to send message');

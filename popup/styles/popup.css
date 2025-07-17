@@ -685,7 +685,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 #error-message {
   background-color: var(--system-message-bg, #fee2e2);
   border: 1px solid var(--error-color, #dc2626);
-  color: var(--error-color, #dc2626);
+  color: var(--error-color, #dc2626) !important;
   padding: 0.75rem 1rem;
   margin: 0.75rem 0;
   border-radius: 12px;
@@ -969,7 +969,7 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 .error-message {
   background-color: rgba(239, 68, 68, 0.1);
   border: 1px solid var(--error-color);
-  color: var(--error-color);
+  color: var(--error-color) !important;
   padding: 12px;
   border-radius: 4px;
   margin: 16px;

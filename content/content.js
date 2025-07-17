@@ -7,6 +7,9 @@
  * 3. Handling user interactions on the page
  */
 
+// Initialize Chrome Store compliant console override FIRST
+import '../shared/utils/console-override.js';
+
 // Import scrapers and logger
 import { scrapeCurrentPage } from './scrapers/index.js';
 import logger from '../shared/utils/logger.js';
@@ -100,18 +103,23 @@ function setupContentScript() {
   // Broadcast initialization status to ensure background script knows we're ready
   console.log('[Page Inference] SETUP: Sending initialization confirmation to background');
   try {
-    chrome.runtime.sendMessage({ 
-      type: 'contentScriptInitialized',
-      action: 'contentScriptInitialized',
-      url: window.location.href,
-      timestamp: Date.now()
-    }, (response) => {
-      if (chrome.runtime.lastError) {
+      chrome.runtime.sendMessage({ 
+    type: 'contentScriptInitialized',
+    action: 'contentScriptInitialized',
+    url: window.location.href,
+    timestamp: Date.now()
+  }, (response) => {
+    // Silent handling of chrome.runtime.lastError to prevent extension errors page spam
+    if (chrome.runtime.lastError) {
+      // Only log in development mode (when extension is unpacked)
+      const isDevMode = !chrome.runtime.getManifest()?.update_url;
+      if (isDevMode) {
         console.error('[Page Inference] Error sending initialization confirmation:', chrome.runtime.lastError.message);
-      } else {
-        console.log('[Page Inference] COMPLETE: Sent initialization confirmation to background, response:', response);
       }
-    });
+    } else {
+      console.log('[Page Inference] COMPLETE: Sent initialization confirmation to background, response:', response);
+    }
+  });
     logger.debug('Sent initialization confirmation to background');
   } catch (e) {
     logger.warn('Failed to send initialization confirmation:', e);
@@ -165,7 +173,12 @@ function setupKeyListeners() {
       
       chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {
-          console.error('[Page Inference] Error sending ctrl key state:', chrome.runtime.lastError.message);
+          // Silent handling of chrome.runtime.lastError to prevent extension errors page spam
+          // This commonly occurs when extension context is invalidated (e.g., extension reloaded)
+          const isDevMode = !chrome.runtime.getManifest()?.update_url;
+          if (isDevMode) {
+            console.error('[Page Inference] Error sending ctrl key state:', chrome.runtime.lastError.message);
+          }
         } else {
           logger.ctrl(`Sent Ctrl key state: ${isPressed ? 'pressed' : 'released'} for tab ${currentTabId}`);
           console.log(`[Page Inference] Background response:`, response);

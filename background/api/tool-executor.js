@@ -37,7 +37,11 @@ export async function executeToolCall(toolCall) {
       message: 'Tool handled by Responses API'
     };
   } catch (error) {
-    console.error('Error executing tool call:', error);
+    // Silent error handling for Chrome Store compliance
+    const isDevMode = !chrome.runtime.getManifest()?.update_url;
+    if (isDevMode) {
+      console.error('Error executing tool call:', error);
+    }
     return {
       error: true,
       message: `Error executing tool: ${error.message}`
