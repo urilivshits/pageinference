@@ -1348,7 +1348,7 @@ function setupMessageListeners() {
 
           // Call API with options
           const apiOptions = {
-            model: model || 'gpt-4.1-nano',  // Default model
+            model: model || 'gpt-4.1',  // Default model
             temperature: temperature !== undefined ? temperature : 0.5
           };
 

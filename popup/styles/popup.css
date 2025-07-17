@@ -104,16 +104,18 @@ body {
 .popup-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-color);
+  min-height: 56px;
 }
 
 /* Header left side (avatar + title) */
 .header-left {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
+  padding-top: 2px;
 }
 
 .profile-avatar {
@@ -124,6 +126,8 @@ body {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  margin-top: 1px;
+  flex-shrink: 0;
 }
 
 .header-title {
@@ -131,15 +135,24 @@ body {
   font-weight: 600;
   color: var(--text-color);
   margin: 0;
-  display: flex;
-  align-items: center;
+  display: block;
+  line-height: 1.2;
   letter-spacing: 0.01em;
+}
+
+/* Style for the subtitle (second line) */
+.header-subtitle {
+  font-size: 0.85rem;
+  color: var(--secondary-text-color);
+  font-weight: 400;
+  display: block;
 }
 
 /* Header right side (settings gear) */
 .header-right {
   display: flex;
   align-items: center;
+  padding-top: 4px;
 }
 
 .settings-gear-button {
@@ -217,17 +230,18 @@ html[data-theme="dark"] .settings-gear-button:hover {
 .settings-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-color);
   background: var(--background-color);
-  min-height: 52px;
+  min-height: 56px;
 }
 
 .settings-header-left {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
+  padding-top: 2px;
 }
 
 .settings-title {
@@ -240,6 +254,7 @@ html[data-theme="dark"] .settings-gear-button:hover {
 .settings-header-right {
   display: flex;
   align-items: center;
+  padding-top: 4px;
 }
 
 .settings-close-button {
@@ -1366,6 +1381,8 @@ sup {
   top: 0;
   z-index: 2;
   letter-spacing: 0.01em;
+  height: 65px;
+  box-sizing: border-box;
 }
 .sidebar-new-chat:hover {
   background: linear-gradient(135deg, var(--accent-hover-color) 0%, var(--accent-color) 100%) !important;

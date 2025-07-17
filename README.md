@@ -1,17 +1,17 @@
-# 🤖 Browse Buddy: Iuliia's Lil Helper
+# 🤖 Browse Buddy: AI Assistant with Page Reading and Search
 
 *Made with love for my brilliant wife, who deserves all the help browsers can give.*
 
 ## What is this delightful thing?
 
-Browse Buddy: Iuliia's Lil Helper is a Chrome extension I built for my amazing wife Iuliia, bringing AI assistance directly to her browsing experience. Think of it as her personal AI assistant that actually knows what web page she's on – because she deserves technology that just works.
+Browse Buddy: AI Assistant with Page Reading and Search is a Chrome extension I built for my amazing wife Iuliia, bringing AI assistance directly to her browsing experience. Think of it as her personal AI assistant that actually knows what web page she's on – because she deserves technology that just works.
 
 ## ✨ Features That Actually Work
 
 ### 🤖 AI Models & Intelligence
 Choose between two powerful AI models, each with automatic page content analysis:
-- **GPT-4.1 nano** (Default): The newest, fastest, and most cost-effective model - perfect for daily browsing tasks
-- **GPT-4.1**: The powerhouse reasoning model with **real-time web search** for complex research and current information
+- **GPT-4.1 nano**: The newest, fastest, and most cost-effective model - perfect for daily browsing tasks
+- **GPT-4.1** (Default): The powerhouse reasoning model with **real-time web search** for complex research and current information
 
 #### Model Specifications
 | Model | Context Window | Cost (Input/Output) | Page Content Scraping | Web Search | Best For | Key Benchmarks |
@@ -85,7 +85,7 @@ The extension remembers your last question and can repeat it automatically on di
 - **Local Storage Only**: Your API key and conversations stay in your browser
 - **No Data Collection**: Everything stays local except direct OpenAI API calls
 - **Open Source**: All code is visible and auditable
-- **Page Reading**: AI automatically reads current page content for better assistance
+- **Privacy-First Page Reading**: Page content is only read when you click the send button (not when opening the extension), and only once per conversation for maximum privacy
 
 ## 🐛 Known Quirks
 

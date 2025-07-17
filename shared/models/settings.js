@@ -15,7 +15,7 @@ export const DEFAULT_SETTINGS = {
   pageScraping: true,
   webSearch: true,  // ✅ Enable web search by default
   currentSiteFilter: false,
-  defaultModel: 'gpt-4.1-nano',
+  defaultModel: 'gpt-4.1',
   repeatMessageTrigger: 'manual',
   autoExecute: true,  // Enable auto-execution by default
   starsAnimation: true  // ✨ Enable cosmic greeting by default

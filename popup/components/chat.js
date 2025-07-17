@@ -578,7 +578,7 @@ async function handleSendMessage(options = {}) {
     const settings = {
       pageScraping: preferences.pageScraping !== undefined ? preferences.pageScraping : false,
       webSearch: preferences.webSearch !== undefined ? preferences.webSearch : false,
-      		selectedModel: preferences.defaultModel || 'gpt-4.1-nano',
+      		        selectedModel: preferences.defaultModel || 'gpt-4.1',
       temperature: preferences.temperature !== undefined ? preferences.temperature : 0.5
     };
     

@@ -56,10 +56,10 @@ export const MESSAGE_TYPES = {
 export const API_CONSTANTS = {
   // Models
   AVAILABLE_MODELS: [
-    { value: 'gpt-4.1-nano', label: 'GPT-4.1 nano (Default)' },
-    { value: 'gpt-4.1', label: 'GPT-4.1' }
+    { value: 'gpt-4.1-nano', label: 'GPT-4.1 nano' },
+    { value: 'gpt-4.1', label: 'GPT-4.1 (Default)' }
   ],
-  DEFAULT_MODEL: 'gpt-4.1-nano',
+      DEFAULT_MODEL: 'gpt-4.1',
   
   // Endpoints
   BASE_URL: 'https://api.openai.com/v1',

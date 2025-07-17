@@ -299,7 +299,7 @@ function applySettingsToUI(settings) {
 	}
 
 	// Apply model setting
-	const defaultModel = settings.defaultModel || "gpt-4.1-nano";
+	    const defaultModel = settings.defaultModel || "gpt-4.1";
 	if (modelSelector) {
 		modelSelector.value = defaultModel;
 	} else {
@@ -486,8 +486,8 @@ async function populateModelSelector() {
 		console.error('Error loading models from constants:', error);
 		// Fallback to default models if import fails
 		const fallbackModels = [
-			{ value: "gpt-4.1-nano", label: "GPT-4.1 nano (Default)" },
-			            { value: "gpt-4.1", label: "GPT-4.1" },
+			        { value: "gpt-4.1-nano", label: "GPT-4.1 nano" },
+			            { value: "gpt-4.1", label: "GPT-4.1 (Default)" },
 		];
 		
 		fallbackModels.forEach((model) => {
@@ -630,8 +630,8 @@ function updateModelSelector() {
 
 	// If current model is not available, switch to default
 	if (modelAvailability[modelSelector.value] === false) {
-		modelSelector.value = "gpt-4.1-nano";
-		updateSettings({ defaultModel: "gpt-4.1-nano" });
+		modelSelector.value = "gpt-4.1";
+		        updateSettings({ defaultModel: "gpt-4.1" });
 	}
 }
 

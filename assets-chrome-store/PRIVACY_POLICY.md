@@ -1,10 +1,10 @@
-# Privacy Policy for Browse Buddy: Iuliia's Lil Helper
+# Privacy Policy for Browse Buddy: AI Assistant with Page Reading and Search
 
 **Last Updated:** January 2025
 
 ## Overview
 
-Browse Buddy: Iuliia's Lil Helper is a Chrome extension that provides AI-powered assistance for web browsing. This privacy policy explains how we handle your information when you use our extension.
+Browse Buddy: AI Assistant with Page Reading and Search is a Chrome extension that provides AI-powered assistance for web browsing. This privacy policy explains how we handle your information when you use our extension.
 
 ## Information We Collect
 

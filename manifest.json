@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Browse Buddy: Iuliia's Lil Helper",
+  "name": "Browse Buddy: AI Assistant with Page Reading and Search",
   "version": "1.0.0",
-  "description": "Your AI browse buddy that automatically reads web pages and chats with you about them. Originally built with love for Iuliia, now helping everyone browse smarter.",
-  "author": "Built with ❤️ for brilliant minds everywhere",
+  "description": "AI assistant that reads web pages and provides contextual help. Features smart models with web search capabilities.",
+  "author": "urilivshits",
   "homepage_url": "https://github.com/urilivshits/pageinference/tree/chrome_store",
   "icons": {
     "16": "icons/default_icon16.png",
