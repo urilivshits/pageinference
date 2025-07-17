@@ -456,16 +456,16 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 12px;
   padding-bottom: 100px; /* Fixed space for input container */
   display: flex;
   flex-direction: column;
-  gap: 8px; /* Reduced from 16px */
+  gap: 4px; /* Reduced from 8px for tighter spacing */
 }
 
 .message {
-  max-width: 80%;
-  padding: 12px;
+  max-width: 85%;
+  padding: 8px 12px;
   border-radius: 12px;
   position: relative;
   word-break: break-word;
@@ -1088,11 +1088,69 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 /* Remove default paragraph margins within messages */
 .message-content p {
   margin: 0;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.25em;
 }
 
 .message-content p:last-child {
   margin-bottom: 0;
+}
+
+/* Fix bullet point formatting - compact with proper spacing */
+.message-content ul,
+.message-content ol {
+  padding-left: 1.5em;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.message-content ul li,
+.message-content ol li {
+  padding-left: 0.5em;
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* Remove paragraph margins but keep content flow */
+.message-content li p,
+.message-content ul p,
+.message-content ol p,
+.message-content ul li p,
+.message-content ol li p {
+  margin: 0;
+  padding: 0;
+  display: inline;
+}
+
+/* Remove excessive spacing between list items */
+.message-content li {
+  margin: 0;
+  padding: 0;
+}
+
+/* Remove spacing from nested lists */
+.message-content ul ul,
+.message-content ol ul,
+.message-content ul ol,
+.message-content ol ol {
+  margin: 0;
+  padding-left: 1em;
+}
+
+/* Ensure proper spacing for nested content */
+.message-content ul li,
+.message-content ol li {
+  margin-bottom: 0.1em;
+}
+
+.message-content ul li:last-child,
+.message-content ol li:last-child {
+  margin-bottom: 0;
+}
+
+/* Reset the global * selector to avoid breaking layout */
+.message-content * {
+  margin: 0;
+  padding: 0;
 }
 
 /* Copy button for messages */
@@ -1160,7 +1218,7 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 #chat-messages {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
@@ -1185,13 +1243,13 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
   align-self: flex-end;
   background-color: var(--user-message-background, #f0f4f8);
   color: var(--text-color);
-  border: 2px solid var(--accent-color);
-  border-radius: 14px 14px 6px 14px;
-  margin-left: 2rem;
-  margin-bottom: 0.5rem;
-  box-shadow: 0 2px 8px 0 rgba(79, 70, 229, 0.06);
+  border: 1px solid var(--accent-color);
+  border-radius: 12px 12px 4px 12px;
+  margin-left: 1rem;
+  margin-bottom: 0.25rem;
+  box-shadow: 0 1px 4px 0 rgba(79, 70, 229, 0.06);
   font-weight: 500;
-  padding: 14px 18px;
+  padding: 8px 12px;
   transition: border-color 0.2s, background-color 0.2s;
 }
 
@@ -1206,19 +1264,19 @@ html[data-theme="dark"] .message.user {
   align-self: flex-start;
   background-color: var(--assistant-message-background, #f1f5fe);
   color: var(--text-color);
-  border-radius: 14px 14px 14px 6px;
-  margin-right: 2rem;
-  margin-bottom: 0.5rem;
-  box-shadow: 0 2px 12px 0 rgba(99, 102, 241, 0.10);
+  border-radius: 12px 12px 12px 4px;
+  margin-right: 1rem;
+  margin-bottom: 0.25rem;
+  box-shadow: 0 1px 6px 0 rgba(99, 102, 241, 0.08);
   font-weight: 400;
-  padding: 14px 18px;
+  padding: 8px 12px;
   transition: background-color 0.2s;
 }
 
 html[data-theme="dark"] .message.assistant {
   background-color: #2c3a47;
   color: #e5e7eb;
-  box-shadow: 0 2px 12px 0 rgba(99, 102, 241, 0.18);
+  box-shadow: 0 1px 6px 0 rgba(99, 102, 241, 0.12);
 }
 
 /* Popup fade in animation */
