@@ -2,6 +2,8 @@ Browse Buddy: AI Assistant with Page Reading and Search 🤖
 
 AI assistant that automatically reads web page content to provide contextual help without copy-pasting.
 
+🔗 DOWNLOAD LINK: https://chromewebstore.google.com/detail/browse-buddy-ai-assistant/[your-extension-id]
+
 WHAT IS THIS DELIGHTFUL THING?
 Browse Buddy: AI Assistant with Page Reading and Search is a Chrome extension I built for my amazing wife Iuliia, bringing AI assistance directly to her browsing experience. Think of it as her personal AI assistant that actually knows what web page she's on – because she deserves technology that just works.
 
@@ -54,6 +56,8 @@ PRIVACY & SECURITY:
 
 Built for users who deserve technology that just works, without the usual browser extension frustrations.
 
+Built for users who deserve technology that just works, without the usual browser extension frustrations.
+
 ---
 
 SUPPORT THIS PROJECT ❤️
@@ -67,3 +71,5 @@ Donation Addresses:
 • USDC (Polygon): `0x... (Your Polygon Address Here)`
 
 Thank you for supporting open-source software that actually works! 🎉
+
+#ChromeExtension #AI #Productivity #BrowserAssistant #WebContent #OpenAI #GPT4 #BrowsingHelper 
