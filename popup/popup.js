@@ -1050,20 +1050,36 @@ applyThemeFromPreferences().catch(error => {
 /**
  * Restart the stars animation each time the popup opens
  */
+// Track if stars animation has been started in this session to prevent multiple calls
+window.starsAnimationStarted = false;
+
 window.restartStarsAnimation = async function restartStarsAnimation() {
   console.log('⭐ restartStarsAnimation called');
   
-  // Check if stars animation is enabled in settings
+  // Prevent multiple calls during the same session
+  if (window.starsAnimationStarted) {
+    console.log('⭐ Stars animation already started in this session, skipping');
+    return;
+  }
+  
+  // Check if stars animation is enabled in settings and if it has been shown before
   let starsEnabled = true; // Default to enabled
+  let starsAnimationShown = false; // Default to not shown
+  let settingsData = null;
+  
   try {
     const settings = await chrome.runtime.sendMessage({
       type: 'get_user_preferences'
     });
     
     console.log('⭐ starsAnimation value:', settings?.data?.starsAnimation, 'type:', typeof settings?.data?.starsAnimation);
+    console.log('⭐ starsAnimationShown value:', settings?.data?.starsAnimationShown, 'type:', typeof settings?.data?.starsAnimationShown);
     
     if (settings?.success && settings?.data) {
-      const starsValue = settings.data.starsAnimation;
+      settingsData = settings.data;
+      const starsValue = settingsData.starsAnimation;
+      starsAnimationShown = settingsData.starsAnimationShown === true;
+      
       if (starsValue === false || starsValue === 'false') {
         starsEnabled = false;
         console.log('⭐ Stars animation explicitly disabled in settings');
@@ -1077,10 +1093,22 @@ window.restartStarsAnimation = async function restartStarsAnimation() {
     console.log('⭐ Could not check settings, using default (enabled):', error);
   }
   
+    // If stars animation has already been shown, only disable it if it wasn't manually enabled
+  if (starsAnimationShown && !starsEnabled) {
+    console.log('⭐ Stars animation already shown before and not manually enabled, keeping disabled');
+    // Don't change anything - let the user control it manually
+  } else if (starsAnimationShown && starsEnabled) {
+    console.log('⭐ Stars animation already shown before but manually enabled, allowing it to play');
+    // User has manually enabled it, so let it play
+  }
+  
   if (!starsEnabled) {
     console.log('⭐ Stars animation disabled, skipping');
     return;
   }
+  
+  // Mark that we're starting the animation in this session
+  window.starsAnimationStarted = true;
   
   const starsContainer = document.getElementById('popup-stars-animation');
   console.log('⭐ stars container found:', starsContainer);
@@ -1115,6 +1143,42 @@ window.restartStarsAnimation = async function restartStarsAnimation() {
       }
     });
     console.log('⭐ animation restarted');
+    
+        // Mark stars animation as shown for the first time (only if it was enabled)
+    if (!starsAnimationShown && starsEnabled) {
+      console.log('⭐ Marking stars animation as shown for the first time');
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: 'update_user_preferences',
+          data: { starsAnimationShown: true }
+        });
+        console.log('⭐ Stars animation marked as shown, response:', response);
+        
+        // After animation completes (4 seconds), automatically disable it
+        setTimeout(async () => {
+          console.log('⭐ Stars animation completed, automatically disabling');
+          try {
+            const response = await chrome.runtime.sendMessage({
+              type: 'update_user_preferences',
+              data: { starsAnimation: false }
+            });
+            console.log('⭐ Stars animation automatically disabled after first display, response:', response);
+            
+            // Update the settings UI to reflect the change
+            const starsAnimationToggle = document.getElementById('stars-animation-toggle');
+            if (starsAnimationToggle) {
+              starsAnimationToggle.checked = false;
+            }
+          } catch (error) {
+            console.log('⭐ Error disabling stars animation after first display:', error);
+          }
+        }, 4000); // 4 seconds to match the animation duration
+      } catch (error) {
+        console.log('⭐ Error marking stars animation as shown:', error);
+      }
+    } else if (!starsAnimationShown && !starsEnabled) {
+      console.log('⭐ Stars animation disabled by user before first display, not marking as shown');
+    }
   } else {
     console.log('⭐ stars container not found in DOM');
   }

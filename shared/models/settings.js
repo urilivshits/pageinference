@@ -18,7 +18,8 @@ export const DEFAULT_SETTINGS = {
   defaultModel: 'gpt-4.1',
   repeatMessageTrigger: 'manual',
   autoExecute: true,  // Enable auto-execution by default
-  starsAnimation: true  // ✨ Enable cosmic greeting by default
+  starsAnimation: true,  // ✨ Enable cosmic greeting by default
+  starsAnimationShown: false  // Track if stars animation has been shown for the first time
 };
 
 /**
@@ -104,6 +105,10 @@ export function validateSettings(rawSettings = {}) {
   const starsAnimation = typeof settings.starsAnimation === 'boolean'
     ? settings.starsAnimation
     : settings.starsAnimation === 'false' ? false : Boolean(settings.starsAnimation === 'true' || settings.starsAnimation === true);
+    
+  const starsAnimationShown = typeof settings.starsAnimationShown === 'boolean'
+    ? settings.starsAnimationShown
+    : settings.starsAnimationShown === 'true' ? true : Boolean(settings.starsAnimationShown === true);
   
   return {
     ...settings,
@@ -113,7 +118,8 @@ export function validateSettings(rawSettings = {}) {
     webSearch,
     pageScraping,
     currentSiteFilter,
-    starsAnimation
+    starsAnimation,
+    starsAnimationShown
   };
 }
 

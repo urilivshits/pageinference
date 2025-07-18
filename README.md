@@ -35,7 +35,7 @@ The extension remembers your last question and can repeat it automatically on di
 ### 📱 Interface & Experience
 - **Chat History**: Organized by website domain with search and filtering because we're not animals
 - **Dark/Light Themes**: Because your retinas matter
-- **Stars Animation**: Magical falling stars cascade from top-right to bottom-left every time you open the extension (it's the little things)
+- **Stars Animation**: Magical falling stars cascade from top-right to bottom-left when you open the extension. Shows automatically on first install, then you can control it in settings (it's the little things)
 - **Message Timestamps**: See exactly when you asked that embarrassing question
 - **Copy Messages**: Share the AI's wisdom with the world
 - **Temperature Control**: Adjust response creativity (0.0 = robotic, 1.0 = artistic)

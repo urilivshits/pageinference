@@ -11,7 +11,7 @@ KEY FEATURES:
 ⌨️ Smart Click Behavior - Remember and repeat questions on similar pages (perfect for analyzing multiple profiles or products)
 📚 Organized Chat History - Conversations sorted by website domain with timestamps
 🛡️ Privacy First - API key and conversations stay in your browser, no data collection
-✨ Beautiful Interface - Dark/light themes with magical falling stars animation that brings cosmic joy (it's the little things)
+✨ Beautiful Interface - Dark/light themes with magical falling stars animation that shows on first install, then you control it (it's the little things)
 
 SMART CLICK BEHAVIOR
 The extension remembers your last question and can repeat it automatically on different pages - perfect for analyzing multiple similar pages with the same prompt.
@@ -31,7 +31,7 @@ HOW IT WORKS:
 2. Navigate to any website
 3. Click the extension icon and ask questions
 4. Get intelligent responses with full page context
-5. Enjoy the delightful falling stars animation (non-negotiable feature)
+5. Enjoy the delightful falling stars animation on first install, then control it in settings
 
 No more explaining what page you're on or copying content manually. Just click and chat with an AI that actually knows what you're reading.
 
