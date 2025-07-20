@@ -69,7 +69,7 @@
 				<!-- Header with profile -->
 				<header class="popup-header">
 					<div class="header-left">
-						<img src="../icons/default_icon48.png" alt="Profile" class="profile-avatar" />
+						<img src="../assets/icons/default_icon48.png" alt="Profile" class="profile-avatar" />
 						<h1 class="header-title">Browse Buddy:<br /><span class="header-subtitle">AI Assistant with Page Reading and Search</span></h1>
 					</div>
 					<div class="header-right">
@@ -127,7 +127,7 @@
 					<!-- Settings header with close button -->
 					<header class="settings-header">
 						<div class="settings-header-left">
-							<img src="../icons/default_icon48.png" alt="Profile" class="profile-avatar" />
+							<img src="../assets/icons/default_icon48.png" alt="Profile" class="profile-avatar" />
 							<h1 class="settings-title">Settings</h1>
 						</div>
 						<div class="settings-header-right">
@@ -222,13 +222,13 @@
 							<div class="setting-item">
 								<label for="model-selector">AI Model:</label>
 								<select id="model-selector">
-									<option value="gpt-4.1-nano">GPT-4.1 nano</option>
-									<option value="gpt-4.1">GPT-4.1 (Default)</option>
+									<option value="gpt-4.1-nano">GPT-4.1 nano (Default)</option>
+									<option value="gpt-4.1">GPT-4.1</option>
 								</select>
 							</div>
 							<div class="setting-item">
-								<label for="temperature-slider">Temperature: <span id="temperature-value">0.5</span></label>
-								<input type="range" id="temperature-slider" min="0" max="1" step="0.1" value="0.5" />
+								<label for="temperature-slider">Temperature: <span id="temperature-value">0</span></label>
+								<input type="range" id="temperature-slider" min="0" max="1" step="0.1" value="0" />
 								<p class="setting-description">Lower values (0.0-0.3) for focused answers, higher (0.7-1.0) for creative responses.</p>
 							</div>
 							<!-- Web search and page scraping toggles hidden but defaults maintained -->

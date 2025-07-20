@@ -579,7 +579,7 @@ async function handleSendMessage(options = {}) {
       pageScraping: preferences.pageScraping !== undefined ? preferences.pageScraping : false,
       webSearch: preferences.webSearch !== undefined ? preferences.webSearch : false,
       		        selectedModel: preferences.defaultModel || 'gpt-4.1',
-      temperature: preferences.temperature !== undefined ? preferences.temperature : 0.5
+      temperature: preferences.temperature !== undefined ? preferences.temperature : 0
     };
     
     console.log('Using settings for message:', settings);

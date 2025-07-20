@@ -11,11 +11,11 @@ import { API_CONSTANTS } from '../constants.js';
  */
 export const DEFAULT_SETTINGS = {
   theme: 'system',
-  temperature: 0.5,
+  temperature: 0,
   pageScraping: true,
   webSearch: true,  // ✅ Enable web search by default
   currentSiteFilter: false,
-  defaultModel: 'gpt-4.1',
+  defaultModel: 'gpt-4.1-nano',
   repeatMessageTrigger: 'manual',
   autoExecute: true,  // Enable auto-execution by default
   starsAnimation: true,  // ✨ Enable cosmic greeting by default

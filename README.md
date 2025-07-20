@@ -6,12 +6,16 @@
 
 Browse Buddy: AI Assistant with Page Reading and Search is a Chrome extension I built for my amazing wife Iuliia, bringing AI assistance directly to her browsing experience. Think of it as her personal AI assistant that actually knows what web page she's on – because she deserves technology that just works.
 
+Perfect for LinkedIn, YouTube, and other places where you need to rate, sum up, look for related news, and more.
+
+![Browse Buddy Demo](assets/images/demo_fhd.gif)
+
 ## ✨ Features That Actually Work
 
 ### 🤖 AI Models & Intelligence
 Choose between two powerful AI models, each with automatic page content analysis:
-- **GPT-4.1 nano**: The newest, fastest, and most cost-effective model - perfect for daily browsing tasks
-- **GPT-4.1** (Default): The powerhouse reasoning model with **real-time web search** for complex research and current information
+- **GPT-4.1 nano** (Default): The newest, fastest, and most cost-effective model - perfect for daily browsing tasks
+- **GPT-4.1**: The powerhouse reasoning model with **real-time web search** for complex research and current information
 
 #### Model Specifications
 | Model | Context Window | Cost (Input/Output) | Page Content Scraping | Web Search | Best For | Key Benchmarks |
@@ -116,7 +120,7 @@ A: Head over to [OpenAI's API keys page](https://platform.openai.com/api-keys), 
 
 **Q: What's the difference between GPT-4.1 and GPT-4.1 nano?**  
 A: Think of it like choosing between a sports car and a reliable sedan:
-- **GPT-4.1 nano**: Fast, efficient, cheaper ($0.10/$0.40 per million tokens) - perfect for daily tasks
+- **GPT-4.1 nano** (Default): Fast, efficient, cheaper ($0.10/$0.40 per million tokens) - perfect for daily tasks
 - **GPT-4.1**: More powerful, better reasoning, includes web search ($2.00/$8.00 per million tokens) - for complex research
 
 **Q: How does the page reading work?**  
@@ -211,8 +215,8 @@ A: Yep! Works with tab groups because it doesn't care about Chrome's arbitrary o
 - **Model Support:** GPT-4.1 and GPT-4.1 nano with automatic fallback
 - **Context Window:** 1M tokens for both models
 - **Default Settings:** 
-  - Model: GPT-4.1
-  - Temperature: 0.7
+  - Model: GPT-4.1 nano
+  - Temperature: 0
   - Theme: Auto (follows system preference)
   - Repeat Message Trigger: Auto mode
 

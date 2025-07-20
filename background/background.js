@@ -1354,8 +1354,8 @@ function setupMessageListeners() {
 
           // Call API with options
           const apiOptions = {
-            model: model || 'gpt-4.1',  // Default model
-            temperature: temperature !== undefined ? temperature : 0.5
+            model: model || 'gpt-4.1-nano',  // Default model
+            temperature: temperature !== undefined ? temperature : 0
           };
 
           // Make the actual API call instead of using a mock response

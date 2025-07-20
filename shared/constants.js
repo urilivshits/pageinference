@@ -56,17 +56,17 @@ export const MESSAGE_TYPES = {
 export const API_CONSTANTS = {
   // Models
   AVAILABLE_MODELS: [
-    { value: 'gpt-4.1-nano', label: 'GPT-4.1 nano' },
-    { value: 'gpt-4.1', label: 'GPT-4.1 (Default)' }
+    { value: 'gpt-4.1-nano', label: 'GPT-4.1 nano (Default)' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' }
   ],
-      DEFAULT_MODEL: 'gpt-4.1',
+      DEFAULT_MODEL: 'gpt-4.1-nano',
   
   // Endpoints
   BASE_URL: 'https://api.openai.com/v1',
   CHAT_COMPLETIONS_ENDPOINT: '/chat/completions',
   
   // Request constants
-  DEFAULT_TEMPERATURE: 0.5,
+  DEFAULT_TEMPERATURE: 0,
   MAX_TOKENS: 4096
 };
 

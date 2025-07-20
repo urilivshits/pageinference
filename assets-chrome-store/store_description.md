@@ -5,8 +5,10 @@ AI assistant that automatically reads web page content to provide contextual hel
 WHAT IS THIS DELIGHTFUL THING?
 Browse Buddy: AI Assistant with Page Reading and Search is a Chrome extension I built for my amazing wife Iuliia, bringing AI assistance directly to her browsing experience. Think of it as her personal AI assistant that actually knows what web page she's on – because she deserves technology that just works.
 
+Perfect for LinkedIn, YouTube, and other places where you need to rate, sum up, look for related news, and more.
+
 KEY FEATURES:
-🤖 Smart AI Models - Choose between GPT-4.1 (default - complex reasoning with web search) or GPT-4.1 nano (fast daily tasks)
+🤖 Smart AI Models - Choose between GPT-4.1 nano (default - fast daily tasks) or GPT-4.1 (complex reasoning with web search)
 📖 Automatic Page Reading - Analyzes any website content without manual copying
 ⌨️ Smart Click Behavior - Remember and repeat questions on similar pages (perfect for analyzing multiple profiles or products)
 📚 Organized Chat History - Conversations sorted by website domain with timestamps

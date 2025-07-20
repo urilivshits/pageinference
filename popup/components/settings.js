@@ -487,7 +487,7 @@ async function populateModelSelector() {
 		// Fallback to default models if import fails
 		const fallbackModels = [
 			        { value: "gpt-4.1-nano", label: "GPT-4.1 nano" },
-			            { value: "gpt-4.1", label: "GPT-4.1 (Default)" },
+			            		{ value: "gpt-4.1", label: "GPT-4.1" },
 		];
 		
 		fallbackModels.forEach((model) => {
@@ -630,8 +630,8 @@ function updateModelSelector() {
 
 	// If current model is not available, switch to default
 	if (modelAvailability[modelSelector.value] === false) {
-		modelSelector.value = "gpt-4.1";
-		        updateSettings({ defaultModel: "gpt-4.1" });
+		modelSelector.value = "gpt-4.1-nano";
+		        updateSettings({ defaultModel: "gpt-4.1-nano" });
 	}
 }
 
