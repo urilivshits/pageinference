@@ -13,10 +13,11 @@ Browse Buddy: AI Assistant with Page Reading and Search is a Chrome extension th
 - **Chat History**: Your conversations with the AI, stored locally in your browser
 - **User Preferences**: Extension settings like theme, AI model selection, and behavior preferences
 - **Page Content**: Temporarily processed to provide context to the AI (not permanently stored)
+- **Website URLs**: Stored locally to organize chat history by domain
 
 ### Information We Do NOT Collect
 - We do not collect any personal information
-- We do not track your browsing history
+- We do not track your browsing history (we only store the current website URL for chat organization)
 - We do not store your data on external servers
 - We do not use analytics or tracking tools
 - We do not share any information with third parties (except OpenAI as described below)
@@ -97,7 +98,7 @@ If you have questions about this privacy policy or our privacy practices, you ca
 
 - Open an issue on our GitHub repository
 - Contact us through the extension's settings page
-- Email us at: [contact information to be added]
+- Email us at: uri.livshits@gmail.com
 
 ## Legal Compliance
 

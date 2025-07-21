@@ -60,6 +60,63 @@ AI assistant, page reader, context aware, productivity, web content analysis, re
 - COPPA Compliant: Not designed for children under 13
 - Chrome Web Store Policy Compliant: Follows all privacy guidelines
 
+### Chrome Web Store Privacy Form Responses
+
+#### Single Purpose Description
+Browse Buddy is an AI assistant extension that automatically reads and analyzes web page content to provide contextual help and answers to user questions. The extension eliminates the need for manual copy-pasting by intelligently extracting page content and using AI to provide relevant assistance based on the current webpage context.
+
+#### Permission Justifications
+
+Storage Permission:
+The extension stores user API keys, chat history, and settings locally in the browser. This is essential for maintaining user preferences, preserving conversation history organized by website domain, and ensuring the extension can function without requiring users to re-enter their API key on each use.
+
+Tabs Permission:
+Required to detect the current active tab and website URL. This enables the extension to provide context-aware assistance by knowing which website the user is currently viewing, allowing for domain-specific chat history organization and contextual AI responses.
+
+Scripting Permission:
+Necessary to inject content scripts that read and extract text content from web pages. This enables the core functionality of automatic page content reading without requiring users to manually copy and paste content for AI analysis.
+
+Host Permission (<all_urls>):
+Required to access page content across all websites for the automatic page reading functionality. This allows users to get AI assistance for any webpage they visit, which is the primary purpose of the extension. The extension only reads page content when explicitly activated by the user.
+
+#### Remote Code Usage
+Yes, using remote code:
+The extension communicates with OpenAI's API (https://api.openai.com) to provide AI-powered responses. This is essential for the core functionality of providing intelligent, contextual assistance based on webpage content. The extension sends only the user's question and relevant page content to OpenAI's secure API endpoint, and no user data is stored or processed by OpenAI beyond the immediate API request. All API communication is done through secure HTTPS connections to OpenAI's official API endpoints.
+
+### Chrome Web Store Data Usage Form Responses
+
+#### User Data Collection Declaration
+The extension collects the following user data:
+
+WEBSITE CONTENT: The extension reads and extracts text content from web pages that users visit. This includes page text, headings, and visible content that is necessary for providing contextual AI assistance. The extension only reads content when explicitly activated by the user and does not store this content permanently.
+
+WEBSITE URLS: The extension stores the current website URL locally to organize chat history by domain. This allows users to see their conversation history organized by website.
+
+Note: The extension does NOT collect any of the following data types:
+- Personally identifiable information (name, address, email, etc.)
+- Health information
+- Financial and payment information
+- Authentication information
+- Personal communications
+- Location data
+- Web history (browsing history tracking)
+- User activity (clicks, keystrokes, etc.)
+
+#### Data Usage Certifications
+All three mandatory certifications are TRUE:
+
+1. "I do not sell or transfer user data to third parties, outside of the approved use cases" - TRUE
+   The extension does not sell or transfer any user data. The only external communication is with OpenAI's API for AI responses, which is an approved use case for providing the extension's core functionality.
+
+2. "I do not use or transfer user data for purposes that are unrelated to my item's single purpose" - TRUE
+   All data usage is directly related to the extension's single purpose of providing AI assistance based on webpage content. No data is used for unrelated purposes.
+
+3. "I do not use or transfer user data to determine creditworthiness or for lending purposes" - TRUE
+   The extension does not collect or use any data related to financial information, creditworthiness, or lending purposes.
+
+#### Privacy Policy URL
+https://github.com/urilivshits/pageinference/blob/chrome_store/assets-chrome-store/PRIVACY_POLICY.md
+
 ## Technical Requirements
 
 ### Manifest V3 Compliance
@@ -124,6 +181,7 @@ AI assistant, page reader, context aware, productivity, web content analysis, re
 - Local storage only
 - No data collection
 - Clear user control over data
+- Version history and changelog
 
 ### In Progress
 - High-quality screenshots (need to capture)
@@ -136,7 +194,6 @@ AI assistant, page reader, context aware, productivity, web content analysis, re
 - Demo Video: Video demonstration of key features
 - Promotional Images: Various sizes for store promotion
 - Final Testing: Test extension in Chrome Web Store environment
-- Version History: Changelog for future updates
 - Compatibility Notes: Test on different Chrome versions
 
 ## Publishing Process
@@ -159,9 +216,17 @@ AI assistant, page reader, context aware, productivity, web content analysis, re
 7. Review: Submit for review
 
 ### Expected Review Time
-- Initial Review: 1-3 business days
+- Initial Review: 1-3 weeks (due to host permissions requiring in-depth review)
 - Revisions: 1-2 business days per revision
 - Final Approval: 1-2 business days
+
+### Review Preparation Notes
+- Extension uses <all_urls> host permission for page content reading functionality
+- This triggers in-depth manual review process
+- All privacy and data handling disclosures are complete and accurate
+- Code includes proper error handling and console override for production
+- Extension follows Manifest V3 requirements and best practices
+- Privacy policy is comprehensive and compliant with Chrome Web Store policies
 
 ## Store Optimization
 
