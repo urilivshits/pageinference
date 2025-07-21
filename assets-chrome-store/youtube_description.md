@@ -42,7 +42,7 @@ No more explaining what page you're on or copying content manually. Just click a
 ⚠️ INSTALLATION TROUBLESHOOTING:
 If the extension doesn't work after installation:
 1. Check if "Developer mode" is enabled in chrome://extensions/
-2. Verify your OpenAI API key is valid and has credits
+2. Verify your OpenAI API key is valid and has credits (the extension will guide you if you haven't set one up)
 3. Try refreshing the page and re-adding the API key
 4. Check browser console for error messages
 5. Ensure JavaScript is enabled on the website

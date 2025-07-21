@@ -175,6 +175,11 @@ export function initializeChatComponent() {
       });
     }, 100); // Reduced delay since we use cached ctrl state
     
+    // Check API key status and show guidance if needed
+    checkApiKeyStatus().catch(error => {
+      console.error('Error checking API key status:', error);
+    });
+    
     console.log('Chat component initialization complete');
   } catch (error) {
     console.error('Error initializing chat component:', error);
@@ -211,6 +216,25 @@ function setupEventListeners() {
       event.preventDefault();
       handleSendMessage();
     }
+  });
+  
+  // Add focus event listener for API key validation
+  if (messageInput) messageInput.addEventListener('focus', () => {
+    checkApiKeyStatus().catch(error => {
+      console.error('Error checking API key status on input focus:', error);
+    });
+  });
+  
+  // Listen for API key added event from settings
+  window.addEventListener('api-key-added', () => {
+    console.log('API key added, hiding guidance');
+    hideApiKeyGuidance();
+  });
+  
+  // Listen for settings panel opened event to hide guidance
+  window.addEventListener('settings-panel-opened', () => {
+    console.log('Settings panel opened, hiding API key guidance');
+    hideApiKeyGuidance();
   });
   
   if (messageInput) messageInput.addEventListener('input', () => {
@@ -526,6 +550,13 @@ async function handleSendMessage(options = {}) {
     if (!sessionState.pageLoadId) {
       displayErrorMessage('No chat session loaded. Please select or start a chat.');
       setInputEnabled(true);
+      return;
+    }
+    
+    // === GUARD: Must have API key to send ===
+    const hasApiKey = await checkApiKeyExists();
+    if (!hasApiKey) {
+      showApiKeyGuidance();
       return;
     }
     
@@ -1537,6 +1568,204 @@ async function executeLastMessage(prefixText = '') {
   
   messageInput.value = prefixText + lastQuery;
   handleSendMessage();
+}
+
+/**
+ * Check API key status and guide user if missing
+ */
+async function checkApiKeyStatus() {
+  try {
+    // Check if API key exists
+    const hasApiKey = await checkApiKeyExists();
+    
+    if (!hasApiKey) {
+      console.log('API key not found, showing guidance');
+      showApiKeyGuidance();
+    } else {
+      // Hide any existing guidance if API key is now present
+      hideApiKeyGuidance();
+    }
+  } catch (error) {
+    console.error('Error checking API key status:', error);
+  }
+}
+
+/**
+ * Check if API key exists
+ */
+async function checkApiKeyExists() {
+  try {
+    // Try getting the API key from background script
+    const response = await chrome.runtime.sendMessage({
+      type: 'get_api_key'
+    });
+    
+    // Return true if we have a successful response with data
+    return response.success && !!response.data;
+  } catch (error) {
+    console.error('Error checking if API key exists:', error);
+    
+    // Try direct storage access as fallback
+    try {
+      const result = await chrome.storage.local.get('openai_api_key');
+      return !!result.openai_api_key;
+    } catch (storageError) {
+      console.error('Error accessing storage for API key check:', storageError);
+      return false;
+    }
+  }
+}
+
+/**
+ * Show API key guidance to user
+ */
+function showApiKeyGuidance() {
+  // Remove any existing guidance first
+  hideApiKeyGuidance();
+  
+  // Create guidance element
+  const guidanceElement = document.createElement('div');
+  guidanceElement.id = 'api-key-guidance';
+  guidanceElement.className = 'api-key-guidance';
+  guidanceElement.innerHTML = `
+    <div class="guidance-content">
+      <div class="guidance-icon">🔑</div>
+      <div class="guidance-text">
+        <h3>API Key Required</h3>
+        <p>You need to add your OpenAI API key to use this extension.</p>
+        <button id="setup-api-key-btn" class="guidance-button">Set Up API Key</button>
+      </div>
+    </div>
+  `;
+  
+  // Add to chat container
+  if (chatContainer) {
+    chatContainer.appendChild(guidanceElement);
+  }
+  
+  // Add click handler for setup button
+  const setupButton = guidanceElement.querySelector('#setup-api-key-btn');
+  if (setupButton) {
+    setupButton.addEventListener('click', (event) => {
+      console.log('Setup API key button clicked!');
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToApiKeySetup();
+    });
+  } else {
+    console.error('Setup API key button not found in guidance element');
+  }
+  
+  // Disable message input
+  if (messageInput) {
+    messageInput.disabled = true;
+    messageInput.placeholder = 'Add API key in settings to start chatting...';
+  }
+  
+  // Disable send button
+  if (sendButton) {
+    sendButton.disabled = true;
+  }
+}
+
+/**
+ * Hide API key guidance
+ */
+function hideApiKeyGuidance() {
+  const existingGuidance = document.getElementById('api-key-guidance');
+  if (existingGuidance) {
+    existingGuidance.remove();
+  }
+  
+  // Re-enable message input
+  if (messageInput) {
+    messageInput.disabled = false;
+    messageInput.placeholder = 'Type your message...';
+  }
+  
+  // Re-enable send button
+  if (sendButton) {
+    sendButton.disabled = false;
+  }
+}
+
+/**
+ * Navigate to API key setup in settings
+ */
+function navigateToApiKeySetup() {
+  console.log('Navigating to API key setup...');
+  
+  // Open settings panel by clicking the settings gear button
+  const settingsBtn = document.getElementById('settings-gear-button');
+  const settingsPanel = document.getElementById('settings-panel');
+  
+  if (settingsBtn && settingsPanel) {
+    // Open the settings panel
+    settingsPanel.classList.remove('hidden');
+    
+    // Dispatch event to notify settings component that panel is opened
+    window.dispatchEvent(new CustomEvent('settings-panel-opened'));
+    
+    // Highlight API key input after a short delay to ensure settings are loaded
+    setTimeout(() => {
+      highlightApiKeyInput();
+    }, 300);
+    
+    console.log('Settings panel opened successfully');
+  } else {
+    console.error('Settings button or panel not found');
+  }
+}
+
+/**
+ * Highlight API key input field in settings
+ */
+function highlightApiKeyInput() {
+  console.log('Highlighting API key input...');
+  
+  const apiKeyInput = document.getElementById('api-key-input');
+  const toggleApiKeyButton = document.getElementById('toggle-api-key-button');
+  
+  if (apiKeyInput) {
+    console.log('API key input found, applying highlighting...');
+    
+    // Add highlighting styles
+    apiKeyInput.classList.add('api-key-highlight');
+    
+    // Focus the input
+    apiKeyInput.focus();
+    
+    // Show the full API key if it's currently masked
+    if (apiKeyInput.type === 'password') {
+      const fullKey = apiKeyInput.getAttribute('data-full-key');
+      if (fullKey) {
+        apiKeyInput.value = fullKey;
+        apiKeyInput.type = 'text';
+        
+        // Update toggle button state
+        if (toggleApiKeyButton) {
+          const eyeIcon = toggleApiKeyButton.querySelector('.icon-eye');
+          const eyeOffIcon = toggleApiKeyButton.querySelector('.icon-eye-off');
+          if (eyeIcon && eyeOffIcon) {
+            eyeIcon.style.display = 'none';
+            eyeOffIcon.style.display = '';
+          }
+        }
+      }
+    }
+    
+    // Remove highlighting after 5 seconds
+    setTimeout(() => {
+      apiKeyInput.classList.remove('api-key-highlight');
+    }, 5000);
+    
+    // Add pulsing animation
+    apiKeyInput.style.animation = 'apiKeyPulse 2s ease-in-out 3';
+    
+    console.log('API key input highlighting applied successfully');
+  } else {
+    console.error('API key input not found in DOM');
+  }
 }
 
 /**

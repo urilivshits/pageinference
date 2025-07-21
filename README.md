@@ -60,9 +60,11 @@ The extension remembers your last question and can repeat it automatically on di
    
 2. **Add Your API Key**:
    - Click the extension icon in your toolbar
-   - Click on Iuliia's profile icon in the top right
+   - If you don't have an API key set up, you'll see a helpful guidance message
+   - Click the profile icon in the top right to open settings
    - Paste your OpenAI API key and hit Save
    - Your key is stored locally and only used for OpenAI API calls (no other servers involved)
+   - **Pro tip**: The extension will automatically guide you to set up your API key if you try to use it without one
 
 3. **Start Chatting**:
    - Navigate to any website
@@ -108,7 +110,7 @@ A: The usual Chrome extension dance: Download the files, go to `chrome://extensi
 **Q: The extension isn't working after installation! 😭**  
 A: Let's troubleshoot like civilized humans:
 1. Check if the extension is enabled in `chrome://extensions/`
-2. Make sure you've added your OpenAI API key (click the profile icon)
+2. Make sure you've added your OpenAI API key (the extension will guide you if you haven't)
 3. Try refreshing the page you're on
 4. Check the browser console for any error messages
 5. If all else fails, try the classic "turn it off and on again" (disable/re-enable the extension)

@@ -308,8 +308,8 @@ html[data-theme="dark"] .settings-close-button:hover {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
+  gap: 4px;
+  padding: 8px;
   overflow-y: auto;
   flex: 1;
 }
@@ -319,7 +319,7 @@ html[data-theme="dark"] .settings-close-button:hover {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .api-key-input-container {
@@ -822,7 +822,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 }
 
 .setting-item {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .setting-item label {
@@ -836,7 +836,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 .setting-description {
   font-size: 10px;
   color: var(--secondary-text-color);
-  margin-top: 1px;
+  margin-top: 0px;
   line-height: 1.2;
 }
 
@@ -994,13 +994,72 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 .api-key-link a {
   color: var(--accent-color);
   text-decoration: none;
-  font-size: 0.85rem;
-  transition: color 0.2s ease;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(79, 70, 229, 0.1);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  transition: all 0.2s ease;
+  display: inline-block;
+  margin-top: 2px;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 0 6px rgba(79, 70, 229, 0.3);
 }
 
 .api-key-link a:hover {
-  color: var(--primary-color);
-  text-decoration: underline;
+  background: rgba(79, 70, 229, 0.2);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.api-key-link a:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.3);
+}
+
+/* Dark theme specific styling for API key link */
+html[data-theme="dark"] .api-key-link a {
+  color: var(--accent-color);
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+  animation: apiKeyLinkPulseDark 3s ease-in-out infinite;
+  text-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+
+html[data-theme="dark"] .api-key-link a:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: var(--accent-color);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+html[data-theme="dark"] .api-key-link a:active {
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.4);
+}
+
+/* Add subtle pulsing animation to draw attention */
+.api-key-link a {
+  animation: apiKeyLinkPulse 3s ease-in-out infinite;
+}
+
+@keyframes apiKeyLinkPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0);
+  }
+}
+
+@keyframes apiKeyLinkPulseDark {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0);
+  }
 }
 
 /* Theme options styling */
@@ -1823,4 +1882,122 @@ html[data-theme="dark"] .message.user .message-timestamp {
 
 .message:hover .message-timestamp {
   opacity: 1; /* Show on message hover */
+}
+
+/* API Key Guidance Styles */
+.api-key-guidance {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--background-color);
+  border: 2px solid var(--accent-color);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 8px 32px var(--shadow-color);
+  z-index: 1000;
+  max-width: 400px;
+  text-align: center;
+  animation: guidanceFadeIn 0.3s ease-out;
+}
+
+@keyframes guidanceFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.guidance-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.guidance-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.guidance-text h3 {
+  color: var(--text-color);
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.guidance-text p {
+  color: var(--secondary-text-color);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.guidance-button {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.guidance-button:hover {
+  background: var(--accent-hover-color);
+}
+
+/* API Key Input Highlighting */
+.api-key-highlight {
+  border: 2px solid var(--accent-color) !important;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1) !important;
+  background-color: rgba(79, 70, 229, 0.05) !important;
+}
+
+@keyframes apiKeyPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
+
+/* Dark theme adjustments for API key guidance */
+html[data-theme="dark"] .api-key-guidance {
+  background: var(--background-color);
+  border-color: var(--accent-color);
+}
+
+html[data-theme="dark"] .api-key-highlight {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2) !important;
+  background-color: rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Dark theme keyframe override */
+html[data-theme="dark"] .api-key-highlight {
+  animation: apiKeyPulseDark 2s ease-in-out 3;
+}
+
+@keyframes apiKeyPulseDark {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
 }

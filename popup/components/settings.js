@@ -864,6 +864,9 @@ async function saveApiKeyAutomatic() {
 
 		// Check model availability with new key
 		checkModelAvailability();
+		
+		// Notify chat component that API key has been added
+		window.dispatchEvent(new CustomEvent('api-key-added'));
 	} catch (error) {
 		console.error("Error saving API key:", error);
 		// Could show a subtle error indicator here instead of alert
