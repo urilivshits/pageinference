@@ -240,45 +240,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 If you find this extension useful, please consider supporting it with a donation.
 
----
-
-### Bitcoin ($BTC)
-
-| Detail | Value |
-| :--- | :--- |
-| **Network** | `Bitcoin` |
-| **Address** | `bc1q... (Your Bitcoin Address Here)` |
-
----
-
-### Ethereum ($ETH)
-
-| Detail | Value |
-| :--- | :--- |
-| **Network** | `ERC20 (Ethereum Mainnet)` |
-| **Address** | `0x... (Your Ethereum Address Here)` |
-
----
-
-### Monero ($XMR)
-
-| Detail | Value |
-| :--- | :--- |
-| **Network** | `Monero` |
-| **Address** | `4... (Your Monero Address Here)` |
-
----
-
-### USD Coin ($USDC) on Polygon
-
-For low-fee stablecoin donations.
-
-| Detail | Value |
-| :--- | :--- |
-| **Network** | `Polygon` |
-| **Address** | `0x... (Your Polygon Address Here)` |
-
----
+- **Bitcoin ($BTC)**: `bc1q... (Your Bitcoin Address Here)`
+- **Ethereum ($ETH)**: `0x... (Your Ethereum Address Here)`
+- **Monero ($XMR)**: `4... (Your Monero Address Here)`
+- **USD Coin ($USDC) on Polygon**: `0x... (Your Polygon Address Here)` *(low-fee stablecoin donations)*
 
 Thank you for your generosity and for supporting open-source software that actually works! 🎉
 

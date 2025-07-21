@@ -6,6 +6,7 @@
 
 import { MESSAGE_TYPES, API_CONSTANTS, UI_CONSTANTS } from "../../shared/constants.js";
 import { DEFAULT_SETTINGS } from "../../shared/models/settings.js";
+import { ErrorHandler } from "../../shared/utils/error-handler.js";
 
 // DOM elements
 let settingsContainer;
@@ -574,7 +575,7 @@ async function loadApiKey() {
 			// Check if the API key is obviously invalid
 			const validation = validateApiKey(apiKey);
 			if (!validation.isValid && (apiKey === 'asdasd' || apiKey === 'test' || apiKey === 'demo')) {
-				console.warn('Found obviously invalid API key, clearing it automatically');
+				ErrorHandler.handle('api_key_auto_clear', 'Found obviously invalid API key, clearing it automatically', { apiKey });
 				await clearApiKey();
 				return;
 			}
@@ -813,13 +814,14 @@ async function saveApiKeyAutomatic() {
 	// Validate API key before saving
 	const validation = validateApiKey(apiKey);
 	if (!validation.isValid) {
-		console.warn('Invalid API key detected:', validation.error);
+		// Use ErrorHandler for Chrome Store compliant error handling
+		ErrorHandler.handle('api_key_validation', validation.error, { apiKey: apiKey.substring(0, 10) + '...' });
 		// For obviously invalid keys like "asdasd", don't save them
 		if (apiKey === 'asdasd' || apiKey === 'test' || apiKey === 'demo') {
-			console.warn('Refusing to save obviously invalid API key');
+			ErrorHandler.handle('api_key_obviously_invalid', 'Skipping save for obviously invalid API key', { apiKey });
 			return;
 		}
-		// For other validation issues, still save but log the warning
+		// For other validation issues, still save but log the error
 	}
 
 	try {
