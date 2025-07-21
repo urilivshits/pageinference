@@ -179,12 +179,31 @@ export async function sendRequest(options) {
       body: JSON.stringify(payload)
     });
     
-    // Check for error responses
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error?.message || `HTTP error ${response.status}`;
-      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorMessage}`);
+      // Check for error responses
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.error?.message || `HTTP error ${response.status}`;
+    
+    // Provide user-friendly error messages for common issues
+    let userFriendlyMessage = errorMessage;
+    if (response.status === 401) {
+      if (errorMessage.includes('Incorrect API key')) {
+        userFriendlyMessage = 'Invalid API key. Please check your OpenAI API key in the extension settings.';
+      } else {
+        userFriendlyMessage = 'Authentication failed. Please verify your API key is correct.';
+      }
+    } else if (response.status === 429) {
+      userFriendlyMessage = 'Rate limit exceeded. Please wait a moment and try again.';
+    } else if (response.status === 500) {
+      userFriendlyMessage = 'OpenAI service is temporarily unavailable. Please try again later.';
+    } else if (response.status >= 400 && response.status < 500) {
+      userFriendlyMessage = 'Request error. Please check your input and try again.';
+    } else if (response.status >= 500) {
+      userFriendlyMessage = 'Service temporarily unavailable. Please try again later.';
     }
+    
+    throw new Error(`API request failed: ${response.status} ${response.statusText} - ${userFriendlyMessage}`);
+  }
     
     // Parse the response
     const data = await response.json();
@@ -206,7 +225,12 @@ export async function sendRequest(options) {
     // Silent error handling for Chrome Store compliance
     const isDevMode = !chrome.runtime.getManifest()?.update_url;
     if (isDevMode) {
-      console.error('OpenAI API request failed:', error);
+      // Only log API key errors as warnings, not errors, to reduce debug log spam
+      if (error.message.includes('Invalid API key') || error.message.includes('Incorrect API key')) {
+        console.warn('API key validation failed:', error.message);
+      } else {
+        console.error('OpenAI API request failed:', error);
+      }
     }
     throw new Error(`OpenAI API request failed: ${error.message}`);
   }

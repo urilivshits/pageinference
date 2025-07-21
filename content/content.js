@@ -123,6 +123,9 @@ function initialize() {
   logger.init(`Initializing content script on ${window.location.href}`);
   console.log(`[Page Inference] INIT: Starting content script initialization on ${window.location.href}`);
   
+  // Set up message listener immediately to handle early requests
+  setupMessageListener();
+  
   // If document isn't ready yet, wait for it
   if (document.readyState !== 'complete' && document.readyState !== 'interactive') {
     logger.debug('Document not ready, waiting for DOMContentLoaded');
@@ -141,16 +144,8 @@ function initialize() {
   }
 }
 
-// Set up the content script functionality
-function setupContentScript() {
-  if (window.__pageInferenceInitialized) {
-    console.log('[Page Inference] SETUP: Already initialized, skipping setup');
-    return;
-  }
-  
-  console.log('[Page Inference] SETUP: Starting content script functionality setup');
-  
-  // Listen for messages from the popup or background script
+// Set up message listener for communication with background script
+function setupMessageListener() {
   try {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.log('[Page Inference] CONTENT: Received message:', request);
@@ -195,6 +190,16 @@ function setupContentScript() {
       console.warn('[Extension] Failed to add message listener (dev mode):', error);
     }
   }
+}
+
+// Set up the content script functionality
+function setupContentScript() {
+  if (window.__pageInferenceInitialized) {
+    console.log('[Page Inference] SETUP: Already initialized, skipping setup');
+    return;
+  }
+  
+  console.log('[Page Inference] SETUP: Starting content script functionality setup');
 
   window.__pageInferenceInitialized = true;
   logger.success('Content script initialized successfully');

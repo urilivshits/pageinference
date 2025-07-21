@@ -16,7 +16,8 @@
   --shadow-color: rgba(0, 0, 0, 0.1);
   --user-message-background: #f0f4f8;
   --assistant-message-background: #f1f5fe;
-  --error-color: #ef4444;
+  --error-color: #dc2626;
+  --system-message-bg: #fee2e2;
   --search-results-bg: #f5f8fa;
   --link-color: #1a73e8;
   --text-tertiary: #70757a;
@@ -42,7 +43,8 @@ html[data-theme="dark"] {
   --shadow-color: rgba(0, 0, 0, 0.5);
   --user-message-background: #374151;
   --assistant-message-background: #2c3a47;
-  --error-color: #ef4444;
+  --error-color: #f87171;
+  --system-message-bg: #7f1d1d;
   --search-results-bg: #2a2d33;
   --link-color: #8ab4f8;
   --text-tertiary: #9aa0a6;
@@ -493,7 +495,7 @@ html[data-theme="dark"] .icon-eye svg, html[data-theme="dark"] .icon-eye-off svg
 
 .message.system {
   background-color: var(--system-message-bg, #fee2e2);
-  color: var(--text-color);
+  color: var(--error-color, #dc2626);
   border-radius: 8px;
   border: 1px solid var(--error-color, #dc2626);
   margin: 0.75rem 0;
@@ -967,9 +969,9 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 
 /* Error messages */
 .error-message {
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid var(--error-color);
-  color: var(--error-color) !important;
+  background-color: var(--system-message-bg, #fee2e2);
+  border: 1px solid var(--error-color, #dc2626);
+  color: var(--error-color, #dc2626) !important;
   padding: 12px;
   border-radius: 4px;
   margin: 16px;
@@ -1277,6 +1279,19 @@ html[data-theme="dark"] .message.assistant {
   background-color: #2c3a47;
   color: #e5e7eb;
   box-shadow: 0 1px 6px 0 rgba(99, 102, 241, 0.12);
+}
+
+/* Error styling for assistant messages */
+.message.assistant.error {
+  background-color: var(--system-message-bg, #fee2e2);
+  color: var(--error-color, #dc2626);
+  border: 1px solid var(--error-color, #dc2626);
+}
+
+html[data-theme="dark"] .message.assistant.error {
+  background-color: var(--system-message-bg, #7f1d1d);
+  color: var(--error-color, #f87171);
+  border: 1px solid var(--error-color, #f87171);
 }
 
 /* Popup fade in animation */

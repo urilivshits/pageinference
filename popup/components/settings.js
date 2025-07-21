@@ -500,6 +500,37 @@ async function populateModelSelector() {
 }
 
 /**
+ * Clear the current API key (useful for invalid keys)
+ */
+async function clearApiKey() {
+	try {
+		// Clear from storage
+		await chrome.storage.local.remove(STORAGE_KEYS.API_KEY);
+		
+		// Try background channel if available
+		try {
+			await chrome.runtime.sendMessage({
+				type: MESSAGE_TYPES.SET_API_KEY,
+				data: { apiKey: null },
+			});
+		} catch (msgError) {
+			console.warn("Background clear failed, but direct storage clear succeeded:", msgError);
+		}
+		
+		// Reset UI
+		apiKeyInput.value = "";
+		apiKeyInput.setAttribute("data-has-key", "false");
+		apiKeyInput.setAttribute("data-full-key", "");
+		apiKeyInput.setAttribute("data-masked-key", "");
+		lastApiKeyValue = "";
+		
+		console.log("API key cleared successfully");
+	} catch (error) {
+		console.error("Error clearing API key:", error);
+	}
+}
+
+/**
  * Load the API key from storage
  */
 async function loadApiKey() {
@@ -540,6 +571,14 @@ async function loadApiKey() {
 		const apiKey = result[STORAGE_KEYS.API_KEY];
 
 		if (apiKey) {
+			// Check if the API key is obviously invalid
+			const validation = validateApiKey(apiKey);
+			if (!validation.isValid && (apiKey === 'asdasd' || apiKey === 'test' || apiKey === 'demo')) {
+				console.warn('Found obviously invalid API key, clearing it automatically');
+				await clearApiKey();
+				return;
+			}
+			
 			// Store both full and masked versions
 			const fullKey = apiKey;
 			const maskedKey = fullKey.replace(/^(sk-[^0-9]*)([0-9a-zA-Z]{3}).*([0-9a-zA-Z]{3})$/, "$1***$3");
@@ -639,23 +678,42 @@ function updateModelSelector() {
  * Validate API key format
  *
  * @param {string} apiKey - The API key to validate
- * @returns {boolean} - Whether the key is valid
+ * @returns {Object} - Validation result with isValid boolean and error message
  */
 function validateApiKey(apiKey) {
+	// Check for empty or null values
+	if (!apiKey || apiKey.trim() === '') {
+		return { isValid: false, error: 'API key cannot be empty' };
+	}
+
+	// Check for obvious invalid values
+	if (apiKey === 'asdasd' || apiKey === 'test' || apiKey === 'demo' || apiKey.length < 10) {
+		return { isValid: false, error: 'Please enter a valid OpenAI API key' };
+	}
+
 	// Basic format check
-	if (!apiKey.startsWith("sk-") || apiKey.length < 40) {
-		return false;
+	if (!apiKey.startsWith("sk-")) {
+		return { isValid: false, error: 'API key must start with "sk-"' };
+	}
+
+	if (apiKey.length < 40) {
+		return { isValid: false, error: 'API key appears to be too short' };
 	}
 
 	// Check for common issues
 	const commonIssues = [
-		/\s/, // Contains whitespace
-		/[<>]/, // Contains HTML tags
-		/['"]/, // Contains quotes
-		/^sk-[a-zA-Z0-9]{48}$/, // Doesn't match expected format
+		{ pattern: /\s/, message: 'API key cannot contain spaces' },
+		{ pattern: /[<>]/, message: 'API key cannot contain HTML tags' },
+		{ pattern: /['"]/, message: 'API key cannot contain quotes' },
 	];
 
-	return !commonIssues.some((issue) => issue.test(apiKey));
+	for (const issue of commonIssues) {
+		if (issue.pattern.test(apiKey)) {
+			return { isValid: false, error: issue.message };
+		}
+	}
+
+	return { isValid: true, error: null };
 }
 
 /**
@@ -750,6 +808,18 @@ async function saveApiKeyAutomatic() {
 	// Don't save if value hasn't changed
 	if (apiKey === lastApiKeyValue) {
 		return;
+	}
+
+	// Validate API key before saving
+	const validation = validateApiKey(apiKey);
+	if (!validation.isValid) {
+		console.warn('Invalid API key detected:', validation.error);
+		// For obviously invalid keys like "asdasd", don't save them
+		if (apiKey === 'asdasd' || apiKey === 'test' || apiKey === 'demo') {
+			console.warn('Refusing to save obviously invalid API key');
+			return;
+		}
+		// For other validation issues, still save but log the warning
 	}
 
 	try {

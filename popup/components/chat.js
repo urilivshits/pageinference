@@ -1993,13 +1993,21 @@ async function extractPageContent() {
     if (!response || !response.success) {
       const errorMsg = response?.error || 'Unknown error scraping page content';
       console.error('Error response from content scraping:', errorMsg);
-      throw new Error(errorMsg);
+      
+      // Provide user-friendly error message
+      if (errorMsg.includes('Cannot scrape content from this type of URL')) {
+        throw new Error('This page cannot be scraped due to browser security restrictions. The extension will work without page context.');
+      } else {
+        throw new Error(`Failed to extract page content: ${errorMsg}`);
+      }
     }
     
     if (!response.data || !response.data.content) {
-      console.warn('No content returned from page scraping');
-      if (response.data?.note) {
-        console.info('Scraper note:', response.data.note);
+      // Only log as info for restricted URLs, not as warning
+      if (response.data?.note && response.data.note.includes('cannot be scraped due to browser security restrictions')) {
+        console.info('Page content extraction skipped for restricted URL:', response.data.note);
+      } else {
+        console.info('No content returned from page scraping - proceeding without page context');
       }
       return '';
     }

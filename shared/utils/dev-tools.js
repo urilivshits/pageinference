@@ -5,7 +5,7 @@
  * from the browser console.
  */
 
-import { setDevMode, getDevMode, getSilentErrors, clearSilentErrors } from './console-override.js';
+import { getSilentErrors, clearSilentErrors } from './console-override.js';
 import { ErrorHandler } from './error-handler.js';
 
 /**
@@ -18,9 +18,8 @@ const DevTools = {
    * @param {boolean} enabled - Whether to enable dev mode
    */
   setDevMode(enabled) {
-    setDevMode(enabled);
     ErrorHandler.setDevMode(enabled);
-    console.log(`🔧 Dev mode ${enabled ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`🔧 Dev mode ${enabled ? 'ENABLED' : 'DISABLED'} via ErrorHandler`);
     console.log('💡 Console errors will now be', enabled ? 'visible' : 'silent (stored for debugging)');
   },
 
@@ -28,8 +27,8 @@ const DevTools = {
    * Get current development mode status
    */
   getDevMode() {
-    const mode = getDevMode();
-    console.log(`🔧 Dev mode is currently: ${mode ? 'ENABLED' : 'DISABLED'}`);
+    const mode = ErrorHandler.getDevMode();
+    console.log(`🔧 Dev mode is currently: ${mode ? 'ENABLED' : 'DISABLED'} (from ErrorHandler)`);
     return mode;
   },
 
@@ -104,7 +103,7 @@ const DevTools = {
    */
   testError() {
     console.log('🧪 Testing error handling...');
-    console.error('Test error - this should be', getDevMode() ? 'visible' : 'silent');
+    console.error('Test error - this should be', ErrorHandler.getDevMode() ? 'visible' : 'silent');
     ErrorHandler.handle('dev_tools_test', new Error('Test error from ErrorHandler'));
     console.log('✅ Test completed. Check stored errors if in production mode.');
   }
@@ -115,7 +114,7 @@ if (typeof window !== 'undefined') {
   window.BrowseBuddyDev = DevTools;
   
   // Show welcome message in dev mode
-  if (getDevMode()) {
+  if (ErrorHandler.getDevMode()) {
     console.log('🚀 Browse Buddy Developer Tools loaded!');
     console.log('💡 Type BrowseBuddyDev.help() for available commands');
   }

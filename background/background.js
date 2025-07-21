@@ -1612,6 +1612,50 @@ async function performDataMigrations(previousVersion) {
 }
 
 /**
+ * Check if content script is ready to receive messages
+ * @param {number} tabId - The ID of the tab to check
+ * @returns {Promise<boolean>} - Whether content script is ready
+ */
+async function checkContentScriptReady(tabId) {
+  try {
+    const response = await sendMessageWithTimeout(tabId, { action: 'ping' }, 1000);
+    return response && response.pong === true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Send message to content script with timeout
+ * @param {number} tabId - The ID of the tab to send message to
+ * @param {object} message - The message to send
+ * @param {number} timeout - Timeout in milliseconds
+ * @returns {Promise<object>} - The response from content script
+ */
+async function sendMessageWithTimeout(tabId, message, timeout) {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error('Message timeout'));
+    }, timeout);
+
+    try {
+      chrome.tabs.sendMessage(tabId, message, (response) => {
+        clearTimeout(timeoutId);
+        
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(response);
+        }
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      reject(error);
+    }
+  });
+}
+
+/**
  * Inject content script if not already present
  * 
  * @param {number} tabId - The ID of the tab to inject into
@@ -1648,24 +1692,31 @@ async function processScrapeTabRequest(tab) {
   logger.log('Processing scrape request for tab:', tab.id, tab.url, 'in window:', tab.windowId);
   
   // Check if we can scrape this URL (avoid chrome:// urls etc.)
-  if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+  if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || 
+      tab.url.startsWith('moz-extension://') || tab.url.startsWith('edge://') || 
+      tab.url.startsWith('about:') || tab.url.startsWith('view-source:')) {
     logger.warn('Cannot scrape content from this type of URL:', tab.url);
     return { 
-      success: false, 
-      error: 'Cannot scrape content from this type of URL',
+      success: true, // Changed to true to avoid error state
       data: {
-        content: `This page (${tab.url}) cannot be scraped due to browser security restrictions.`,
+        content: '', // Empty content will trigger "without page content" flow
         title: tab.title || '',
-        url: tab.url || ''
+        url: tab.url || '',
+        note: `This page (${tab.url}) cannot be scraped due to browser security restrictions. The extension will work without page context.`
       }
     };
   }
+
+  // Check if content script is ready before attempting communication
+  const isContentScriptReady = await checkContentScriptReady(tab.id);
   
   // Try to send a message to the content script
   try {
     console.log('[Page Inference] BACKGROUND: Sending scrapeContent message to tab:', tab.id, 'URL:', tab.url);
     logger.log('Sending scrapeContent message to tab:', tab.id);
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
+    
+    // Use a more robust message sending approach with timeout
+    const response = await sendMessageWithTimeout(tab.id, { action: 'scrapeContent' }, 5000);
     console.log('[Page Inference] BACKGROUND: Received response from content script:', response);
     
     if (!response || !response.content) {
@@ -1696,17 +1747,33 @@ async function processScrapeTabRequest(tab) {
     // Handle initial content script communication failure gracefully
     ErrorHandler.handle('content_script_communication', error);
     
-    // Attempt graceful degradation with single retry
+    // Attempt graceful degradation with improved retry logic
     return await ErrorHandler.gracefulDegrade(
       async () => {
         logger.log('Attempting to inject content script and retry...');
         await injectContentScriptIfNeeded(tab.id);
         
-        // Single reasonable wait period
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait for content script to be ready with exponential backoff
+        let retryCount = 0;
+        const maxRetries = 3;
+        const baseDelay = 1000;
         
-        // Single retry attempt
-        const retryResponse = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeContent' });
+        while (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, retryCount)));
+          
+          const isReady = await checkContentScriptReady(tab.id);
+          if (isReady) {
+            break;
+          }
+          
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            throw new Error('Content script failed to initialize after multiple retries');
+          }
+        }
+        
+        // Retry the message with timeout
+        const retryResponse = await sendMessageWithTimeout(tab.id, { action: 'scrapeContent' }, 5000);
         
         if (!retryResponse || !retryResponse.content) {
           throw new Error('Content script injection failed');

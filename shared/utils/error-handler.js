@@ -21,12 +21,15 @@ export class ErrorHandler {
       return;
     }
     
-    // Detect development mode (unpacked extension)
-    try {
-      this.isDevMode = !chrome.runtime.getManifest()?.update_url;
-    } catch (e) {
-      this.isDevMode = true;
-    }
+    // Force production mode by default
+    this.isDevMode = false;
+    
+    // Original detection logic (commented out):
+    // try {
+    //   this.isDevMode = !chrome.runtime.getManifest()?.update_url;
+    // } catch (e) {
+    //   this.isDevMode = true;
+    // }
   }
 
   /**
