@@ -849,8 +849,9 @@ async function saveApiKeyAutomatic() {
 		apiKeyInput.setAttribute("data-masked-key", newMaskedKey);
 		apiKeyInput.setAttribute("data-has-key", "true");
 		
-		// Show subtle feedback (optional - could add a small indicator)
+		// Show subtle feedback
 		console.log("API key saved automatically");
+		showApiKeySaveSuccess();
 		
 		// Reset toggle state to hidden after save
 		apiKeyInput.type = "password";
@@ -925,6 +926,46 @@ async function updateSettings(settings) {
 		console.error("Error updating settings:", error);
 		// Restore previous settings in UI
 		applySettingsToUI(currentSettings);
+	}
+}
+
+/**
+ * Show a brief success message when API key is saved
+ */
+function showApiKeySaveSuccess() {
+	// Remove any existing success message
+	const existingMessage = document.querySelector('.api-key-save-success');
+	if (existingMessage) {
+		existingMessage.remove();
+	}
+
+	// Create success message element
+	const successMessage = document.createElement('div');
+	successMessage.className = 'api-key-save-success';
+	successMessage.textContent = '✓ API key saved';
+
+	// Insert after the API key input container
+	const apiKeyContainer = document.querySelector('.api-key-input-container');
+	if (apiKeyContainer) {
+		apiKeyContainer.style.position = 'relative';
+		apiKeyContainer.appendChild(successMessage);
+
+		// Animate in
+		setTimeout(() => {
+			successMessage.style.opacity = '1';
+			successMessage.style.transform = 'translateX(-50%) translateY(0)';
+		}, 10);
+
+		// Remove after 2 seconds
+		setTimeout(() => {
+			successMessage.style.opacity = '0';
+			successMessage.style.transform = 'translateX(-50%) translateY(10px)';
+			setTimeout(() => {
+				if (successMessage.parentNode) {
+					successMessage.remove();
+				}
+			}, 300);
+		}, 2000);
 	}
 }
 
